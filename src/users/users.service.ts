@@ -61,7 +61,10 @@ export class UsersService {
 
     try {
       user = await this.userModel
-        .findByIdAndUpdate(id, dto, { new: true, runValidators: true })
+        .findByIdAndUpdate(id, dto, {
+          returnDocument: 'after',
+          runValidators: true,
+        })
         .exec();
     } catch (error) {
       if (isDuplicateKey(error)) {

@@ -32,7 +32,10 @@ export class UnidadesService {
 
   async update(id: string, dto: UpdateUnidadDto): Promise<UnidadDocument> {
     const unidad = await this.unidadModel
-      .findByIdAndUpdate(id, dto, { new: true, runValidators: true })
+      .findByIdAndUpdate(id, dto, {
+        returnDocument: 'after',
+        runValidators: true,
+      })
       .exec();
 
     if (!unidad) {

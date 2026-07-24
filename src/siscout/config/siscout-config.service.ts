@@ -51,7 +51,7 @@ export class SiscoutConfigService implements OnModuleInit {
       .findOneAndUpdate(
         { key: SINGLETON_KEY },
         { $setOnInsert: { key: SINGLETON_KEY, ...SISCOUT_CONFIG_DEFAULTS } },
-        { new: true, upsert: true },
+        { returnDocument: 'after', upsert: true },
       )
       .lean()
       .exec();
@@ -71,7 +71,7 @@ export class SiscoutConfigService implements OnModuleInit {
       .findOneAndUpdate(
         { key: SINGLETON_KEY },
         { $set: patch },
-        { new: true, upsert: true },
+        { returnDocument: 'after', upsert: true },
       )
       .lean()
       .exec();
@@ -91,7 +91,7 @@ export class SiscoutConfigService implements OnModuleInit {
       .findOneAndUpdate(
         { key: SINGLETON_KEY },
         { $set: { ...SISCOUT_CONFIG_DEFAULTS } },
-        { new: true, upsert: true },
+        { returnDocument: 'after', upsert: true },
       )
       .lean()
       .exec();

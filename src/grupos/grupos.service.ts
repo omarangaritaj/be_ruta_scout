@@ -32,7 +32,10 @@ export class GruposService {
 
   async update(id: string, dto: UpdateGrupoDto): Promise<GrupoDocument> {
     const grupo = await this.grupoModel
-      .findByIdAndUpdate(id, dto, { new: true, runValidators: true })
+      .findByIdAndUpdate(id, dto, {
+        returnDocument: 'after',
+        runValidators: true,
+      })
       .exec();
 
     if (!grupo) {
