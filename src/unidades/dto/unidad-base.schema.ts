@@ -15,17 +15,12 @@ export const unidadBaseSchema = z.object({
     .trim()
     .min(1, { error: 'no puede estar vacío' }),
 
-  region: z
-    .string({ error: 'es obligatoria' })
-    .trim()
-    .min(1, { error: 'no puede estar vacía' }),
-
-  ciudad: z
-    .string({ error: 'es obligatoria' })
-    .trim()
-    .min(1, { error: 'no puede estar vacía' }),
-
-  idJefeGrupo: objectIdSchema.optional(),
+  // Obligatorio: el schema de Mongoose lo declara `required`. Si aquí fuera
+  // opcional, Zod dejaría pasar la petición y Mongoose la rechazaría después
+  // con un 500 en lugar de un 400 explicando qué falta.
+  idJefeUnidad: objectIdSchema,
 
   dirigentes: z.array(objectIdSchema),
+
+  protagonistas: z.array(objectIdSchema),
 });

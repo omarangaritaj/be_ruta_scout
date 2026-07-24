@@ -8,7 +8,7 @@ export class Unidad {
   @Prop({ required: true, trim: true })
   nombre: string;
 
-  @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'User' })
+  @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'User', required: true })
   idJefeUnidad: Types.ObjectId;
 
   @Prop({ type: [MongooseSchema.Types.ObjectId], ref: 'User', default: [] })
