@@ -13,4 +13,4 @@ export const objectIdSchema = z
   .regex(/^[0-9a-fA-F]{24}$/, {
     error: 'debe ser un ObjectId válido (24 caracteres hexadecimales)',
   })
-  .transform((valor) => new Types.ObjectId(valor));
+  .transform((value) => new Types.ObjectId(value));

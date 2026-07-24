@@ -43,9 +43,9 @@ export class UnidadesService {
   }
 
   async remove(id: string): Promise<void> {
-    const resultado = await this.unidadModel.findByIdAndDelete(id).exec();
+    const deleted = await this.unidadModel.findByIdAndDelete(id).exec();
 
-    if (!resultado) {
+    if (!deleted) {
       throw new NotFoundException(`No existe una unidad con id "${id}"`);
     }
   }

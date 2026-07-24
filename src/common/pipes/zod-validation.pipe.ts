@@ -15,18 +15,18 @@ export class ZodValidationPipe<T> implements PipeTransform<unknown, T> {
   constructor(private readonly schema: ZodType<T>) {}
 
   transform(value: unknown): T {
-    const resultado = this.schema.safeParse(value);
+    const result = this.schema.safeParse(value);
 
-    if (!resultado.success) {
+    if (!result.success) {
       throw new BadRequestException({
         message: 'Datos de entrada inválidos',
-        errores: resultado.error.issues.map((issue) => ({
+        errores: result.error.issues.map((issue) => ({
           campo: issue.path.join('.') || '(cuerpo)',
           mensaje: issue.message,
         })),
       });
     }
 
-    return resultado.data;
+    return result.data;
   }
 }

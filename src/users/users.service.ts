@@ -10,14 +10,14 @@ import type { UpdateUserDto } from './dto/update-user.dto';
 import { User, UserDocument } from './schemas/user.schema';
 
 /** Código que devuelve MongoDB al violar un índice único. */
-const CLAVE_DUPLICADA = 11000;
+const DUPLICATE_KEY = 11000;
 
-function esClaveDuplicada(error: unknown): boolean {
+function isDuplicateKey(error: unknown): boolean {
   return (
     typeof error === 'object' &&
     error !== null &&
     'code' in error &&
-    error.code === CLAVE_DUPLICADA
+    error.code === DUPLICATE_KEY
   );
 }
 
@@ -33,7 +33,7 @@ export class UsersService {
       return await this.userModel.create(dto);
     } catch (error) {
       // `idSiscout` es único: sin esto Mongoose devolvería un 500 opaco.
-      if (esClaveDuplicada(error)) {
+      if (isDuplicateKey(error)) {
         throw new ConflictException(
           `Ya existe un usuario con idSiscout "${dto.idSiscout}"`,
         );
@@ -64,7 +64,7 @@ export class UsersService {
         .findByIdAndUpdate(id, dto, { new: true, runValidators: true })
         .exec();
     } catch (error) {
-      if (esClaveDuplicada(error)) {
+      if (isDuplicateKey(error)) {
         throw new ConflictException(
           `Ya existe un usuario con idSiscout "${dto.idSiscout}"`,
         );
@@ -80,9 +80,9 @@ export class UsersService {
   }
 
   async remove(id: string): Promise<void> {
-    const resultado = await this.userModel.findByIdAndDelete(id).exec();
+    const deleted = await this.userModel.findByIdAndDelete(id).exec();
 
-    if (!resultado) {
+    if (!deleted) {
       throw new NotFoundException(`No existe un usuario con id "${id}"`);
     }
   }

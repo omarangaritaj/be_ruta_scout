@@ -12,16 +12,16 @@ import type { AppConfigService } from '../config';
         uri: config.get('MONGODB_URI', { infer: true }),
         connectionFactory: (connection: Connection) => {
           const logger = new Logger('MongooseConnection');
-          const conectado = () =>
+          const logConnected = () =>
             logger.log(`Conectado a la base de datos "${connection.name}"`);
 
           // Nest invoca esta factory con la conexión ya establecida, por lo que
           // el evento 'connected' ya se emitió: hay que consultar el estado.
           if (connection.readyState === ConnectionStates.connected) {
-            conectado();
+            logConnected();
           }
 
-          connection.on('connected', conectado);
+          connection.on('connected', logConnected);
           connection.on('reconnected', () =>
             logger.log('Reconectado a MongoDB'),
           );

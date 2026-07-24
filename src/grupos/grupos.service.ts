@@ -43,9 +43,9 @@ export class GruposService {
   }
 
   async remove(id: string): Promise<void> {
-    const resultado = await this.grupoModel.findByIdAndDelete(id).exec();
+    const deleted = await this.grupoModel.findByIdAndDelete(id).exec();
 
-    if (!resultado) {
+    if (!deleted) {
       throw new NotFoundException(`No existe un grupo con id "${id}"`);
     }
   }

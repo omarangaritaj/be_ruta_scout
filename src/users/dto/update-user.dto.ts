@@ -7,7 +7,7 @@ import { userBaseSchema } from './user-base.schema';
  */
 export const updateUserSchema = userBaseSchema
   .partial()
-  .refine((datos) => Object.keys(datos).length > 0, {
+  .refine((data) => Object.keys(data).length > 0, {
     error: 'debe incluir al menos un campo a modificar',
   });
 

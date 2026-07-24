@@ -1,8 +1,8 @@
 import { envSchema, type Env } from './env.schema';
 
 /** Serializa de forma segura el valor recibido para mostrarlo en el error. */
-function formatearValor(valor: unknown): string {
-  return typeof valor === 'string' ? valor : JSON.stringify(valor);
+function formatValue(value: unknown): string {
+  return typeof value === 'string' ? value : JSON.stringify(value);
 }
 
 /**
@@ -15,57 +15,53 @@ function formatearValor(valor: unknown): string {
  * Es deliberado: preferimos no levantar a levantar con configuración inválida.
  */
 export function validateEnv(config: Record<string, unknown>): Env {
-  const resultado = envSchema.safeParse(config);
+  const result = envSchema.safeParse(config);
 
-  if (resultado.success) {
-    return resultado.data;
+  if (result.success) {
+    return result.data;
   }
 
-  const faltantes: string[] = [];
-  const invalidas: string[] = [];
+  const missing: string[] = [];
+  const invalid: string[] = [];
 
-  for (const issue of resultado.error.issues) {
+  for (const issue of result.error.issues) {
     const variable = issue.path.join('.');
-    const valor = config[variable];
+    const value = config[variable];
 
-    if (valor === undefined) {
-      faltantes.push(`  • ${variable}`);
+    if (value === undefined) {
+      missing.push(`  • ${variable}`);
     } else {
-      invalidas.push(
-        `  • ${variable}: ${issue.message} (recibido: "${formatearValor(valor)}")`,
+      invalid.push(
+        `  • ${variable}: ${issue.message} (recibido: "${formatValue(value)}")`,
       );
     }
   }
 
-  const mensaje: string[] = [
+  const message: string[] = [
     '',
     '════════════════════════════════════════════════════════════',
     ' CONFIGURACIÓN DE ENTORNO INVÁLIDA — la aplicación no arranca',
     '════════════════════════════════════════════════════════════',
   ];
 
-  if (faltantes.length > 0) {
-    mensaje.push(
+  if (missing.length > 0) {
+    message.push(
       '',
       'Variables requeridas que NO están definidas:',
-      ...faltantes,
+      ...missing,
     );
   }
 
-  if (invalidas.length > 0) {
-    mensaje.push(
-      '',
-      'Variables definidas con un valor inválido:',
-      ...invalidas,
-    );
+  if (invalid.length > 0) {
+    message.push('', 'Variables definidas con un valor inválido:', ...invalid);
   }
 
-  mensaje.push(
+  message.push(
     '',
     'Revisa tu archivo .env (puedes partir de .env.example).',
     '════════════════════════════════════════════════════════════',
     '',
   );
 
-  throw new Error(mensaje.join('\n'));
+  throw new Error(message.join('\n'));
 }

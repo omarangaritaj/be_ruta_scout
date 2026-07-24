@@ -7,7 +7,7 @@ import { unidadBaseSchema } from './unidad-base.schema';
  */
 export const updateUnidadSchema = unidadBaseSchema
   .partial()
-  .refine((datos) => Object.keys(datos).length > 0, {
+  .refine((data) => Object.keys(data).length > 0, {
     error: 'debe incluir al menos un campo a modificar',
   });
 
