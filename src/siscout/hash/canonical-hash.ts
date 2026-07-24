@@ -8,28 +8,28 @@ import { createHash } from 'node:crypto';
  * que las serializa, TODOS los hashes cambiarían sin que hubiera cambiado un
  * solo dato, y la sincronización reescribiría la base entera para nada.
  */
-function canonicalizar(valor: unknown): unknown {
-  if (Array.isArray(valor)) {
-    return valor.map(canonicalizar);
+function canonicalize(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return value.map(canonicalize);
   }
 
-  if (valor !== null && typeof valor === 'object') {
-    const origen = valor as Record<string, unknown>;
+  if (value !== null && typeof value === 'object') {
+    const source = value as Record<string, unknown>;
 
-    return Object.keys(origen)
+    return Object.keys(source)
       .sort()
-      .reduce<Record<string, unknown>>((acumulado, clave) => {
-        acumulado[clave] = canonicalizar(origen[clave]);
-        return acumulado;
+      .reduce<Record<string, unknown>>((accumulated, key) => {
+        accumulated[key] = canonicalize(source[key]);
+        return accumulated;
       }, {});
   }
 
-  return valor;
+  return value;
 }
 
 /** Huella estable del payload externo: si cambia, el registro cambió. */
-export function hashCanonico(payload: unknown): string {
+export function canonicalHash(payload: unknown): string {
   return createHash('sha256')
-    .update(JSON.stringify(canonicalizar(payload)))
+    .update(JSON.stringify(canonicalize(payload)))
     .digest('hex');
 }

@@ -24,32 +24,30 @@ export class SiscoutScheduler implements OnModuleInit {
   ) {}
 
   onModuleInit(): void {
-    const habilitado = this.config.get('SISCOUT_SYNC_ENABLED', { infer: true });
+    const enabled = this.config.get('SISCOUT_SYNC_ENABLED', { infer: true });
 
-    if (!habilitado) {
+    if (!enabled) {
       this.logger.log(
         'Sincronización programada deshabilitada (SISCOUT_SYNC_ENABLED=false)',
       );
       return;
     }
 
-    const expresion = this.config.get('SISCOUT_SYNC_CRON', { infer: true });
+    const expression = this.config.get('SISCOUT_SYNC_CRON', { infer: true });
 
-    const job = new CronJob(expresion, () => {
-      void this.ejecutar();
+    const job = new CronJob(expression, () => {
+      void this.run();
     });
 
     this.registry.addCronJob('siscout-sync', job);
     job.start();
 
-    this.logger.log(
-      `Sincronización programada con la expresión "${expresion}"`,
-    );
+    this.logger.log(`Sincronización programada con la expresión ""`);
   }
 
-  private async ejecutar(): Promise<void> {
+  private async run(): Promise<void> {
     try {
-      await this.syncService.sincronizar();
+      await this.syncService.synchronize();
     } catch (error) {
       // Una corrida fallida no debe tumbar el proceso ni cancelar las siguientes.
       this.logger.error(

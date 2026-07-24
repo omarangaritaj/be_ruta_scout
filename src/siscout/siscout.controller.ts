@@ -1,8 +1,5 @@
 import { Controller, HttpCode, HttpStatus, Post } from '@nestjs/common';
-import {
-  SiscoutSyncService,
-  type ResultadoSincronizacion,
-} from './siscout-sync.service';
+import { SiscoutSyncService, type SyncResult } from './siscout-sync.service';
 
 /**
  * ⚠️ Este controlador NO expone datos de SiScout: solo dispara la
@@ -17,7 +14,7 @@ export class SiscoutController {
 
   @Post('sync')
   @HttpCode(HttpStatus.OK)
-  async sincronizar(): Promise<ResultadoSincronizacion> {
-    return this.syncService.sincronizar();
+  async sync(): Promise<SyncResult> {
+    return this.syncService.synchronize();
   }
 }
