@@ -1,0 +1,52 @@
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model } from 'mongoose';
+import type { CreateGrupoDto } from './dto/create-grupo.dto';
+import type { UpdateGrupoDto } from './dto/update-grupo.dto';
+import { Grupo, GrupoDocument } from './schemas/grupo.schema';
+
+@Injectable()
+export class GruposService {
+  constructor(
+    @InjectModel(Grupo.name)
+    private readonly grupoModel: Model<GrupoDocument>,
+  ) {}
+
+  async create(dto: CreateGrupoDto): Promise<GrupoDocument> {
+    return this.grupoModel.create(dto);
+  }
+
+  async findAll(): Promise<GrupoDocument[]> {
+    return this.grupoModel.find().exec();
+  }
+
+  async findOne(id: string): Promise<GrupoDocument> {
+    const grupo = await this.grupoModel.findById(id).exec();
+
+    if (!grupo) {
+      throw new NotFoundException(`No existe un grupo con id "${id}"`);
+    }
+
+    return grupo;
+  }
+
+  async update(id: string, dto: UpdateGrupoDto): Promise<GrupoDocument> {
+    const grupo = await this.grupoModel
+      .findByIdAndUpdate(id, dto, { new: true, runValidators: true })
+      .exec();
+
+    if (!grupo) {
+      throw new NotFoundException(`No existe un grupo con id "${id}"`);
+    }
+
+    return grupo;
+  }
+
+  async remove(id: string): Promise<void> {
+    const resultado = await this.grupoModel.findByIdAndDelete(id).exec();
+
+    if (!resultado) {
+      throw new NotFoundException(`No existe un grupo con id "${id}"`);
+    }
+  }
+}
