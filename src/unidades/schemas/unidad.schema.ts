@@ -14,11 +14,7 @@ export class Unidad {
   @Prop({ type: [MongooseSchema.Types.ObjectId], ref: 'User', default: [] })
   dirigentes: Types.ObjectId[];
 
-  @Prop({
-    type: [MongooseSchema.Types.ObjectId],
-    ref: 'Protagonista',
-    default: [],
-  })
+  @Prop({ type: [MongooseSchema.Types.ObjectId], ref: 'User', default: [] })
   protagonistas: Types.ObjectId[];
 }
 

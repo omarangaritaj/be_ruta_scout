@@ -34,9 +34,7 @@ export class UsersService {
     } catch (error) {
       // `idSiscout` es único: sin esto Mongoose devolvería un 500 opaco.
       if (isDuplicateKey(error)) {
-        throw new ConflictException(
-          `Ya existe un usuario con idSiscout "${dto.idSiscout}"`,
-        );
+        throw new ConflictException('Ya existe una persona con ese idSiscout');
       }
       throw error;
     }
@@ -68,9 +66,7 @@ export class UsersService {
         .exec();
     } catch (error) {
       if (isDuplicateKey(error)) {
-        throw new ConflictException(
-          `Ya existe un usuario con idSiscout "${dto.idSiscout}"`,
-        );
+        throw new ConflictException('Ya existe una persona con ese idSiscout');
       }
       throw error;
     }

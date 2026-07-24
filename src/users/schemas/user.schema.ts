@@ -1,58 +1,108 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument, Schema as MongooseSchema, Types } from 'mongoose';
+import { Acudiente, AcudienteSchema } from './acudiente.subschema';
+import { Cargo, CargoSchema } from './cargo.subschema';
 
 export type UserDocument = HydratedDocument<User>;
 
-export const ESTADOS_SISCOUT = ['activo', 'huerfano'] as const;
-export type EstadoSiscout = (typeof ESTADOS_SISCOUT)[number];
+export const TIPOS_PERSONA = ['adulto', 'protagonista'] as const;
+export type TipoPersona = (typeof TIPOS_PERSONA)[number];
 
 /**
- * Usuario de la aplicación.
+ * Persona del dominio. `tipo` determina qué es:
  *
- * ⚠️ Este documento NO contiene la información de SiScout. El payload externo
- * vive aislado en la colección `siscout_snapshots`, que nunca se expone. Aquí
- * solo se proyectan los campos declarados en la lista blanca de la
- * sincronización (ver `siscout-sync.service.ts`).
+ * - `adulto`  → adulto de SiScout (los dirigentes de una unidad son adultos).
+ *   Tiene `cargos` y `roles`.
+ * - `protagonista` → joven del programa. Sus datos (unidad, acudiente,
+ *   promesa, transición…) viven como campos propios de este documento.
+ *
+ * Todas las personas provienen de SiScout, así que `idSiscout` es obligatorio y
+ * único. Los campos específicos del protagonista son opcionales porque un
+ * adulto no los usa.
+ *
+ * Hay dos estados independientes:
+ * - `estadoSiscout` (bool): ¿sigue presente en SiScout? Lo gestiona el sync.
+ * - `estado` (bool): ¿activo dentro de NUESTRA plataforma? Lo gestionamos aquí.
+ *
+ * ⚠️ Este documento NO contiene el payload de SiScout. Ese payload vive aislado
+ * y cifrado en `siscout_snapshots`; aquí solo se proyecta lo de la lista blanca.
  */
 @Schema({ collection: 'users', timestamps: true })
 export class User {
   @Prop({ required: true, trim: true })
   name: string;
 
+  @Prop({ type: String, enum: TIPOS_PERSONA, required: true, index: true })
+  tipo: TipoPersona;
+
   @Prop({ required: true, trim: true, unique: true, index: true })
   idSiscout: string;
 
+  /** ¿Activo dentro de nuestra plataforma? Independiente de SiScout. */
+  @Prop({ default: true, index: true })
+  estado: boolean;
+
+  // --- Datos de adulto ---
   @Prop({ type: [MongooseSchema.Types.ObjectId], ref: 'Role', default: [] })
   roles: Types.ObjectId[];
 
-  @Prop({ type: [MongooseSchema.Types.ObjectId], ref: 'Cargo', default: [] })
-  cargos: Types.ObjectId[];
+  /** Cargos scout del adulto, embebidos como value objects. */
+  @Prop({ type: [CargoSchema], default: [] })
+  cargos: Cargo[];
 
-  /** `huerfano` cuando SiScout deja de reportar el registro. */
-  @Prop({
-    type: String,
-    enum: ESTADOS_SISCOUT,
-    default: 'activo',
-    index: true,
-  })
-  estadoSiscout: EstadoSiscout;
+  // --- Sincronización con SiScout ---
+  /** `true` mientras SiScout siga reportando a la persona; `false` si ya no. */
+  @Prop({ default: true, index: true })
+  estadoSiscout: boolean;
 
-  /** Momento en que SiScout lo reportó por última vez. */
   @Prop({ type: Date })
   sincronizadoEn?: Date;
 
-  /**
-   * Identificador de la última corrida que vio este registro.
-   *
-   * Es lo que permite detectar huérfanos con una sola consulta al final:
-   * quien no lleve el identificador de la corrida actual, ya no vino.
-   */
+  /** Identificador de la última corrida del sync que vio a esta persona. */
   @Prop({ type: String, index: true })
   ultimoSyncId?: string;
 
-  /** Cuándo se marcó como huérfano. Se limpia si el registro reaparece. */
+  /** Cuándo dejó de aparecer en SiScout (estadoSiscout=false). Se limpia si reaparece. */
   @Prop({ type: Date })
-  huerfanoDesde?: Date;
+  fechaBajaSiscout?: Date;
+
+  @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'Unidad' })
+  idUnidad?: Types.ObjectId;
+
+  // El modelo Subgrupo todavía no existe: populate('idSubgrupo') fallará hasta que se cree.
+  @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'Subgrupo' })
+  idSubgrupo?: Types.ObjectId;
+
+  @Prop({ trim: true })
+  nombrePreferido?: string;
+
+  @Prop({ type: Date })
+  fechaNacimiento?: Date;
+
+  @Prop({ type: Date })
+  fechaIngreso?: Date;
+
+  /** Persona a cargo del menor. */
+  @Prop({ type: AcudienteSchema })
+  acudiente?: Acudiente;
+
+  @Prop({ trim: true })
+  apoyos?: string;
+
+  @Prop()
+  promesaRealizada?: boolean;
+
+  @Prop({ type: Date })
+  promesaFecha?: Date;
+
+  @Prop()
+  enTransicion?: boolean;
+
+  @Prop({ trim: true })
+  transicionObservaciones?: string;
+
+  @Prop({ trim: true })
+  observaciones?: string;
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);

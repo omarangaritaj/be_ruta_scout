@@ -6,7 +6,11 @@ import {
 import { InjectModel } from '@nestjs/mongoose';
 import { randomUUID } from 'node:crypto';
 import { Model } from 'mongoose';
-import { User, UserDocument } from '../users/schemas/user.schema';
+import {
+  User,
+  UserDocument,
+  type TipoPersona,
+} from '../users/schemas/user.schema';
 import { SiscoutConfigService } from './config/siscout-config.service';
 import { encryptSensitiveFields } from './crypto/encrypted-fields';
 import { FieldCipher } from './crypto/field-cipher';
@@ -31,6 +35,22 @@ const PUBLIC_FIELDS: Partial<Record<keyof SiscoutMember, keyof User>> = {
 
 /** Máximo de cambios detallados que se devuelven; los contadores cuentan todo. */
 const DETAIL_CAP = 500;
+
+/**
+ * Clasifica un miembro de SiScout según su `tipomiembro`:
+ *   "MIEMBRO ACTIVO ADULTO"  → adulto
+ *   "MIEMBRO ACTIVO JUVENIL" → protagonista
+ *
+ * Regla confirmada con datos reales de SiScout. OJO: el campo `cargo` NO sirve
+ * para clasificar — en un juvenil guarda su RAMA (LOBATO, SCOUT, ROVER…), no un
+ * cargo de responsabilidad. Un `tipomiembro` inesperado se trata como
+ * protagonista: es el default prudente, para no conceder estatus de adulto
+ * —y con él, un posible acceso a la aplicación— a alguien sin confirmarlo.
+ */
+function classifyTipo(member: SiscoutMember): TipoPersona {
+  const tipo = (member.tipomiembro ?? '').toUpperCase();
+  return tipo.includes('ADULTO') ? 'adulto' : 'protagonista';
+}
 
 export interface RoleChange {
   personId: string;
@@ -326,13 +346,18 @@ export class SiscoutSyncService {
           update: {
             $set: {
               ...this.projectPublicFields(member),
+              // De SiScout vienen protagonistas Y adultos: se clasifica por
+              // los datos del miembro, no se asume.
+              tipo: classifyTipo(member),
               idSiscout: member.person_id,
-              estadoSiscout: 'activo',
+              estadoSiscout: true,
               sincronizadoEn: now,
               ultimoSyncId: syncId,
             },
-            $unset: { huerfanoDesde: '' },
-            $setOnInsert: { roles: [], cargos: [] },
+            $unset: { fechaBajaSiscout: '' },
+            // `estado` (plataforma) solo se fija al crear: un sync no reactiva a
+            // quien un administrador haya desactivado en la aplicación.
+            $setOnInsert: { estado: true, roles: [], cargos: [] },
           },
           upsert: true,
         },
@@ -436,8 +461,14 @@ export class SiscoutSyncService {
   private async markOrphans(syncId: string): Promise<number> {
     const result = await this.userModel
       .updateMany(
-        { ultimoSyncId: { $ne: syncId }, estadoSiscout: 'activo' },
-        { $set: { estadoSiscout: 'huerfano', huerfanoDesde: new Date() } },
+        // Quien seguía marcado como presente en SiScout pero no vino en esta
+        // corrida, ya no está: se marca la baja. No afecta a `estado` (la
+        // activación en la plataforma), que es una decisión aparte.
+        {
+          estadoSiscout: true,
+          ultimoSyncId: { $ne: syncId },
+        },
+        { $set: { estadoSiscout: false, fechaBajaSiscout: new Date() } },
       )
       .exec();
 
