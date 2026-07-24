@@ -1,5 +1,17 @@
 import { z } from 'zod';
 
+/** Longitud en bytes de una clave dada en base64 o hex; -1 si no decodifica. */
+function decodeKeyLength(valor: string): number {
+  if (/^[0-9a-fA-F]+$/.test(valor) && valor.length % 2 === 0) {
+    return valor.length / 2;
+  }
+  try {
+    return Buffer.from(valor, 'base64').length;
+  } catch {
+    return -1;
+  }
+}
+
 /**
  * Única fuente de verdad de las variables de entorno de la aplicación.
  *
@@ -42,6 +54,17 @@ export const envSchema = z.object({
   // Ruta que activa el rol con acceso nacional, p. ej.
   // /users/change-rol/826/176035/7
   SISCOUT_CHANGE_ROL_PATH: z.string().min(1).optional(),
+
+  // Clave AES-256 para cifrar los campos sensibles del snapshot en reposo.
+  // 32 bytes en base64 (44 caracteres) o en hex (64 caracteres).
+  // Generar con: openssl rand -base64 32
+  SISCOUT_ENCRYPTION_KEY: z
+    .string()
+    .optional()
+    .refine((valor) => valor === undefined || decodeKeyLength(valor) === 32, {
+      error:
+        'debe decodificar a 32 bytes (base64 de 44 o hex de 64 caracteres)',
+    }),
 
   // Zonas a descargar, separadas por coma. "1" es Colombia entera.
   SISCOUT_ZONE_IDS: z

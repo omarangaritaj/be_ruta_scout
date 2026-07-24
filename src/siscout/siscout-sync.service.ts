@@ -10,6 +10,8 @@ import { randomUUID } from 'node:crypto';
 import { Model } from 'mongoose';
 import type { AppConfigService } from '../config';
 import { User, UserDocument } from '../users/schemas/user.schema';
+import { encryptSensitiveFields } from './crypto/encrypted-fields';
+import { FieldCipher } from './crypto/field-cipher';
 import { canonicalHash } from './hash/canonical-hash';
 import { normalizeMember, type SiscoutMember } from './normalize';
 import { SiscoutClient } from './ports/siscout-client.port';
@@ -71,6 +73,7 @@ export class SiscoutSyncService {
     @InjectModel(SiscoutSnapshot.name)
     private readonly snapshotModel: Model<SiscoutSnapshotDocument>,
     private readonly client: SiscoutClient,
+    private readonly cipher: FieldCipher,
     @Inject(ConfigService)
     private readonly config: AppConfigService,
   ) {}
@@ -79,6 +82,14 @@ export class SiscoutSyncService {
     if (!this.client.isConfigured()) {
       throw new ServiceUnavailableException(
         'El cliente de SiScout no está configurado (faltan credenciales o URL base)',
+      );
+    }
+
+    // Sin clave no se puede cifrar, y guardar la PII en claro sería peor que no
+    // sincronizar: se aborta antes de tocar la base.
+    if (!this.cipher.isReady()) {
+      throw new ServiceUnavailableException(
+        'Falta SISCOUT_ENCRYPTION_KEY: no se sincroniza sin poder cifrar los campos sensibles',
       );
     }
 
@@ -333,12 +344,19 @@ export class SiscoutSyncService {
       });
 
       // El payload solo se reescribe si el hash cambió: es el dato pesado.
+      // El hash se calculó sobre el miembro en CLARO (línea del `hashed`); lo
+      // que se guarda es el payload con los campos sensibles cifrados. Cifrar
+      // después de hashear es lo que mantiene el hash estable entre corridas.
       if (changed) {
         snapshotOps.push({
           updateOne: {
             filter: { idSiscout: member.person_id },
             update: {
-              $set: { hash, payload: member, sincronizadoEn: now },
+              $set: {
+                hash,
+                payload: encryptSensitiveFields(member, this.cipher),
+                sincronizadoEn: now,
+              },
             },
             upsert: true,
           },

@@ -3,6 +3,7 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { ScheduleModule } from '@nestjs/schedule';
 import { UsersModule } from '../users/users.module';
 import { SiscoutHttpClient } from './adapters/siscout-http.client';
+import { FieldCipher } from './crypto/field-cipher';
 import { SiscoutClient } from './ports/siscout-client.port';
 import {
   SiscoutSnapshot,
@@ -10,6 +11,7 @@ import {
 } from './schemas/siscout-snapshot.schema';
 import { SiscoutController } from './siscout.controller';
 import { SiscoutScheduler } from './siscout.scheduler';
+import { SiscoutSnapshotService } from './siscout-snapshot.service';
 import { SiscoutSyncService } from './siscout-sync.service';
 
 /**
@@ -28,9 +30,11 @@ import { SiscoutSyncService } from './siscout-sync.service';
   controllers: [SiscoutController],
   providers: [
     SiscoutSyncService,
+    SiscoutSnapshotService,
     SiscoutScheduler,
+    FieldCipher,
     { provide: SiscoutClient, useClass: SiscoutHttpClient },
   ],
-  exports: [SiscoutSyncService],
+  exports: [SiscoutSyncService, SiscoutSnapshotService],
 })
 export class SiscoutModule {}
