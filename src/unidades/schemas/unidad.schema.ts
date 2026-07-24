@@ -8,14 +8,18 @@ export class Unidad {
   @Prop({ required: true, trim: true })
   nombre: string;
 
-  @Prop({ required: true, trim: true })
-  region: string;
-
-  @Prop({ required: true, trim: true })
-  ciudad: string;
-
   @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'User' })
-  idJefeGrupo?: Types.ObjectId;
+  idJefeUnidad: Types.ObjectId;
+
+  @Prop({ type: [MongooseSchema.Types.ObjectId], ref: 'User', default: [] })
+  dirigentes: Types.ObjectId[];
+
+  @Prop({
+    type: [MongooseSchema.Types.ObjectId],
+    ref: 'Protagonista',
+    default: [],
+  })
+  protagonistas: Types.ObjectId[];
 }
 
 export const UnidadSchema = SchemaFactory.createForClass(Unidad);
