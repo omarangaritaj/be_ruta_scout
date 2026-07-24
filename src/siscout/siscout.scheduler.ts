@@ -1,16 +1,18 @@
-import { Inject, Injectable, Logger, OnModuleInit } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { SchedulerRegistry } from '@nestjs/schedule';
 import { CronJob } from 'cron';
-import type { AppConfigService } from '../config';
+import { SiscoutConfigService } from './config/siscout-config.service';
 import { SiscoutSyncService } from './siscout-sync.service';
 
+const JOB_NAME = 'siscout-sync';
+
 /**
- * Programa la sincronización periódica.
+ * Programa la sincronización periódica según la configuración vigente.
  *
- * El cron se registra en tiempo de ejecución (y no con el decorador `@Cron`)
- * porque tanto la expresión como el interruptor vienen de la configuración: así
- * en local se puede dejar apagado sin tocar código.
+ * La expresión cron y el interruptor viven en la configuración editable, no en
+ * el entorno, así que el trabajo se (re)programa en tiempo de ejecución: cuando
+ * la configuración cambia, se descarta el cron anterior y se crea el nuevo, o se
+ * detiene si quedó deshabilitado. No hace falta reiniciar la aplicación.
  */
 @Injectable()
 export class SiscoutScheduler implements OnModuleInit {
@@ -19,30 +21,39 @@ export class SiscoutScheduler implements OnModuleInit {
   constructor(
     private readonly syncService: SiscoutSyncService,
     private readonly registry: SchedulerRegistry,
-    @Inject(ConfigService)
-    private readonly config: AppConfigService,
+    private readonly config: SiscoutConfigService,
   ) {}
 
-  onModuleInit(): void {
-    const enabled = this.config.get('SISCOUT_SYNC_ENABLED', { infer: true });
+  async onModuleInit(): Promise<void> {
+    await this.config.ensureLoaded();
+    await this.applySchedule();
+    this.config.onChange(() => {
+      void this.applySchedule();
+    });
+  }
 
-    if (!enabled) {
-      this.logger.log(
-        'Sincronización programada deshabilitada (SISCOUT_SYNC_ENABLED=false)',
-      );
+  /** Aplica la configuración vigente al cron: lo crea, lo reemplaza o lo detiene. */
+  private async applySchedule(): Promise<void> {
+    if (this.registry.doesExist('cron', JOB_NAME)) {
+      await this.registry.getCronJob(JOB_NAME).stop();
+      this.registry.deleteCronJob(JOB_NAME);
+    }
+
+    const { syncEnabled, syncCron } = this.config.get();
+
+    if (!syncEnabled) {
+      this.logger.log('Sincronización programada deshabilitada');
       return;
     }
 
-    const expression = this.config.get('SISCOUT_SYNC_CRON', { infer: true });
-
-    const job = new CronJob(expression, () => {
+    const job = new CronJob(syncCron, () => {
       void this.run();
     });
 
-    this.registry.addCronJob('siscout-sync', job);
+    this.registry.addCronJob(JOB_NAME, job);
     job.start();
 
-    this.logger.log(`Sincronización programada con la expresión ""`);
+    this.logger.log(`Sincronización programada con la expresión "${syncCron}"`);
   }
 
   private async run(): Promise<void> {

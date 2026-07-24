@@ -1,5 +1,23 @@
 import { z } from 'zod';
 
+/**
+ * Hace una variable opcional tratando la cadena VACÍA como ausente.
+ *
+ * En un `.env` es habitual declarar una variable opcional vacía
+ * (`SISCOUT_MASTER_USER=`) como marcador para rellenarla luego. Zod entrega esa
+ * variable como `""`, que NO es `undefined`, así que `.optional()` no basta y la
+ * validación fallaría. Aquí se normaliza `""` (y solo espacios) a `undefined`
+ * antes de validar, de modo que una opcional vacía se interpreta como sin
+ * configurar y la aplicación arranca igual.
+ */
+function optionalEnv<T extends z.ZodType>(schema: T) {
+  return z.preprocess(
+    (valor) =>
+      typeof valor === 'string' && valor.trim() === '' ? undefined : valor,
+    schema.optional(),
+  );
+}
+
 /** Longitud en bytes de una clave dada en base64 o hex; -1 si no decodifica. */
 function decodeKeyLength(valor: string): number {
   if (/^[0-9a-fA-F]+$/.test(valor) && valor.length % 2 === 0) {
@@ -45,82 +63,30 @@ export const envSchema = z.object({
   // sincronización queda deshabilitada, lo que permite trabajar en local
   // sin depender del servicio externo.
 
-  SISCOUT_BASE_URL: z.url({ error: 'debe ser una URL válida' }).optional(),
+  SISCOUT_BASE_URL: optionalEnv(z.url({ error: 'debe ser una URL válida' })),
 
-  SISCOUT_MASTER_USER: z.string().min(1).optional(),
+  SISCOUT_MASTER_USER: optionalEnv(z.string().min(1)),
 
-  SISCOUT_MASTER_PASSWORD: z.string().min(1).optional(),
+  SISCOUT_MASTER_PASSWORD: optionalEnv(z.string().min(1)),
 
   // Ruta que activa el rol con acceso nacional, p. ej.
   // /users/change-rol/826/176035/7
-  SISCOUT_CHANGE_ROL_PATH: z.string().min(1).optional(),
+  SISCOUT_CHANGE_ROL_PATH: optionalEnv(z.string().min(1)),
 
   // Clave AES-256 para cifrar los campos sensibles del snapshot en reposo.
   // 32 bytes en base64 (44 caracteres) o en hex (64 caracteres).
   // Generar con: openssl rand -base64 32
-  SISCOUT_ENCRYPTION_KEY: z
-    .string()
-    .optional()
-    .refine((valor) => valor === undefined || decodeKeyLength(valor) === 32, {
+  SISCOUT_ENCRYPTION_KEY: optionalEnv(
+    z.string().refine((valor) => decodeKeyLength(valor) === 32, {
       error:
         'debe decodificar a 32 bytes (base64 de 44 o hex de 64 caracteres)',
     }),
+  ),
 
-  // Zonas a descargar, separadas por coma. "1" es Colombia entera.
-  SISCOUT_ZONE_IDS: z
-    .string()
-    .default('1')
-    .transform((value) => [
-      ...new Set(
-        value
-          .split(',')
-          .map((parte) => parseInt(parte.trim(), 10))
-          .filter((n) => Number.isInteger(n) && n > 0),
-      ),
-    ])
-    .refine((ids) => ids.length > 0, {
-      error:
-        'debe producir al menos una zona (enteros positivos separados por coma)',
-    }),
-
-  // Tamaño de página de la descarga (parámetro `length` de DataTables).
-  SISCOUT_PAGE_LENGTH: z.coerce
-    .number({ error: 'debe ser un número' })
-    .int()
-    .min(1)
-    .max(10000)
-    .default(4000),
-
-  // Techo de páginas por zona: capacidad = PAGE_LENGTH * MAX_PAGINAS.
-  SISCOUT_MAX_PAGINAS: z.coerce
-    .number({ error: 'debe ser un número' })
-    .int()
-    .min(1)
-    .max(100)
-    .default(3),
-
-  // Mínimo de registros esperado en la zona principal. Un total menor delata
-  // que el rol nacional no quedó activo, y seguir marcaría huérfano a media base.
-  SISCOUT_MIN_REGISTROS_ZONA_PRINCIPAL: z.coerce
-    .number({ error: 'debe ser un número' })
-    .int()
-    .min(0)
-    .default(1000),
-
-  // Tamaño de los lotes de escritura en Mongo.
-  SISCOUT_CHUNK_ESCRITURA: z.coerce
-    .number({ error: 'debe ser un número' })
-    .int()
-    .min(1)
-    .max(5000)
-    .default(500),
-
-  SISCOUT_SYNC_CRON: z.string().min(1).default('0 3 * * *'),
-
-  SISCOUT_SYNC_ENABLED: z
-    .enum(['true', 'false'], { error: 'debe ser true o false' })
-    .default('false')
-    .transform((value) => value === 'true'),
+  // Los ajustes operativos de la sincronización (zonas, tamaños de página y de
+  // lote, cron e interruptor) NO viven aquí: son configuración editable en
+  // tiempo de ejecución, en la colección `siscout_config`. Ver
+  // `src/siscout/config`. En el entorno solo quedan los secretos y la conexión.
 });
 
 /** Tipo derivado del esquema: ya con las conversiones aplicadas (PORT es number). */

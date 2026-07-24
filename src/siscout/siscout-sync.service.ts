@@ -1,15 +1,13 @@
 import {
-  Inject,
   Injectable,
   Logger,
   ServiceUnavailableException,
 } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { InjectModel } from '@nestjs/mongoose';
 import { randomUUID } from 'node:crypto';
 import { Model } from 'mongoose';
-import type { AppConfigService } from '../config';
 import { User, UserDocument } from '../users/schemas/user.schema';
+import { SiscoutConfigService } from './config/siscout-config.service';
 import { encryptSensitiveFields } from './crypto/encrypted-fields';
 import { FieldCipher } from './crypto/field-cipher';
 import { canonicalHash } from './hash/canonical-hash';
@@ -74,8 +72,7 @@ export class SiscoutSyncService {
     private readonly snapshotModel: Model<SiscoutSnapshotDocument>,
     private readonly client: SiscoutClient,
     private readonly cipher: FieldCipher,
-    @Inject(ConfigService)
-    private readonly config: AppConfigService,
+    private readonly siscoutConfig: SiscoutConfigService,
   ) {}
 
   async synchronize(): Promise<SyncResult> {
@@ -101,10 +98,14 @@ export class SiscoutSyncService {
       );
     }
 
+    // La configuración vigente se lee al inicio de cada corrida: cualquier
+    // cambio hecho por la API surte efecto en la siguiente sincronización.
+    await this.siscoutConfig.ensureLoaded();
+
     this.inProgress = true;
     const startedAt = Date.now();
     const syncId = randomUUID();
-    const zones = this.config.get('SISCOUT_ZONE_IDS', { infer: true });
+    const zones = this.siscoutConfig.get().zoneIds;
 
     const result: SyncResult = {
       syncId,
@@ -169,12 +170,8 @@ export class SiscoutSyncService {
     zones: number[],
     result: SyncResult,
   ): Promise<SiscoutMember[]> {
-    const pageLength = this.config.get('SISCOUT_PAGE_LENGTH', { infer: true });
-    const maxPages = this.config.get('SISCOUT_MAX_PAGINAS', { infer: true });
-    const minMainZone = this.config.get(
-      'SISCOUT_MIN_REGISTROS_ZONA_PRINCIPAL',
-      { infer: true },
-    );
+    const { pageLength, maxPages, minMainZoneRecords } =
+      this.siscoutConfig.get();
 
     const collected: unknown[] = [];
     let draw = 1;
@@ -206,15 +203,15 @@ export class SiscoutSyncService {
 
           // Un total bajo en la zona principal delata que el rol nacional no
           // quedó activo: seguir marcaría huérfana a media base.
-          if (index === 0 && total < minMainZone) {
+          if (index === 0 && total < minMainZoneRecords) {
             throw new Error(
-              `Zona ${zoneId}: recordsTotal=${total}, por debajo del mínimo ${minMainZone} — verificar que el rol nacional esté activo`,
+              `Zona ${zoneId}: recordsTotal=${total}, por debajo del mínimo ${minMainZoneRecords} — verificar que el rol nacional esté activo`,
             );
           }
 
           if (total > maxPages * pageLength) {
             throw new Error(
-              `Zona ${zoneId}: SiScout reporta ${total} registros y la capacidad es ${maxPages * pageLength} — aumentar SISCOUT_MAX_PAGINAS`,
+              `Zona ${zoneId}: SiScout reporta ${total} registros y la capacidad es ${maxPages * pageLength} — aumentar maxPages en la configuración`,
             );
           }
         }
@@ -276,9 +273,7 @@ export class SiscoutSyncService {
     syncId: string,
     result: SyncResult,
   ): Promise<void> {
-    const chunkSize = this.config.get('SISCOUT_CHUNK_ESCRITURA', {
-      infer: true,
-    });
+    const chunkSize = this.siscoutConfig.get().writeChunkSize;
 
     for (let i = 0; i < members.length; i += chunkSize) {
       await this.persistChunk(members.slice(i, i + chunkSize), syncId, result);
