@@ -25,7 +25,6 @@ export class SolicitudAcceso {
     type: MongooseSchema.Types.ObjectId,
     ref: 'User',
     required: true,
-    index: true,
   })
   idPersona: Types.ObjectId;
 
@@ -55,7 +54,6 @@ export class SolicitudAcceso {
   })
   estado: EstadoSolicitud;
 
-  // --- Resolución (Tramo 2) ---
   @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'User' })
   aprobadoPor?: Types.ObjectId;
 
