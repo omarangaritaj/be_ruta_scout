@@ -6,6 +6,7 @@ import { CatalogoCargosModule } from './catalogo-cargos/catalogo-cargos.module';
 import { AppConfigModule } from './config';
 import { CryptoModule } from './crypto';
 import { DatabaseModule } from './database/database.module';
+import { EmailModule } from './email/email.module';
 import { GruposModule } from './grupos/grupos.module';
 import { NotificacionesModule } from './notificaciones/notificaciones.module';
 import { RolesModule } from './roles/roles.module';
@@ -20,6 +21,7 @@ import { UsersModule } from './users/users.module';
   imports: [
     AppConfigModule,
     CryptoModule, // Va antes que cualquier módulo que cifre: provee los cifradores globales.
+    EmailModule,
     DatabaseModule,
     SiscoutConfigModule,
     SiscoutCredentialsModule,

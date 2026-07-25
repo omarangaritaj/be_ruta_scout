@@ -1,12 +1,21 @@
 import {
   BadRequestException,
   ConflictException,
+  Inject,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
-import { cargoEsValido } from '../catalogo-cargos/catalogo-cargos';
+import { Model, Types } from 'mongoose';
+import {
+  cargoEsValido,
+  type NivelSolicitud,
+} from '../catalogo-cargos/catalogo-cargos';
+import {
+  EMAIL_NOTIFIER,
+  type EmailNotifier,
+} from '../email/email-notifier.port';
 import { Notificador } from '../notificaciones/notificador.port';
 import { SiscoutSnapshotService } from '../siscout/siscout-snapshot.service';
 import {
@@ -35,7 +44,60 @@ export class SolicitudesAccesoService {
     private readonly userModel: Model<UserDocument>,
     private readonly notificador: Notificador,
     private readonly snapshots: SiscoutSnapshotService,
+    @Inject(EMAIL_NOTIFIER)
+    private readonly email: EmailNotifier,
   ) {}
+
+  private readonly logger = new Logger(SolicitudesAccesoService.name);
+
+  private nombreTerritorio(
+    nivel: NivelSolicitud,
+    snapshot: Record<string, unknown> | null,
+  ): string | null {
+    if (nivel === 'grupo' && typeof snapshot?.group_name === 'string') {
+      return snapshot.group_name;
+    }
+    if (nivel === 'region' && typeof snapshot?.district_name === 'string') {
+      return snapshot.district_name;
+    }
+    return null;
+  }
+
+  /** Resuelve destinatario (correo + nombre) desde el snapshot cifrado. */
+  private async destinatario(
+    idPersona: Types.ObjectId,
+  ): Promise<{ to: string; nombre: string } | null> {
+    const persona = await this.userModel.findById(idPersona).exec();
+    if (!persona) return null;
+    const snapshot = await this.snapshots.findDecrypted(persona.idSiscout);
+    const to = typeof snapshot?.email === 'string' ? snapshot.email : null;
+    return to ? { to, nombre: persona.name } : null;
+  }
+
+  private async enviarResolucion(
+    idPersona: Types.ObjectId,
+    resultado: 'aprobado' | 'rechazado',
+    extra: { nivel?: NivelSolicitud; cargo?: string; nota?: string | null },
+  ): Promise<void> {
+    try {
+      const dest = await this.destinatario(idPersona);
+      if (!dest) return;
+      await this.email.sendSolicitudResuelta({
+        to: dest.to,
+        nombre: dest.nombre,
+        resultado,
+        nivel: extra.nivel,
+        cargo: extra.cargo,
+        nota: extra.nota,
+      });
+    } catch (error) {
+      this.logger.warn(
+        `No se pudo enviar el correo de resolución: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+    }
+  }
 
   async crear(
     userId: string,
@@ -96,6 +158,25 @@ export class SolicitudesAccesoService {
       destinatario: { personaId: String(persona._id) },
       datos: { nivel: dto.nivel, cargo: dto.cargo },
     });
+
+    const to = typeof snapshot?.email === 'string' ? snapshot.email : null;
+    if (to) {
+      try {
+        await this.email.sendSolicitudRecibida({
+          to,
+          nombre: persona.name,
+          nivel: dto.nivel,
+          cargo: dto.cargo,
+          territorioNombre: this.nombreTerritorio(dto.nivel, snapshot),
+        });
+      } catch (error) {
+        this.logger.warn(
+          `No se pudo enviar el correo de espera: ${
+            error instanceof Error ? error.message : String(error)
+          }`,
+        );
+      }
+    }
 
     return solicitud;
   }
@@ -182,6 +263,11 @@ export class SolicitudesAccesoService {
       datos: { resultado: 'aprobada', nivel, cargo },
     });
 
+    await this.enviarResolucion(solicitud.idPersona, 'aprobado', {
+      nivel,
+      cargo,
+    });
+
     return solicitud;
   }
 
@@ -207,6 +293,10 @@ export class SolicitudesAccesoService {
       tipo: 'solicitud_resuelta',
       destinatario: { personaId: String(solicitud.idPersona) },
       datos: { resultado: 'rechazada' },
+    });
+
+    await this.enviarResolucion(solicitud.idPersona, 'rechazado', {
+      nota: dto.nota,
     });
 
     return solicitud;

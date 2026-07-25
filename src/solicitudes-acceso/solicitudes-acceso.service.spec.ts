@@ -30,13 +30,21 @@ function service(solicitud: unknown) {
   const solicitudModel = {
     findById: () => ({ exec: () => Promise.resolve(solicitud) }),
   };
-  const userModel = { updateOne: () => ({ exec: () => Promise.resolve({}) }) };
+  const userModel = {
+    updateOne: () => ({ exec: () => Promise.resolve({}) }),
+    findById: () => ({ exec: () => Promise.resolve(null) }),
+  };
   const notificador = { encolar: jest.fn(() => Promise.resolve()) };
+  const email = {
+    sendSolicitudRecibida: jest.fn(() => Promise.resolve()),
+    sendSolicitudResuelta: jest.fn(() => Promise.resolve()),
+  };
   const svc = new SolicitudesAccesoService(
     solicitudModel as never,
     userModel as never,
     notificador,
     { findDecrypted: () => Promise.resolve(null) } as never,
+    email,
   );
   return { svc, notificador };
 }

@@ -103,6 +103,12 @@ export const envSchema = z.object({
   CEDULA_SUPER_ADMIN: optionalEnv(z.string().trim()),
   PASSWORD_SUPER_ADMIN: optionalEnv(z.string()),
 
+  // Correo transaccional (Resend). Sin ambas, el envío queda inerte (no falla).
+  RESEND_API_KEY: optionalEnv(z.string()),
+  EMAIL_FROM: optionalEnv(z.string()),
+  // URL pública del sitio, para los enlaces y logos de los correos.
+  SITE_URL: z.string().url().default('https://ruta.scout.org.co'),
+
   // Los ajustes operativos de la sincronización (zonas, tamaños de página y de
   // lote, cron e interruptor) NO viven aquí: son configuración editable en
   // tiempo de ejecución, en la colección `siscout_config`. Ver

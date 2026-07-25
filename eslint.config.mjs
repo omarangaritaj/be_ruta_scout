@@ -32,4 +32,16 @@ export default tseslint.config(
       "prettier/prettier": ["error", { endOfLine: "auto" }],
     },
   },
+  {
+    // Plantillas React Email: JSX puro. Las reglas type-aware de "unsafe" no
+    // aplican bien al elemento JSX (se resuelve como `error`) y solo generan
+    // ruido; el resto del linter sigue activo.
+    files: ['src/email/templates/**/*.tsx'],
+    rules: {
+      '@typescript-eslint/no-unsafe-return': 'off',
+      '@typescript-eslint/no-unsafe-call': 'off',
+      '@typescript-eslint/no-unsafe-member-access': 'off',
+      '@typescript-eslint/no-unsafe-assignment': 'off',
+    },
+  },
 );

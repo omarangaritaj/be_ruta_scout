@@ -154,3 +154,11 @@ export function cargoEsValido(cargo: string, nivel: NivelSolicitud): boolean {
 export function etiquetaCargo(cargo: string): string {
   return CARGOS.find((c) => c.cargo === cargo)?.etiqueta ?? cargo;
 }
+
+/** Etiqueta legible por nivel solicitable, para UI y correos. */
+export const ETIQUETA_NIVEL_SOLICITABLE: Record<NivelSolicitud, string> = {
+  rama: 'Rama',
+  grupo: 'Grupo',
+  region: 'Región',
+  nacion: 'Nación',
+};
