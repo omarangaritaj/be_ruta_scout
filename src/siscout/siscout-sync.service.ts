@@ -1,4 +1,5 @@
 import {
+  Inject,
   Injectable,
   Logger,
   ServiceUnavailableException,
@@ -6,14 +7,15 @@ import {
 import { InjectModel } from '@nestjs/mongoose';
 import { randomUUID } from 'node:crypto';
 import { Model } from 'mongoose';
+import { SNAPSHOT_CIPHER, type FieldCipher } from '../crypto';
 import {
   User,
   UserDocument,
   type TipoPersona,
 } from '../users/schemas/user.schema';
 import { SiscoutConfigService } from './config/siscout-config.service';
+import { SiscoutCredentialsService } from './credentials';
 import { encryptSensitiveFields } from './crypto/encrypted-fields';
-import { FieldCipher } from './crypto/field-cipher';
 import { canonicalHash } from './hash/canonical-hash';
 import { normalizeMember, type SiscoutMember } from './normalize';
 import { SiscoutClient } from './ports/siscout-client.port';
@@ -76,6 +78,7 @@ export interface SyncResult {
   orphans: number;
   roleChanges: RoleChange[];
   groupChanges: GroupChange[];
+  credencialesPorZona: Record<number, string>;
   durationMs: number;
   error?: string;
 }
@@ -91,19 +94,25 @@ export class SiscoutSyncService {
     @InjectModel(SiscoutSnapshot.name)
     private readonly snapshotModel: Model<SiscoutSnapshotDocument>,
     private readonly client: SiscoutClient,
+    @Inject(SNAPSHOT_CIPHER)
     private readonly cipher: FieldCipher,
     private readonly siscoutConfig: SiscoutConfigService,
+    private readonly credentials: SiscoutCredentialsService,
   ) {}
 
   async synchronize(): Promise<SyncResult> {
     if (!this.client.isConfigured()) {
       throw new ServiceUnavailableException(
-        'El cliente de SiScout no está configurado (faltan credenciales o URL base)',
+        'El cliente de SiScout no está configurado (falta SISCOUT_BASE_URL)',
       );
     }
 
-    // Sin clave no se puede cifrar, y guardar la PII en claro sería peor que no
-    // sincronizar: se aborta antes de tocar la base.
+    if (!this.credentials.isReady()) {
+      throw new ServiceUnavailableException(
+        'Falta SISCOUT_CREDENTIALS_KEY: no se pueden descifrar las credenciales del pool',
+      );
+    }
+
     if (!this.cipher.isReady()) {
       throw new ServiceUnavailableException(
         'Falta SISCOUT_ENCRYPTION_KEY: no se sincroniza sin poder cifrar los campos sensibles',
@@ -139,6 +148,7 @@ export class SiscoutSyncService {
       orphans: 0,
       roleChanges: [],
       groupChanges: [],
+      credencialesPorZona: {},
       durationMs: 0,
     };
 
@@ -147,8 +157,7 @@ export class SiscoutSyncService {
     );
 
     try {
-      const cookie = await this.client.authenticate();
-      const members = await this.downloadZones(cookie, zones, result);
+      const members = await this.downloadZones(zones, result);
 
       this.validateBeforeWriting(members, zones);
       await this.persist(members, syncId, result);
@@ -181,12 +190,15 @@ export class SiscoutSyncService {
   /**
    * Descarga todas las zonas paginando con DataTables.
    *
+   * Cada zona se lee con la credencial que la cubre, así que ya no hay una
+   * sesión única para toda la corrida: se abre una por credencial y se
+   * reutiliza mientras la misma cuenta siga sirviendo zonas.
+   *
    * La descarga de cada zona debe cubrir el total que reporta SiScout: una
    * página vacía o truncada produciría una escritura parcial seguida de una
    * consolidación que marcaría huérfanos a miembros perfectamente válidos.
    */
   private async downloadZones(
-    cookie: string,
     zones: number[],
     result: SyncResult,
   ): Promise<SiscoutMember[]> {
@@ -196,13 +208,19 @@ export class SiscoutSyncService {
     const collected: unknown[] = [];
     let draw = 1;
 
+    const sessions = new Map<string, string>();
+    const failed = new Map<string, string>();
+
     for (const [index, zoneId] of zones.entries()) {
+      const session = await this.sessionForZone(zoneId, sessions, failed);
+      result.credencialesPorZona[zoneId] = session.nombre;
+
       const zoneRows: unknown[] = [];
       let zoneTotal = 0;
 
       for (let page = 0; page < maxPages; page++) {
         const response = await this.client.listZoneMembers(
-          cookie,
+          session.cookie,
           zoneId,
           page * pageLength,
           pageLength,
@@ -255,6 +273,69 @@ export class SiscoutSyncService {
     result.downloaded = collected.length;
 
     return collected.map(normalizeMember);
+  }
+
+  /**
+   * Sesión con la que leer una zona, probando las credenciales que la cubren.
+   *
+   * El pool las devuelve de la más específica a la más general, así que se
+   * empieza por la cuenta acotada a esa zona y solo se recurre a la nacional si
+   * la primera no responde. Una credencial que ya falló en esta corrida no se
+   * vuelve a intentar: si el login está mal, lo va a estar en las demás zonas
+   * también, y reintentarlo solo suma latencia y ruido en los logs del sistema
+   * externo.
+   */
+  private async sessionForZone(
+    zoneId: number,
+    sessions: Map<string, string>,
+    failed: Map<string, string>,
+  ): Promise<{ nombre: string; cookie: string }> {
+    const candidates = await this.credentials.resolveForZone(zoneId);
+
+    if (candidates.length === 0) {
+      throw new Error(
+        `Zona ${zoneId}: no hay ninguna credencial activa que la cubra. ` +
+          'Dar de alta una en /siscout/credentials con alcance nacional o sobre esta zona.',
+      );
+    }
+
+    for (const candidate of candidates) {
+      const previous = sessions.get(candidate.nombre);
+      if (previous) {
+        return { nombre: candidate.nombre, cookie: previous };
+      }
+
+      if (failed.has(candidate.nombre)) continue;
+
+      try {
+        const cookie = await this.client.authenticate(candidate);
+        sessions.set(candidate.nombre, cookie);
+        await this.credentials.registrarUso(candidate.nombre);
+
+        return { nombre: candidate.nombre, cookie };
+      } catch (error) {
+        const mensaje = error instanceof Error ? error.message : String(error);
+
+        failed.set(candidate.nombre, mensaje);
+        await this.credentials.registrarError(candidate.nombre, mensaje);
+
+        this.logger.warn(
+          `Credencial '${candidate.nombre}' falló en la zona ${zoneId}: ${mensaje}. ` +
+            'Se intenta con la siguiente.',
+        );
+      }
+    }
+
+    // Todas agotadas: se aborta la corrida entera. Seguir con las zonas que sí
+    // funcionan dejaría a media base sin sellar con este syncId y la
+    // consolidación final la marcaría huérfana.
+    const intentos = candidates
+      .map((c) => `${c.nombre} (${failed.get(c.nombre) ?? 'sin intentar'})`)
+      .join('; ');
+
+    throw new Error(
+      `Zona ${zoneId}: ninguna credencial pudo autenticarse. Intentos: ${intentos}`,
+    );
   }
 
   /** Guardas de integridad previas a cualquier escritura. */

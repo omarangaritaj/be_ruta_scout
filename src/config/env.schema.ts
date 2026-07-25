@@ -1,10 +1,14 @@
 import { z } from 'zod';
+// Se importa el módulo concreto y no el barril de `crypto`: ese barril arrastra
+// `CryptoModule`, que a su vez importa este esquema, y el ciclo rompería la
+// carga.
+import { isValidKeyring } from '../crypto/keyring';
 
 /**
  * Hace una variable opcional tratando la cadena VACÍA como ausente.
  *
  * En un `.env` es habitual declarar una variable opcional vacía
- * (`SISCOUT_MASTER_USER=`) como marcador para rellenarla luego. Zod entrega esa
+ * (`SISCOUT_BASE_URL=`) como marcador para rellenarla luego. Zod entrega esa
  * variable como `""`, que NO es `undefined`, así que `.optional()` no basta y la
  * validación fallaría. Aquí se normaliza `""` (y solo espacios) a `undefined`
  * antes de validar, de modo que una opcional vacía se interpreta como sin
@@ -18,17 +22,18 @@ function optionalEnv<T extends z.ZodType>(schema: T) {
   );
 }
 
-/** Longitud en bytes de una clave dada en base64 o hex; -1 si no decodifica. */
-function decodeKeyLength(valor: string): number {
-  if (/^[0-9a-fA-F]+$/.test(valor) && valor.length % 2 === 0) {
-    return valor.length / 2;
-  }
-  try {
-    return Buffer.from(valor, 'base64').length;
-  } catch {
-    return -1;
-  }
-}
+/**
+ * Valida un conjunto de claves de cifrado.
+ *
+ * Admite una clave suelta (`<base64>`) o varias con identificador
+ * (`v2:<base64>,v1:<base64>`), donde la primera es la que cifra y las demás
+ * siguen abriendo lo escrito antes de rotar. Ver `src/crypto/keyring.ts`.
+ */
+const keyringEnv = z.string().refine(isValidKeyring, {
+  error:
+    'debe ser una clave de 32 bytes (base64 de 44 o hex de 64 caracteres), ' +
+    'o varias en formato «v2:clave,v1:clave» con la activa primero',
+});
 
 /**
  * Única fuente de verdad de las variables de entorno de la aplicación.
@@ -65,23 +70,24 @@ export const envSchema = z.object({
 
   SISCOUT_BASE_URL: optionalEnv(z.url({ error: 'debe ser una URL válida' })),
 
-  SISCOUT_MASTER_USER: optionalEnv(z.string().min(1)),
+  // Las CREDENCIALES no están aquí: usuario, contraseña y ruta de cambio de
+  // rol viven en la colección `siscout_credentials`, editables en caliente y
+  // con la contraseña cifrada. Cada credencial trae la suya, porque cada perfil
+  // de acceso activa una ruta distinta. Ver `src/siscout/credentials`.
 
-  SISCOUT_MASTER_PASSWORD: optionalEnv(z.string().min(1)),
-
-  // Ruta que activa el rol con acceso nacional, p. ej.
-  // /users/change-rol/826/176035/7
-  SISCOUT_CHANGE_ROL_PATH: optionalEnv(z.string().min(1)),
-
-  // Clave AES-256 para cifrar los campos sensibles del snapshot en reposo.
-  // 32 bytes en base64 (44 caracteres) o en hex (64 caracteres).
+  // --- Claves de cifrado ---
+  // Nunca van a la base de datos ni se editan en caliente: un secreto que la
+  // aplicación pueda reescribir por su cuenta deja de ser un secreto.
   // Generar con: openssl rand -base64 32
-  SISCOUT_ENCRYPTION_KEY: optionalEnv(
-    z.string().refine((valor) => decodeKeyLength(valor) === 32, {
-      error:
-        'debe decodificar a 32 bytes (base64 de 44 o hex de 64 caracteres)',
-    }),
-  ),
+
+  // Cifra los campos sensibles del snapshot en reposo (cédula, teléfono,
+  // correo).
+  SISCOUT_ENCRYPTION_KEY: optionalEnv(keyringEnv),
+
+  // Cifra las contraseñas del pool de credenciales. DISTINTA de la anterior a
+  // propósito: son dominios con riesgos y ritmos de rotación diferentes, y
+  // filtrar una no debe comprometer la otra.
+  SISCOUT_CREDENTIALS_KEY: optionalEnv(keyringEnv),
 
   // Los ajustes operativos de la sincronización (zonas, tamaños de página y de
   // lote, cron e interruptor) NO viven aquí: son configuración editable en

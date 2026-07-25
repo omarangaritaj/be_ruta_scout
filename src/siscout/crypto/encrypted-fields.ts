@@ -1,5 +1,5 @@
+import { isEncrypted, type FieldCipher } from '../../crypto';
 import type { SiscoutMember } from '../normalize';
-import { FieldCipher, isEncrypted } from './field-cipher';
 
 /**
  * Campos del payload que se cifran en reposo.

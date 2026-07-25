@@ -2,10 +2,12 @@ import { Module } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AppConfigModule } from './config';
+import { CryptoModule } from './crypto';
 import { DatabaseModule } from './database/database.module';
 import { GruposModule } from './grupos/grupos.module';
 import { RolesModule } from './roles/roles.module';
 import { SiscoutConfigModule } from './siscout/config/siscout-config.module';
+import { SiscoutCredentialsModule } from './siscout/credentials';
 import { SiscoutModule } from './siscout/siscout.module';
 import { UnidadesModule } from './unidades/unidades.module';
 import { UsersModule } from './users/users.module';
@@ -13,8 +15,10 @@ import { UsersModule } from './users/users.module';
 @Module({
   imports: [
     AppConfigModule,
+    CryptoModule, // Va antes que cualquier módulo que cifre: provee los cifradores globales.
     DatabaseModule,
     SiscoutConfigModule,
+    SiscoutCredentialsModule,
     RolesModule,
     UsersModule,
     GruposModule,

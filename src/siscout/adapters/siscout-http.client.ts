@@ -4,6 +4,7 @@ import type { AppConfigService } from '../../config';
 import {
   SiscoutClient,
   type MembersResponse,
+  type SiscoutLogin,
 } from '../ports/siscout-client.port';
 
 interface Cookie {
@@ -50,29 +51,15 @@ export class SiscoutHttpClient extends SiscoutClient {
   }
 
   isConfigured(): boolean {
-    return Boolean(
-      this.config.get('SISCOUT_BASE_URL', { infer: true }) &&
-      this.config.get('SISCOUT_MASTER_USER', { infer: true }) &&
-      this.config.get('SISCOUT_MASTER_PASSWORD', { infer: true }) &&
-      this.config.get('SISCOUT_CHANGE_ROL_PATH', { infer: true }),
-    );
+    return Boolean(this.config.get('SISCOUT_BASE_URL', { infer: true }));
   }
 
-  async authenticate(): Promise<string> {
+  async authenticate({
+    usuario,
+    password,
+    changeRolPath,
+  }: SiscoutLogin): Promise<string> {
     const base = this.baseUrl();
-    const username = this.config.get('SISCOUT_MASTER_USER', { infer: true });
-    const password = this.config.get('SISCOUT_MASTER_PASSWORD', {
-      infer: true,
-    });
-    const changeRolPath = this.config.get('SISCOUT_CHANGE_ROL_PATH', {
-      infer: true,
-    });
-
-    if (!username || !password || !changeRolPath) {
-      throw new Error(
-        'Faltan SISCOUT_MASTER_USER, SISCOUT_MASTER_PASSWORD o SISCOUT_CHANGE_ROL_PATH',
-      );
-    }
 
     // 1. GET /login: token CSRF y cookies iniciales.
     const loginPage = await fetch(`${base}/login`, { redirect: 'follow' });
@@ -91,7 +78,7 @@ export class SiscoutHttpClient extends SiscoutClient {
     // 2. POST /login. El campo de usuario es `username`, no `email`.
     const body = new URLSearchParams({
       _token: csrf,
-      username,
+      username: usuario,
       password,
     });
 
@@ -133,10 +120,10 @@ export class SiscoutHttpClient extends SiscoutClient {
       cookies.filter((c) => ['XSRF-TOKEN', 'siscout_session'].includes(c.name)),
     );
 
-    // 4. Activar el rol con acceso nacional.
-    await this.activateNationalRole(base, cookieHeader, changeRolPath);
+    // 4. Activar el perfil que da el acceso que esta cuenta necesita.
+    await this.activateRole(base, cookieHeader, changeRolPath);
 
-    this.logger.log('Sesión de SiScout establecida con rol nacional activo');
+    this.logger.log('Sesión de SiScout establecida con su perfil activo');
 
     return cookieHeader;
   }
@@ -196,7 +183,7 @@ export class SiscoutHttpClient extends SiscoutClient {
     };
   }
 
-  private async activateNationalRole(
+  private async activateRole(
     base: string,
     cookie: string,
     changeRolPath: string,

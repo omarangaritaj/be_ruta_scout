@@ -1,8 +1,8 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
+import { SNAPSHOT_CIPHER, type FieldCipher } from '../crypto';
 import { decryptSensitiveFields } from './crypto/encrypted-fields';
-import { FieldCipher } from './crypto/field-cipher';
 import {
   SiscoutSnapshot,
   SiscoutSnapshotDocument,
@@ -22,10 +22,10 @@ export class SiscoutSnapshotService {
   constructor(
     @InjectModel(SiscoutSnapshot.name)
     private readonly snapshotModel: Model<SiscoutSnapshotDocument>,
+    @Inject(SNAPSHOT_CIPHER)
     private readonly cipher: FieldCipher,
   ) {}
 
-  /** Devuelve el payload con los campos sensibles ya descifrados, o null. */
   async findDecrypted(
     idSiscout: string,
   ): Promise<Record<string, unknown> | null> {
