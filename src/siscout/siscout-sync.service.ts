@@ -195,6 +195,46 @@ export class SiscoutSyncService {
   }
 
   /**
+   * Importa miembros ya obtenidos (p. ej. desde un archivo) con la MISMA
+   * escritura que una sincronización real: snapshots cifrados + proyección a
+   * `users`. No descarga ni marca huérfanos, así que un import parcial no da de
+   * baja a quien no venga en los datos.
+   */
+  async importMembers(members: SiscoutMember[]): Promise<SyncResult> {
+    if (!this.cipher.isReady()) {
+      throw new ServiceUnavailableException(
+        'Falta SISCOUT_ENCRYPTION_KEY: no se importa sin poder cifrar los campos sensibles',
+      );
+    }
+
+    await this.siscoutConfig.ensureLoaded();
+
+    const startedAt = Date.now();
+    const result: SyncResult = {
+      syncId: randomUUID(),
+      complete: false,
+      zones: [],
+      pages: 0,
+      downloaded: members.length,
+      created: 0,
+      updated: 0,
+      unchanged: 0,
+      orphans: 0,
+      roleChanges: [],
+      groupChanges: [],
+      credencialesPorZona: {},
+      durationMs: 0,
+    };
+
+    const valid = members.filter((member) => member.person_id);
+    await this.persist(valid, result.syncId, result);
+
+    result.complete = true;
+    result.durationMs = Date.now() - startedAt;
+    return result;
+  }
+
+  /**
    * Descarga todas las zonas paginando con DataTables.
    *
    * Cada zona se lee con la credencial que la cubre, así que ya no hay una
