@@ -12,6 +12,8 @@ import {
 import { ParseObjectIdPipe, ZodValidationPipe } from '../common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import type { AuthUser } from '../auth/strategies/jwt.strategy';
+import { PermissionsGuard } from '../authz/permissions.guard';
+import { RequirePermissions } from '../authz/require-permissions.decorator';
 import {
   crearSolicitudSchema,
   type CrearSolicitudDto,
@@ -25,7 +27,7 @@ import {
 import { SolicitudAccesoDocument } from './schemas/solicitud-acceso.schema';
 import { SolicitudesAccesoService } from './solicitudes-acceso.service';
 
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, PermissionsGuard)
 @Controller('solicitudes-acceso')
 export class SolicitudesAccesoController {
   constructor(private readonly service: SolicitudesAccesoService) {}
@@ -44,11 +46,13 @@ export class SolicitudesAccesoController {
   }
 
   @Get()
+  @RequirePermissions('solicitud:read')
   async pendientes(): Promise<SolicitudAccesoDocument[]> {
     return this.service.listarPendientes();
   }
 
   @Get(':id')
+  @RequirePermissions('solicitud:read')
   async detalle(
     @Param('id', ParseObjectIdPipe) id: string,
   ): Promise<SolicitudAccesoDocument> {
@@ -57,6 +61,7 @@ export class SolicitudesAccesoController {
 
   @Post(':id/aprobar')
   @HttpCode(HttpStatus.OK)
+  @RequirePermissions('solicitud:approve')
   async aprobar(
     @Param('id', ParseObjectIdPipe) id: string,
     @Body(new ZodValidationPipe(aprobarSolicitudSchema))
@@ -67,6 +72,7 @@ export class SolicitudesAccesoController {
 
   @Post(':id/rechazar')
   @HttpCode(HttpStatus.OK)
+  @RequirePermissions('solicitud:reject')
   async rechazar(
     @Param('id', ParseObjectIdPipe) id: string,
     @Body(new ZodValidationPipe(rechazarSolicitudSchema))

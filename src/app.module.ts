@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
+import { AuthzModule } from './authz/authz.module';
 import { CatalogoCargosModule } from './catalogo-cargos/catalogo-cargos.module';
 import { AppConfigModule } from './config';
 import { CryptoModule } from './crypto';
@@ -26,6 +27,7 @@ import { UsersModule } from './users/users.module';
     SiscoutConfigModule,
     SiscoutCredentialsModule,
     RolesModule,
+    AuthzModule,
     UsersModule,
     GruposModule,
     UnidadesModule,

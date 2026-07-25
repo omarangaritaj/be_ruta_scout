@@ -1,0 +1,70 @@
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Param,
+  Patch,
+  Post,
+  UseGuards,
+} from '@nestjs/common';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { PermissionsGuard } from '../authz/permissions.guard';
+import { PERMISSIONS, type PermissionDef } from '../authz/permissions.catalog';
+import { RequirePermissions } from '../authz/require-permissions.decorator';
+import { ParseObjectIdPipe, ZodValidationPipe } from '../common';
+import { createRoleSchema, type CreateRoleDto } from './dto/create-role.dto';
+import { updateRoleSchema, type UpdateRoleDto } from './dto/update-role.dto';
+import { RoleDocument } from './schemas/role.schema';
+import { RolesService } from './roles.service';
+
+@UseGuards(JwtAuthGuard, PermissionsGuard)
+@Controller('roles')
+export class RolesController {
+  constructor(private readonly service: RolesService) {}
+
+  /** Catálogo de permisos disponibles (para armar los roles en la UI). */
+  @Get('permissions')
+  @RequirePermissions('role:read')
+  permisos(): PermissionDef[] {
+    return PERMISSIONS;
+  }
+
+  @Get()
+  @RequirePermissions('role:read')
+  list(): Promise<RoleDocument[]> {
+    return this.service.list();
+  }
+
+  @Get(':id')
+  @RequirePermissions('role:read')
+  findOne(@Param('id', ParseObjectIdPipe) id: string): Promise<RoleDocument> {
+    return this.service.findOne(id);
+  }
+
+  @Post()
+  @RequirePermissions('role:create')
+  create(
+    @Body(new ZodValidationPipe(createRoleSchema)) dto: CreateRoleDto,
+  ): Promise<RoleDocument> {
+    return this.service.create(dto);
+  }
+
+  @Patch(':id')
+  @RequirePermissions('role:update')
+  update(
+    @Param('id', ParseObjectIdPipe) id: string,
+    @Body(new ZodValidationPipe(updateRoleSchema)) dto: UpdateRoleDto,
+  ): Promise<RoleDocument> {
+    return this.service.update(id, dto);
+  }
+
+  @Delete(':id')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @RequirePermissions('role:delete')
+  remove(@Param('id', ParseObjectIdPipe) id: string): Promise<void> {
+    return this.service.remove(id);
+  }
+}

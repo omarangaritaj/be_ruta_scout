@@ -10,7 +10,7 @@ import { Role, RoleDocument } from '../roles/schemas/role.schema';
 import { User, UserDocument } from '../users/schemas/user.schema';
 
 const ROLE_NAME = 'super_admin';
-const PERMISSIONS = ['submit:approve'];
+const PERMISSIONS = ['*'];
 const BCRYPT_ROUNDS = 12;
 
 /**
@@ -51,8 +51,12 @@ async function seed(): Promise<void> {
       .findOneAndUpdate(
         { nombre: ROLE_NAME },
         {
-          $set: { descripcion: 'Acceso total al panel de administración' },
-          $addToSet: { permissions: { $each: PERMISSIONS } },
+          $set: {
+            descripcion: 'Acceso total al panel de administración',
+            permissions: PERMISSIONS,
+            status: 'activo',
+            esSistema: true,
+          },
         },
         { upsert: true, returnDocument: 'after' },
       )

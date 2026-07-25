@@ -3,15 +3,9 @@ import { HydratedDocument } from 'mongoose';
 
 export type RoleDocument = HydratedDocument<Role>;
 
-/**
- * Rol de aplicación: qué puede hacer un usuario dentro del sistema.
- *
- * ⚠️ ESQUEMA MÍNIMO Y PROVISIONAL. El dominio no define una tabla de roles:
- * usa enums (`rol_dirigente`), y el proyecto de referencia resolvía los
- * permisos con niveles, no con un catálogo.
- * Se modela como catálogo básico (nombre + descripción) a la espera de definir
- * el modelo de autorización real (permisos, alcance por grupo/región/nación).
- */
+export const ESTADOS_ROLE = ['activo', 'inactivo'] as const;
+export type EstadoRole = (typeof ESTADOS_ROLE)[number];
+
 @Schema({ collection: 'roles', timestamps: true })
 export class Role {
   @Prop({ required: true, trim: true, unique: true, index: true })
@@ -22,6 +16,14 @@ export class Role {
 
   @Prop({ type: [String], default: [] })
   permissions: string[];
+
+  /** Un rol inactivo NO concede sus permisos. */
+  @Prop({ type: String, enum: ESTADOS_ROLE, default: 'activo', index: true })
+  status: EstadoRole;
+
+  /** Rol del sistema (p. ej. super_admin): no se puede borrar ni desactivar. */
+  @Prop({ default: false })
+  esSistema: boolean;
 }
 
 export const RoleSchema = SchemaFactory.createForClass(Role);
