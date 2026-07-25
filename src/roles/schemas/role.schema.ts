@@ -20,7 +20,6 @@ export class Role {
   @Prop({ trim: true })
   descripcion?: string;
 
-  /** Permisos que concede el rol, p. ej. `submit:approve`. */
   @Prop({ type: [String], default: [] })
   permissions: string[];
 }

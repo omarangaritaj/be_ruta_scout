@@ -41,6 +41,11 @@ async function seed(): Promise<void> {
 
     const cedula = config.get('CEDULA_SUPER_ADMIN', { infer: true });
     const password = config.get('PASSWORD_SUPER_ADMIN', { infer: true });
+    if (!cedula || !password) {
+      throw new Error(
+        'Define CEDULA_SUPER_ADMIN y PASSWORD_SUPER_ADMIN (opcionales, de un solo uso) antes de sembrar el super admin.',
+      );
+    }
 
     const role = await roleModel
       .findOneAndUpdate(

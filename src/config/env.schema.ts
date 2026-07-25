@@ -98,10 +98,10 @@ export const envSchema = z.object({
   JWT_ACCESS_TTL: z.string().default('15m'),
   JWT_REFRESH_TTL_DAYS: z.coerce.number().int().min(1).default(30),
 
-  // Bootstrap del super admin (seed de un solo uso). Ver `src/seeds`. La
-  // contraseña por defecto es de arranque: cámbiala tras el primer ingreso.
-  CEDULA_SUPER_ADMIN: z.string().trim().default('79953510'),
-  PASSWORD_SUPER_ADMIN: z.string().default('Welcome123!'),
+  // Bootstrap del super admin (seed de un solo uso). Opcionales y descartables:
+  // si se omiten, el seed usa sus valores por defecto. Ver `src/seeds`.
+  CEDULA_SUPER_ADMIN: optionalEnv(z.string().trim()),
+  PASSWORD_SUPER_ADMIN: optionalEnv(z.string()),
 
   // Los ajustes operativos de la sincronización (zonas, tamaños de página y de
   // lote, cron e interruptor) NO viven aquí: son configuración editable en
