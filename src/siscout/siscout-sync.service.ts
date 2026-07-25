@@ -7,7 +7,12 @@ import {
 import { InjectModel } from '@nestjs/mongoose';
 import { randomUUID } from 'node:crypto';
 import { Model } from 'mongoose';
-import { SNAPSHOT_CIPHER, type FieldCipher } from '../crypto';
+import {
+  CEDULA_HASHER,
+  SNAPSHOT_CIPHER,
+  type CedulaHasher,
+  type FieldCipher,
+} from '../crypto';
 import {
   User,
   UserDocument,
@@ -96,6 +101,8 @@ export class SiscoutSyncService {
     private readonly client: SiscoutClient,
     @Inject(SNAPSHOT_CIPHER)
     private readonly cipher: FieldCipher,
+    @Inject(CEDULA_HASHER)
+    private readonly cedulaHasher: CedulaHasher,
     private readonly siscoutConfig: SiscoutConfigService,
     private readonly credentials: SiscoutCredentialsService,
   ) {}
@@ -434,6 +441,11 @@ export class SiscoutSyncService {
               estadoSiscout: true,
               sincronizadoEn: now,
               ultimoSyncId: syncId,
+              ...(member.citizenship_card
+                ? {
+                    cedulaHash: this.cedulaHasher.hash(member.citizenship_card),
+                  }
+                : {}),
             },
             $unset: { fechaBajaSiscout: '' },
             // `estado` (plataforma) solo se fija al crear: un sync no reactiva a

@@ -89,6 +89,10 @@ export const envSchema = z.object({
   // filtrar una no debe comprometer la otra.
   SISCOUT_CREDENTIALS_KEY: optionalEnv(keyringEnv),
 
+  // Clave del HMAC que permite buscar por cédula sin descifrarla. No cifra:
+  // filtrarla no revela cédulas, solo permite comprobar si una está presente.
+  CEDULA_HASH_KEY: optionalEnv(keyringEnv),
+
   // Los ajustes operativos de la sincronización (zonas, tamaños de página y de
   // lote, cron e interruptor) NO viven aquí: son configuración editable en
   // tiempo de ejecución, en la colección `siscout_config`. Ver

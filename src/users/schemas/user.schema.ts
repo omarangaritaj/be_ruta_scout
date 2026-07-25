@@ -8,6 +8,24 @@ export type UserDocument = HydratedDocument<User>;
 export const TIPOS_PERSONA = ['adulto', 'protagonista'] as const;
 export type TipoPersona = (typeof TIPOS_PERSONA)[number];
 
+export const ESTADOS_ACCESO = [
+  'sin_solicitud',
+  'pendiente',
+  'aprobado',
+  'rechazado',
+  'suspendido',
+] as const;
+export type EstadoAcceso = (typeof ESTADOS_ACCESO)[number];
+
+export const NIVELES_ACCESO = [
+  'rama',
+  'grupo',
+  'region',
+  'nacion',
+  'super_admin',
+] as const;
+export type NivelAcceso = (typeof NIVELES_ACCESO)[number];
+
 /**
  * Persona del dominio. `tipo` determina qué es:
  *
@@ -38,9 +56,25 @@ export class User {
   @Prop({ required: true, trim: true, unique: true, index: true })
   idSiscout: string;
 
+  /** HMAC de la cédula, para el login por cédula sin descifrar. Lo pone el sync. */
+  @Prop({ trim: true, index: true })
+  cedulaHash?: string;
+
   /** ¿Activo dentro de nuestra plataforma? Independiente de SiScout. */
   @Prop({ default: true, index: true })
   estado: boolean;
+
+  @Prop({
+    type: String,
+    enum: ESTADOS_ACCESO,
+    default: 'sin_solicitud',
+    index: true,
+  })
+  estadoAcceso: EstadoAcceso;
+
+  /** Alcance de acceso aprobado. Null hasta que se apruebe una solicitud. */
+  @Prop({ type: String, enum: NIVELES_ACCESO })
+  nivelAcceso?: NivelAcceso;
 
   // --- Datos de adulto ---
   @Prop({ type: [MongooseSchema.Types.ObjectId], ref: 'Role', default: [] })

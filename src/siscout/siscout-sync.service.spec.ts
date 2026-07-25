@@ -1,7 +1,13 @@
 import { randomBytes } from 'node:crypto';
 import { Test } from '@nestjs/testing';
 import { getModelToken } from '@nestjs/mongoose';
-import { SNAPSHOT_CIPHER, FieldCipher, parseKeyring } from '../crypto';
+import {
+  CEDULA_HASHER,
+  CedulaHasher,
+  SNAPSHOT_CIPHER,
+  FieldCipher,
+  parseKeyring,
+} from '../crypto';
 import { User } from '../users/schemas/user.schema';
 import { SiscoutConfigService } from './config/siscout-config.service';
 import {
@@ -136,6 +142,12 @@ describe('SiscoutSyncService — elección de credencial', () => {
         },
         { provide: SiscoutClient, useValue: client },
         { provide: SNAPSHOT_CIPHER, useValue: cipher },
+        {
+          provide: CEDULA_HASHER,
+          useValue: new CedulaHasher(
+            parseKeyring(randomBytes(32).toString('base64'), 'CEDULA_HASH_KEY'),
+          ),
+        },
         { provide: SiscoutConfigService, useValue: config },
         { provide: SiscoutCredentialsService, useValue: credentials },
       ],
