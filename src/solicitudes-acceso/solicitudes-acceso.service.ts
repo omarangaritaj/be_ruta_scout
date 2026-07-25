@@ -1,17 +1,20 @@
 import {
   BadRequestException,
   ConflictException,
-  Inject,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { cargoEsValido } from '../catalogo-cargos/catalogo-cargos';
-import { CEDULA_HASHER, type CedulaHasher } from '../crypto';
 import { Notificador } from '../notificaciones/notificador.port';
 import { SiscoutSnapshotService } from '../siscout/siscout-snapshot.service';
-import { User, UserDocument } from '../users/schemas/user.schema';
+import {
+  User,
+  UserDocument,
+  type EstadoAcceso,
+  type NivelAcceso,
+} from '../users/schemas/user.schema';
 import type { CrearSolicitudDto } from './dto/crear-solicitud.dto';
 import type {
   AprobarSolicitudDto,
@@ -30,21 +33,18 @@ export class SolicitudesAccesoService {
     private readonly solicitudModel: Model<SolicitudAccesoDocument>,
     @InjectModel(User.name)
     private readonly userModel: Model<UserDocument>,
-    @Inject(CEDULA_HASHER)
-    private readonly cedulaHasher: CedulaHasher,
     private readonly notificador: Notificador,
     private readonly snapshots: SiscoutSnapshotService,
   ) {}
 
-  async crear(dto: CrearSolicitudDto): Promise<SolicitudAccesoDocument> {
-    const persona = await this.userModel
-      .findOne({ cedulaHash: this.cedulaHasher.hash(dto.cedula) })
-      .exec();
+  async crear(
+    userId: string,
+    dto: CrearSolicitudDto,
+  ): Promise<SolicitudAccesoDocument> {
+    const persona = await this.userModel.findById(userId).exec();
 
     if (!persona) {
-      throw new NotFoundException(
-        'No existe una persona con esa cédula en SiScout',
-      );
+      throw new NotFoundException('No existe la persona autenticada');
     }
     if (persona.estadoAcceso === 'aprobado') {
       throw new ConflictException('El acceso ya está aprobado');
@@ -106,6 +106,48 @@ export class SolicitudesAccesoService {
       .populate('idPersona', 'name idSiscout tipo')
       .sort({ createdAt: 1 })
       .exec();
+  }
+
+  async findOne(id: string): Promise<SolicitudAccesoDocument> {
+    const solicitud = await this.solicitudModel
+      .findById(id)
+      .populate('idPersona', 'name idSiscout tipo')
+      .exec();
+    if (!solicitud) {
+      throw new NotFoundException(`No existe la solicitud "${id}"`);
+    }
+    return solicitud;
+  }
+
+  async contextoOnboarding(userId: string): Promise<{
+    estadoAcceso: EstadoAcceso;
+    nivelAcceso?: NivelAcceso;
+    groupId: number | null;
+    groupName: string | null;
+    districtId: number | null;
+    districtName: string | null;
+    cargoSiscout: string | null;
+  }> {
+    const persona = await this.userModel.findById(userId).exec();
+    if (!persona) {
+      throw new NotFoundException('No existe la persona autenticada');
+    }
+
+    const snapshot = await this.snapshots.findDecrypted(persona.idSiscout);
+    const texto = (valor: unknown): string | null =>
+      typeof valor === 'string' ? valor : null;
+    const entero = (valor: unknown): number | null =>
+      typeof valor === 'number' ? valor : null;
+
+    return {
+      estadoAcceso: persona.estadoAcceso,
+      nivelAcceso: persona.nivelAcceso,
+      groupId: entero(snapshot?.group_id),
+      groupName: texto(snapshot?.group_name),
+      districtId: entero(snapshot?.district_id),
+      districtName: texto(snapshot?.district_name),
+      cargoSiscout: texto(snapshot?.cargo),
+    };
   }
 
   async aprobar(

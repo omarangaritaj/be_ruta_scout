@@ -5,10 +5,6 @@ import { RAMAS } from '../schemas/solicitud-acceso.schema';
 const TELEFONO_RE = /^\+?[\d\s\-().]{7,20}$/;
 
 export const crearSolicitudSchema = z.object({
-  cedula: z
-    .string({ error: 'es obligatoria' })
-    .trim()
-    .min(1, { error: 'no puede estar vacía' }),
   nivel: z.enum(NIVELES_SOLICITUD, {
     error: `debe ser uno de: ${NIVELES_SOLICITUD.join(', ')}`,
   }),

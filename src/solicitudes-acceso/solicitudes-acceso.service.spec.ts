@@ -35,7 +35,6 @@ function service(solicitud: unknown) {
   const svc = new SolicitudesAccesoService(
     solicitudModel as never,
     userModel as never,
-    { hash: (c: string) => c } as never,
     notificador,
     { findDecrypted: () => Promise.resolve(null) } as never,
   );

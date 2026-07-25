@@ -6,8 +6,12 @@ import {
   HttpStatus,
   Param,
   Post,
+  Req,
+  UseGuards,
 } from '@nestjs/common';
 import { ParseObjectIdPipe, ZodValidationPipe } from '../common';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import type { AuthUser } from '../auth/strategies/jwt.strategy';
 import {
   crearSolicitudSchema,
   type CrearSolicitudDto,
@@ -21,20 +25,34 @@ import {
 import { SolicitudAccesoDocument } from './schemas/solicitud-acceso.schema';
 import { SolicitudesAccesoService } from './solicitudes-acceso.service';
 
+@UseGuards(JwtAuthGuard)
 @Controller('solicitudes-acceso')
 export class SolicitudesAccesoController {
   constructor(private readonly service: SolicitudesAccesoService) {}
 
   @Post()
   async crear(
+    @Req() req: { user: AuthUser },
     @Body(new ZodValidationPipe(crearSolicitudSchema)) dto: CrearSolicitudDto,
   ): Promise<SolicitudAccesoDocument> {
-    return this.service.crear(dto);
+    return this.service.crear(req.user.userId, dto);
+  }
+
+  @Get('contexto')
+  async contexto(@Req() req: { user: AuthUser }) {
+    return this.service.contextoOnboarding(req.user.userId);
   }
 
   @Get()
   async pendientes(): Promise<SolicitudAccesoDocument[]> {
     return this.service.listarPendientes();
+  }
+
+  @Get(':id')
+  async detalle(
+    @Param('id', ParseObjectIdPipe) id: string,
+  ): Promise<SolicitudAccesoDocument> {
+    return this.service.findOne(id);
   }
 
   @Post(':id/aprobar')
