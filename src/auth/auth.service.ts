@@ -136,6 +136,14 @@ export class AuthService {
       .exec();
   }
 
+  async me(userId: string): Promise<Person> {
+    const user = await this.userModel.findById(userId).exec();
+    if (!user) {
+      throw new UnauthorizedException('La cuenta ya no existe');
+    }
+    return this.toPerson(user);
+  }
+
   private async issueAuthResult(user: UserDocument): Promise<AuthResult> {
     const accessToken = await this.jwt.signAsync({
       sub: String(user._id),

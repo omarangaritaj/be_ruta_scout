@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Get,
   HttpCode,
   HttpStatus,
   Post,
@@ -9,11 +10,18 @@ import {
 } from '@nestjs/common';
 import { ZodValidationPipe } from '../common';
 import { UserDocument } from '../users/schemas/user.schema';
-import { AuthService, type AuthResult, type CheckResult } from './auth.service';
+import {
+  AuthService,
+  type AuthResult,
+  type CheckResult,
+  type Person,
+} from './auth.service';
 import { checkSchema, type CheckDto } from './dto/check.dto';
 import { refreshSchema, type RefreshDto } from './dto/refresh.dto';
 import { registerSchema, type RegisterDto } from './dto/register.dto';
+import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { LocalAuthGuard } from './guards/local-auth.guard';
+import type { AuthUser } from './strategies/jwt.strategy';
 
 @Controller('auth')
 export class AuthController {
@@ -39,6 +47,12 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   async login(@Req() req: { user: UserDocument }): Promise<AuthResult> {
     return this.authService.login(req.user);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('me')
+  async me(@Req() req: { user: AuthUser }): Promise<Person> {
+    return this.authService.me(req.user.userId);
   }
 
   @Post('refresh')
