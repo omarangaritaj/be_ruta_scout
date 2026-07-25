@@ -11,6 +11,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import { compare, hash } from 'bcryptjs';
 import { createHash, randomBytes } from 'node:crypto';
 import { Model } from 'mongoose';
+import { PermissionsService } from '../authz/permissions.service';
 import type { AppConfigService } from '../config';
 import { CEDULA_HASHER, type CedulaHasher } from '../crypto';
 import {
@@ -41,6 +42,11 @@ export interface CheckResult {
   person?: Person;
 }
 
+/** Persona autenticada con sus permisos efectivos (respuesta de /auth/me). */
+export interface AuthenticatedUser extends Person {
+  permissions: string[];
+}
+
 export interface AuthResult {
   accessToken: string;
   refreshToken: string;
@@ -63,6 +69,7 @@ export class AuthService {
     private readonly jwt: JwtService,
     @Inject(ConfigService)
     private readonly config: AppConfigService,
+    private readonly permissions: PermissionsService,
   ) {}
 
   async check(cedula: string): Promise<CheckResult> {
@@ -136,12 +143,13 @@ export class AuthService {
       .exec();
   }
 
-  async me(userId: string): Promise<Person> {
+  async me(userId: string): Promise<AuthenticatedUser> {
     const user = await this.userModel.findById(userId).exec();
     if (!user) {
       throw new UnauthorizedException('La cuenta ya no existe');
     }
-    return this.toPerson(user);
+    const permissions = await this.permissions.effectivePermissions(userId);
+    return { ...this.toPerson(user), permissions: [...permissions] };
   }
 
   private async issueAuthResult(user: UserDocument): Promise<AuthResult> {

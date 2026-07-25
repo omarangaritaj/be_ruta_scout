@@ -12,9 +12,9 @@ import { ZodValidationPipe } from '../common';
 import { UserDocument } from '../users/schemas/user.schema';
 import {
   AuthService,
+  type AuthenticatedUser,
   type AuthResult,
   type CheckResult,
-  type Person,
 } from './auth.service';
 import { checkSchema, type CheckDto } from './dto/check.dto';
 import { refreshSchema, type RefreshDto } from './dto/refresh.dto';
@@ -51,7 +51,7 @@ export class AuthController {
 
   @UseGuards(JwtAuthGuard)
   @Get('me')
-  async me(@Req() req: { user: AuthUser }): Promise<Person> {
+  async me(@Req() req: { user: AuthUser }): Promise<AuthenticatedUser> {
     return this.authService.me(req.user.userId);
   }
 

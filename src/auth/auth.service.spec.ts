@@ -20,12 +20,16 @@ function makeService(opts: { user?: unknown; refreshDoc?: unknown } = {}) {
     findOne: () => ({ exec: () => Promise.resolve(opts.refreshDoc ?? null) }),
     updateOne: () => ({ exec: () => Promise.resolve({}) }),
   };
+  const permissions = {
+    effectivePermissions: jest.fn(() => Promise.resolve(new Set<string>())),
+  };
   const svc = new AuthService(
     userModel as never,
     refreshModel as never,
     hasher as never,
     jwt as never,
     config as never,
+    permissions as never,
   );
   return { svc, refreshModel };
 }
