@@ -13,6 +13,10 @@ import { Notificador } from '../notificaciones/notificador.port';
 import { SiscoutSnapshotService } from '../siscout/siscout-snapshot.service';
 import { User, UserDocument } from '../users/schemas/user.schema';
 import type { CrearSolicitudDto } from './dto/crear-solicitud.dto';
+import type {
+  AprobarSolicitudDto,
+  RechazarSolicitudDto,
+} from './dto/resolver-solicitud.dto';
 import {
   SolicitudAcceso,
   SolicitudAccesoDocument,
@@ -92,6 +96,92 @@ export class SolicitudesAccesoService {
       destinatario: { personaId: String(persona._id) },
       datos: { nivel: dto.nivel, cargo: dto.cargo },
     });
+
+    return solicitud;
+  }
+
+  async listarPendientes(): Promise<SolicitudAccesoDocument[]> {
+    return this.solicitudModel
+      .find({ estado: { $in: ['pendiente', 'en_revision'] } })
+      .populate('idPersona', 'name idSiscout tipo')
+      .sort({ createdAt: 1 })
+      .exec();
+  }
+
+  async aprobar(
+    id: string,
+    dto: AprobarSolicitudDto,
+  ): Promise<SolicitudAccesoDocument> {
+    const solicitud = await this.cargarResoluble(id);
+    const nivel = dto.nivel ?? solicitud.nivelSolicitado;
+    const cargo = dto.cargo ?? solicitud.cargoSolicitado;
+
+    if (!cargoEsValido(cargo, nivel)) {
+      throw new BadRequestException('El cargo no corresponde al nivel');
+    }
+
+    await this.userModel
+      .updateOne(
+        { _id: solicitud.idPersona },
+        { $set: { estadoAcceso: 'aprobado', nivelAcceso: nivel } },
+      )
+      .exec();
+
+    solicitud.estado = 'aprobada';
+    solicitud.nivelAprobado = nivel;
+    solicitud.cargoAprobado = cargo;
+    solicitud.notaAprobador = dto.nota;
+    solicitud.resueltoEn = new Date();
+    await solicitud.save();
+
+    await this.notificador.encolar({
+      tipo: 'solicitud_resuelta',
+      destinatario: { personaId: String(solicitud.idPersona) },
+      datos: { resultado: 'aprobada', nivel, cargo },
+    });
+
+    return solicitud;
+  }
+
+  async rechazar(
+    id: string,
+    dto: RechazarSolicitudDto,
+  ): Promise<SolicitudAccesoDocument> {
+    const solicitud = await this.cargarResoluble(id);
+
+    await this.userModel
+      .updateOne(
+        { _id: solicitud.idPersona },
+        { $set: { estadoAcceso: 'rechazado' } },
+      )
+      .exec();
+
+    solicitud.estado = 'rechazada';
+    solicitud.notaAprobador = dto.nota;
+    solicitud.resueltoEn = new Date();
+    await solicitud.save();
+
+    await this.notificador.encolar({
+      tipo: 'solicitud_resuelta',
+      destinatario: { personaId: String(solicitud.idPersona) },
+      datos: { resultado: 'rechazada' },
+    });
+
+    return solicitud;
+  }
+
+  private async cargarResoluble(id: string): Promise<SolicitudAccesoDocument> {
+    const solicitud = await this.solicitudModel.findById(id).exec();
+
+    if (!solicitud) {
+      throw new NotFoundException(`No existe la solicitud "${id}"`);
+    }
+    if (
+      solicitud.estado !== 'pendiente' &&
+      solicitud.estado !== 'en_revision'
+    ) {
+      throw new ConflictException('La solicitud ya fue resuelta');
+    }
 
     return solicitud;
   }
