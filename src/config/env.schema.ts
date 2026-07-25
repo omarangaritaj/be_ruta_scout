@@ -93,6 +93,11 @@ export const envSchema = z.object({
   // filtrarla no revela cédulas, solo permite comprobar si una está presente.
   CEDULA_HASH_KEY: optionalEnv(keyringEnv),
 
+  // Firma los access tokens (JWT). Los refresh tokens son opacos y no la usan.
+  JWT_SECRET: z.string().min(16),
+  JWT_ACCESS_TTL: z.string().default('15m'),
+  JWT_REFRESH_TTL_DAYS: z.coerce.number().int().min(1).default(30),
+
   // Los ajustes operativos de la sincronización (zonas, tamaños de página y de
   // lote, cron e interruptor) NO viven aquí: son configuración editable en
   // tiempo de ejecución, en la colección `siscout_config`. Ver

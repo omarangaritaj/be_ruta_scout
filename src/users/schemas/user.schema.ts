@@ -60,6 +60,10 @@ export class User {
   @Prop({ trim: true, index: true })
   cedulaHash?: string;
 
+  /** Hash de la contraseña (bcrypt). Ausente hasta que la persona se registra. */
+  @Prop()
+  passwordHash?: string;
+
   /** ¿Activo dentro de nuestra plataforma? Independiente de SiScout. */
   @Prop({ default: true, index: true })
   estado: boolean;
