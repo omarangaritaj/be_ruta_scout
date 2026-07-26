@@ -10,6 +10,7 @@ import { DatabaseModule } from './database/database.module';
 import { EmailModule } from './email/email.module';
 import { GruposModule } from './grupos/grupos.module';
 import { NotificacionesModule } from './notificaciones/notificaciones.module';
+import { PowersyncModule } from './powersync/powersync.module';
 import { RolesModule } from './roles/roles.module';
 import { SolicitudesAccesoModule } from './solicitudes-acceso/solicitudes-acceso.module';
 import { SiscoutConfigModule } from './siscout/config/siscout-config.module';
@@ -36,6 +37,7 @@ import { UsersModule } from './users/users.module';
     CatalogoCargosModule,
     NotificacionesModule,
     SolicitudesAccesoModule,
+    PowersyncModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -24,12 +24,12 @@ bucket_definitions:
   # SOLO su unidad (scope + tamaño). Lectura del roster + captura de campo.
   unidad_del_dirigente:
     parameters:
-      - SELECT id_unidad FROM users
-        WHERE _id = request.user_id() AND id_unidad IS NOT NULL
+      - SELECT idUnidad FROM users
+        WHERE _id = request.user_id() AND idUnidad IS NOT NULL
     data:
       # Roster de la unidad (lectura offline: ficha/historial del protagonista)
-      - SELECT _id as id, * FROM users WHERE id_unidad = bucket.id_unidad
+      - SELECT _id as id, * FROM users WHERE idUnidad = bucket.idUnidad
       # Captura de campo (lectura + escritura offline):
-      - SELECT _id as id, * FROM asistencia   WHERE id_unidad = bucket.id_unidad
-      - SELECT _id as id, * FROM progresion   WHERE id_unidad = bucket.id_unidad
-      - SELECT _id as id, * FROM diagnostico  WHERE id_unidad = bucket.id_unidad
+      - SELECT _id as id, * FROM asistencia   WHERE idUnidad = bucket.idUnidad
+      - SELECT _id as id, * FROM progresion   WHERE idUnidad = bucket.idUnidad
+      - SELECT _id as id, * FROM diagnostico  WHERE idUnidad = bucket.idUnidad
