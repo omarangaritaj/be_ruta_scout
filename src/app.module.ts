@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { APP_FILTER } from '@nestjs/core';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { AppSettingsModule } from './app-settings/app-settings.module';
 import { AuthModule } from './auth/auth.module';
 import { AuthzModule } from './authz/authz.module';
 import { CatalogoCargosModule } from './catalogo-cargos/catalogo-cargos.module';
@@ -13,6 +14,7 @@ import { EmailModule } from './email/email.module';
 import { GruposModule } from './grupos/grupos.module';
 import { NotificacionesModule } from './notificaciones/notificaciones.module';
 import { PowersyncModule } from './powersync/powersync.module';
+import { RedisModule } from './redis/redis.module';
 import { RolesModule } from './roles/roles.module';
 import { SolicitudesAccesoModule } from './solicitudes-acceso/solicitudes-acceso.module';
 import { SiscoutConfigModule } from './siscout/config/siscout-config.module';
@@ -27,6 +29,8 @@ import { UsersModule } from './users/users.module';
     CryptoModule, // Va antes que cualquier módulo que cifre: provee los cifradores globales.
     EmailModule,
     DatabaseModule,
+    AppSettingsModule,
+    RedisModule,
     SiscoutConfigModule,
     SiscoutCredentialsModule,
     RolesModule,

@@ -63,6 +63,18 @@ export const envSchema = z.object({
         'debe ser una URI de MongoDB válida (mongodb://… o mongodb+srv://…)',
     }),
 
+  // Conexión al Redis local que respalda el cache en memoria (perfil/permisos).
+  // Tiene default para arrancar sin configurar nada; y si el servicio no
+  // responde, el cache degrada con gracia (miss → se recomputa), así que la
+  // aplicación opera igual sin Redis. El TTL por defecto NO va aquí: es editable
+  // en caliente en la colección `app_config`. Ver `src/app-settings` y `src/redis`.
+  REDIS_URL: z
+    .string({ error: 'debe ser una cadena de texto' })
+    .regex(/^rediss?:\/\/.+/, {
+      error: 'debe ser una URL de Redis válida (redis://… o rediss://…)',
+    })
+    .default('redis://localhost:6379'),
+
   // --- Sincronización con SiScout ---
   // Opcionales a propósito: sin ellas la aplicación arranca igual y la
   // sincronización queda deshabilitada, lo que permite trabajar en local

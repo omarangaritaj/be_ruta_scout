@@ -37,6 +37,7 @@
     "@react-email/components": "^1.0.12",
     "bcryptjs": "^3.0.3",
     "cron": "4.4.0",
+    "ioredis": "^5.11.1",
     "mongoose": "^9.8.0",
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",
