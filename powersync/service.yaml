@@ -14,6 +14,10 @@ replication:
 storage:
   type: postgresql
   uri: !env PS_STORAGE_URI
+  # El Postgres del compose no tiene SSL; sin esto PowerSync usa verify-full por
+  # defecto y la conexión falla ("postgres query failed"). `disable` solo es
+  # válido en red local/privada, que es el caso del bucket-storage del compose.
+  sslmode: disable
 
 # API + replicación en el mismo contenedor (unified).
 port: 8080
