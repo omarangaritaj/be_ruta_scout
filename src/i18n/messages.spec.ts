@@ -1,5 +1,6 @@
 import { CATALOG } from './catalog';
-import { K, capitalize, t, type MessageKey } from './messages';
+import { countCatalogMessages, findCatalogProblems } from './catalog-lint';
+import { K, capitalize, t } from './messages';
 
 describe('t', () => {
   it('devuelve el mensaje tal cual cuando no lleva placeholders', () => {
@@ -47,26 +48,15 @@ describe('capitalize', () => {
 });
 
 describe('catálogo', () => {
-  it('renderiza todas sus entradas sin dejar placeholders sin resolver', () => {
-    const pendientes: string[] = [];
+  it('no tiene plantillas rotas ni placeholders sin resolver', () => {
+    expect(findCatalogProblems()).toEqual([]);
+  });
 
-    for (const [domain, group] of Object.entries(CATALOG)) {
-      for (const [key, template] of Object.entries(
-        group as Record<string, string>,
-      )) {
-        const messageKey = `${domain}.${key}` as MessageKey;
-        const params: Record<string, string | number> = {};
-        const re = /\{\s*(\w+)\s*(?:,\s*(number|plural)\b)?/g;
-        let match = re.exec(template);
-        while (match) {
-          const [, name, type] = match;
-          params[name] = type === 'number' ? 1234 : 'X';
-          match = re.exec(template);
-        }
-        if (/[{}]/.test(t(messageKey, params))) pendientes.push(messageKey);
-      }
-    }
-
-    expect(pendientes).toEqual([]);
+  it('cuenta todas las entradas de todos los dominios', () => {
+    const esperados = Object.values(CATALOG).reduce(
+      (total, grupo) => total + Object.keys(grupo).length,
+      0,
+    );
+    expect(countCatalogMessages()).toBe(esperados);
   });
 });
