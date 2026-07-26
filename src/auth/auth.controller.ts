@@ -17,6 +17,7 @@ import {
   type CheckResult,
   type PowerSyncTokenResult,
 } from './auth.service';
+import type { PowerSyncJwks } from './powersync-keys';
 import { checkSchema, type CheckDto } from './dto/check.dto';
 import { refreshSchema, type RefreshDto } from './dto/refresh.dto';
 import { registerSchema, type RegisterDto } from './dto/register.dto';
@@ -63,6 +64,12 @@ export class AuthController {
     @Req() req: { user: AuthUser },
   ): Promise<PowerSyncTokenResult> {
     return this.authService.powersyncToken(req.user.userId);
+  }
+
+  /** JWKS público: PowerSync lo consulta para validar el token (RS256). */
+  @Get('jwks')
+  powerSyncJwks(): PowerSyncJwks {
+    return this.authService.powerSyncJwks();
   }
 
   @Post('refresh')

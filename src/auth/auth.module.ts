@@ -7,6 +7,7 @@ import type { AppConfigService } from '../config';
 import { UsersModule } from '../users/users.module';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
+import { PowerSyncKeyService } from './powersync-keys';
 import {
   RefreshToken,
   RefreshTokenSchema,
@@ -32,7 +33,7 @@ import { LocalStrategy } from './strategies/local.strategy';
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, LocalStrategy, JwtStrategy],
+  providers: [AuthService, LocalStrategy, JwtStrategy, PowerSyncKeyService],
   exports: [AuthService],
 })
 export class AuthModule {}

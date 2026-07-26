@@ -11,7 +11,15 @@ const hasher = { hash: (c: string) => `H:${c}`, isReady: () => true };
 const jwt = { signAsync: jest.fn(() => Promise.resolve('access.jwt')) };
 const config = { get: jest.fn(() => 30) };
 
-function makeService(opts: { user?: unknown; refreshDoc?: unknown } = {}) {
+const disabledKeys = {
+  enabled: false,
+  signToken: jest.fn(() => 'rs256.jwt'),
+  jwks: () => ({ keys: [] }),
+};
+
+function makeService(
+  opts: { user?: unknown; refreshDoc?: unknown; psKeys?: unknown } = {},
+) {
   const userModel = {
     findOne: () => ({ exec: () => Promise.resolve(opts.user ?? null) }),
     findById: () => ({ exec: () => Promise.resolve(opts.user ?? null) }),
@@ -31,6 +39,7 @@ function makeService(opts: { user?: unknown; refreshDoc?: unknown } = {}) {
     jwt as never,
     config as never,
     permissions as never,
+    (opts.psKeys ?? disabledKeys) as never,
   );
   return { svc, refreshModel };
 }
@@ -91,6 +100,29 @@ describe('AuthService', () => {
       await expect(svc.powersyncToken('abc')).rejects.toBeInstanceOf(
         UnauthorizedException,
       );
+    });
+
+    it('firma con signToken (RS256) cuando la clave está configurada', async () => {
+      const signToken = jest.fn(() => 'rs256.jwt');
+      const { svc } = makeService({
+        user: { ...base, estadoAcceso: 'aprobado' },
+        psKeys: { enabled: true, signToken, jwks: () => ({ keys: [] }) },
+      });
+
+      const res = await svc.powersyncToken('abc');
+
+      expect(res.token).toBe('rs256.jwt');
+      expect(signToken).toHaveBeenCalledWith('abc', 'powersync', 300);
+    });
+  });
+
+  describe('powerSyncJwks', () => {
+    it('delega el JWKS en el servicio de claves', () => {
+      const jwks = { keys: [{ kid: 'powersync-rs256' }] };
+      const { svc } = makeService({
+        psKeys: { ...disabledKeys, jwks: () => jwks },
+      });
+      expect(svc.powerSyncJwks()).toBe(jwks);
     });
   });
 

@@ -60,12 +60,16 @@ hecho todavía.
 
 ### be_ruta (backend)
 1. ✅ **HECHO — Token PowerSync** — `GET /auth/powersync-token` (tras
-   `JwtAuthGuard`, solo usuarios con acceso **aprobado**) emite un JWT **HS256**
-   con `{ sub: userId, aud: "powersync", exp: 5m }` y devuelve `{ token,
-   powersyncUrl }`. `service.yaml` valida por HS256 (`PS_JWT_SECRET_B64URL`).
-2. **JWKS (endurecimiento)** — par RS256 + `GET /auth/jwks` público con la clave
-   pública. Cambia el token del paso 1 a RS256 y `service.yaml` a `jwks_uri`
-   (`PS_JWKS_URI`). Evita compartir el secreto simétrico con PowerSync.
+   `JwtAuthGuard`, solo usuarios con acceso **aprobado**) emite un JWT corto
+   `{ sub, aud: "powersync", exp: 5m }` y devuelve `{ token, powersyncUrl }`.
+2. ✅ **HECHO — RS256 + JWKS** — el token se firma con **RS256**
+   (`POWERSYNC_JWT_PRIVATE_KEY`) y `GET /auth/jwks` (público) publica la clave
+   pública; `service.yaml` valida por `jwks_uri`. No se comparte ningún secreto.
+   Sin la clave configurada, cae a HS256 con `JWT_SECRET`. Genera la clave (PEM
+   PKCS8 en base64, va a `be_ruta/.env`) con:
+   ```
+   node -e "const{generateKeyPairSync}=require('crypto');const{privateKey}=generateKeyPairSync('rsa',{modulusLength:2048});process.stdout.write(Buffer.from(privateKey.export({type:'pkcs8',format:'pem'})).toString('base64'))"
+   ```
 3. **Endpoint de subida** — `POST /powersync/write` que recibe el batch de
    operaciones del cliente (`put`/`patch`/`delete` por colección) y las aplica a
    Mongo respetando permisos y el scope por unidad.

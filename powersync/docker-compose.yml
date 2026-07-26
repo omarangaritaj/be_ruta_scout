@@ -8,7 +8,7 @@ name: ruta-powersync
 
 services:
   powersync:
-    image: journeyapps/powersync-service:latest # TODO: fijar un tag (evitar :latest en prod)
+    image: journeyapps/powersync-service:1.23.3
     container_name: ruta-powersync
     command: ["start", "-r", "unified"] # unified = replicación + API en un contenedor
     restart: unless-stopped
@@ -32,8 +32,7 @@ services:
       # Permite que PowerSync alcance be_ruta corriendo en el host (JWKS/token).
       - "host.docker.internal:host-gateway"
 
-  # Almacenamiento interno de PowerSync (buckets/checkpoints). NO son tus datos:
-  # tus datos viven en Atlas. Postgres de un nodo basta (soportado desde 2025).
+  # Almacenamiento interno de PowerSync (buckets/checkpoints). NO son tus datos.
   bucket-storage:
     image: postgres:16
     container_name: ruta-powersync-storage

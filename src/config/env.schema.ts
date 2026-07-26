@@ -113,6 +113,11 @@ export const envSchema = z.object({
   // token para que conecte. Opcional: sin ella el token igual se emite.
   POWERSYNC_URL: optionalEnv(z.url({ error: 'debe ser una URL válida' })),
 
+  // Clave privada RS256 (PEM PKCS8 en base64) para firmar el token de PowerSync.
+  // Si está, el token va firmado RS256 y /auth/jwks publica la clave pública;
+  // si no, se cae a HS256 con JWT_SECRET (arranque rápido). Generar en el README.
+  POWERSYNC_JWT_PRIVATE_KEY: optionalEnv(z.string()),
+
   // Los ajustes operativos de la sincronización (zonas, tamaños de página y de
   // lote, cron e interruptor) NO viven aquí: son configuración editable en
   // tiempo de ejecución, en la colección `siscout_config`. Ver

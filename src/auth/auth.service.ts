@@ -22,6 +22,7 @@ import {
   type NivelAcceso,
   type TipoPersona,
 } from '../users/schemas/user.schema';
+import { PowerSyncKeyService, type PowerSyncJwks } from './powersync-keys';
 import {
   RefreshToken,
   RefreshTokenDocument,
@@ -67,8 +68,8 @@ const MS_PER_DAY = 24 * 60 * 60 * 1000;
 // Audiencia que debe llevar el token PowerSync; DEBE coincidir con
 // `client_auth.audience` en powersync/service.yaml (PS_JWT_AUDIENCE).
 const POWERSYNC_AUDIENCE = 'powersync';
-// Vida corta: el cliente lo renueva vía fetchCredentials cuando reconecta.
-const POWERSYNC_TOKEN_TTL = '5m';
+// Vida corta (segundos): el cliente lo renueva vía fetchCredentials al reconectar.
+const POWERSYNC_TOKEN_TTL_SECONDS = 300;
 
 @Injectable()
 export class AuthService {
@@ -83,6 +84,7 @@ export class AuthService {
     @Inject(ConfigService)
     private readonly config: AppConfigService,
     private readonly permissions: PermissionsService,
+    private readonly powerSyncKeys: PowerSyncKeyService,
   ) {}
 
   async check(cedula: string): Promise<CheckResult> {
@@ -181,14 +183,29 @@ export class AuthService {
       );
     }
 
-    const token = await this.jwt.signAsync(
-      { sub: String(user._id) },
-      { audience: POWERSYNC_AUDIENCE, expiresIn: POWERSYNC_TOKEN_TTL },
-    );
+    const subject = String(user._id);
+    const token = this.powerSyncKeys.enabled
+      ? this.powerSyncKeys.signToken(
+          subject,
+          POWERSYNC_AUDIENCE,
+          POWERSYNC_TOKEN_TTL_SECONDS,
+        )
+      : await this.jwt.signAsync(
+          { sub: subject },
+          {
+            audience: POWERSYNC_AUDIENCE,
+            expiresIn: POWERSYNC_TOKEN_TTL_SECONDS,
+          },
+        );
     const powersyncUrl =
       this.config.get('POWERSYNC_URL', { infer: true }) ?? null;
 
     return { token, powersyncUrl };
+  }
+
+  /** JWKS público con la clave que valida los tokens de PowerSync (RS256). */
+  powerSyncJwks(): PowerSyncJwks {
+    return this.powerSyncKeys.jwks();
   }
 
   private async issueAuthResult(user: UserDocument): Promise<AuthResult> {
