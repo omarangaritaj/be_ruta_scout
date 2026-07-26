@@ -1,0 +1,54 @@
+# PowerSync self-hosted — motor de sync offline-first para las superficies de
+# campo de Ruta. Parea con be_ruta: lee de MongoDB Atlas (la fuente, por change
+# streams) y valida los JWT que emite be_ruta. Las escrituras del cliente suben
+# a un endpoint de be_ruta (ver README, sección "Lo que falta para continuar").
+#
+# Levantar:  cp .env.example .env && (editar .env) && docker compose up -d
+name: ruta-powersync
+
+services:
+  powersync:
+    image: journeyapps/powersync-service:latest # TODO: fijar un tag (evitar :latest en prod)
+    container_name: ruta-powersync
+    command: ["start", "-r", "unified"] # unified = replicación + API en un contenedor
+    restart: unless-stopped
+    depends_on:
+      bucket-storage:
+        condition: service_healthy
+    ports:
+      - "${PS_PORT:-8080}:8080"
+    environment:
+      POWERSYNC_CONFIG_PATH: /config/service.yaml
+      # Sustituciones !env dentro de service.yaml / sync-config.yaml:
+      PS_MONGO_SOURCE_URI: ${PS_MONGO_SOURCE_URI:?define PS_MONGO_SOURCE_URI en .env}
+      PS_STORAGE_URI: ${PS_STORAGE_URI:-postgresql://powersync:powersync@bucket-storage:5432/powersync}
+      PS_JWT_AUDIENCE: ${PS_JWT_AUDIENCE:-powersync}
+      PS_JWKS_URI: ${PS_JWKS_URI:-}
+      PS_JWT_SECRET_B64URL: ${PS_JWT_SECRET_B64URL:-}
+    volumes:
+      - ./service.yaml:/config/service.yaml:ro
+      - ./sync-config.yaml:/config/sync-config.yaml:ro
+    extra_hosts:
+      # Permite que PowerSync alcance be_ruta corriendo en el host (JWKS/token).
+      - "host.docker.internal:host-gateway"
+
+  # Almacenamiento interno de PowerSync (buckets/checkpoints). NO son tus datos:
+  # tus datos viven en Atlas. Postgres de un nodo basta (soportado desde 2025).
+  bucket-storage:
+    image: postgres:16
+    container_name: ruta-powersync-storage
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: powersync
+      POSTGRES_PASSWORD: powersync
+      POSTGRES_DB: powersync
+    volumes:
+      - powersync-storage:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U powersync -d powersync"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+volumes:
+  powersync-storage:

@@ -1,0 +1,46 @@
+# Configuración del servicio PowerSync (self-hosted, modo unified).
+# Los valores sensibles llegan por !env desde docker-compose (.env).
+# Referencia: https://docs.powersync.com/self-hosting/installation
+
+# ── Fuente: el MISMO MongoDB Atlas que usa be_ruta ────────────────────────────
+# PowerSync lee los cambios por change streams (Atlas ya es replica set, requisito
+# para Mongo como fuente). Es solo-lectura: nunca escribe en tu base.
+replication:
+  connections:
+    - type: mongodb
+      uri: !env PS_MONGO_SOURCE_URI
+
+# ── Bucket storage: Postgres interno de PowerSync (NO son tus datos) ──────────
+storage:
+  type: postgresql
+  uri: !env PS_STORAGE_URI
+
+# API + replicación en el mismo contenedor (unified).
+port: 8080
+
+# Reglas de sincronización (qué baja a cada dispositivo).
+# En algunas versiones este bloque es `sync_rules:` — confirma con tu tag.
+sync_config:
+  path: sync-config.yaml
+
+# ── Validación de los JWT del cliente ─────────────────────────────────────────
+# El cliente presenta un token que emite be_ruta. Dos caminos:
+#
+#  (A) RECOMENDADO — RS256 vía JWKS. be_ruta expone GET /auth/jwks con la clave
+#      pública; PowerSync la consulta. Requiere agregar el par RS256 en be_ruta
+#      (ver README). Deja PS_JWKS_URI en .env apuntando a ese endpoint.
+#
+#  (B) ARRANQUE RÁPIDO — HS256 con el secreto que be_ruta ya usa (JWT_SECRET).
+#      No recomendado para prod (secreto compartido). Comenta jwks_uri de abajo,
+#      descomenta el bloque `jwks:` y define PS_JWT_SECRET_B64URL en .env.
+client_auth:
+  supabase: false
+  audience:
+    - !env PS_JWT_AUDIENCE
+  jwks_uri: !env PS_JWKS_URI
+  # jwks:
+  #   keys:
+  #     - kty: oct
+  #       alg: HS256
+  #       kid: be_ruta-hs256
+  #       k: !env PS_JWT_SECRET_B64URL
