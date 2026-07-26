@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { K, t } from '../../i18n';
 import { unidadBaseSchema } from './unidad-base.schema';
 
 /**
@@ -8,7 +9,7 @@ import { unidadBaseSchema } from './unidad-base.schema';
 export const updateUnidadSchema = unidadBaseSchema
   .partial()
   .refine((data) => Object.keys(data).length > 0, {
-    error: 'debe incluir al menos un campo a modificar',
+    error: t(K.VALIDATION.AT_LEAST_ONE_FIELD),
   });
 
 export type UpdateUnidadDto = z.infer<typeof updateUnidadSchema>;

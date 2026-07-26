@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { K, t } from '../../i18n';
 import { objectIdSchema } from '../../common';
 
 /**
@@ -11,9 +12,9 @@ import { objectIdSchema } from '../../common';
  */
 export const unidadBaseSchema = z.object({
   nombre: z
-    .string({ error: 'es obligatorio' })
+    .string({ error: t(K.VALIDATION.REQUIRED_MASCULINE) })
     .trim()
-    .min(1, { error: 'no puede estar vacío' }),
+    .min(1, { error: t(K.VALIDATION.NOT_EMPTY_MASCULINE) }),
 
   idJefeUnidad: objectIdSchema,
 

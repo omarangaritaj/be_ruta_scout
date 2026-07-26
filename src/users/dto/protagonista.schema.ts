@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { K, t } from '../../i18n';
 import { objectIdSchema } from '../../common';
 
 const textoOpcional = z.string().trim().min(1).optional();
@@ -7,7 +8,7 @@ const textoOpcional = z.string().trim().min(1).optional();
 export const acudienteSchema = z.object({
   nombre: textoOpcional,
   telefono: textoOpcional,
-  correo: z.email({ error: 'debe ser un correo válido' }).optional(),
+  correo: z.email({ error: t(K.VALIDATION.INVALID_EMAIL) }).optional(),
 });
 
 /**

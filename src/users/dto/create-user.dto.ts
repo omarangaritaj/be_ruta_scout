@@ -1,18 +1,19 @@
 import { z } from 'zod';
+import { K, t } from '../../i18n';
 import { objectIdSchema } from '../../common';
 import { cargoSchema } from './cargo.schema';
 import { protagonistaFieldsSchema } from './protagonista.schema';
 
 const name = z
-  .string({ error: 'es obligatorio' })
+  .string({ error: t(K.VALIDATION.REQUIRED_MASCULINE) })
   .trim()
-  .min(1, { error: 'no puede estar vacío' });
+  .min(1, { error: t(K.VALIDATION.NOT_EMPTY_MASCULINE) });
 
 // Todas las personas provienen de SiScout, así que idSiscout es obligatorio.
 const idSiscout = z
-  .string({ error: 'es obligatorio' })
+  .string({ error: t(K.VALIDATION.REQUIRED_MASCULINE) })
   .trim()
-  .min(1, { error: 'no puede estar vacío' });
+  .min(1, { error: t(K.VALIDATION.NOT_EMPTY_MASCULINE) });
 
 /** Adulto: con cargos y roles (los dirigentes de una unidad son adultos). */
 const createAdultoSchema = z.object({

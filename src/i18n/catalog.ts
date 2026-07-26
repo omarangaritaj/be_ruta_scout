@@ -132,11 +132,32 @@ export const CATALOG = {
     NOT_FOUND: 'No existe un usuario con id "{id}"',
     SISCOUT_ID_ALREADY_EXISTS: 'Ya existe una persona con ese idSiscout',
   },
+  // Los mensajes de campo se concatenan detrás del nombre del campo ("cedula
+  // es obligatoria"), por eso van en minúscula y sin punto final, y por eso
+  // el género viene en la clave: en español "obligatorio" y "obligatoria" no
+  // son intercambiables.
   VALIDATION: {
+    AT_LEAST_ONE_FIELD: 'debe incluir al menos un campo a modificar',
+    AT_LEAST_ONE_ZONE: 'debe incluir al menos una zona',
     BODY_FIELD: '(cuerpo)',
+    INVALID_CRON: 'no es una expresión cron válida',
+    INVALID_EMAIL: 'debe ser un correo válido',
     INVALID_INPUT: 'Datos de entrada inválidos',
     INVALID_LEVEL: 'nivel inválido: debe ser rama, grupo, region o nacion',
     INVALID_OBJECT_ID:
       '"{valor}" no es un ObjectId válido (se esperan 24 caracteres hexadecimales)',
+    INVALID_PHONE: 'no es un teléfono válido',
+    LOWERCASE_SLUG: 'solo admite minúsculas, números y guiones',
+    MUST_BE_STRING: 'debe ser una cadena de texto',
+    MUST_START_WITH_SLASH: 'debe empezar por /',
+    NOT_EMPTY_FEMININE: 'no puede estar vacía',
+    NOT_EMPTY_MASCULINE: 'no puede estar vacío',
+    OBJECT_ID: 'debe ser un ObjectId válido (24 caracteres hexadecimales)',
+    PASSWORD_MAX_BYTES:
+      'máximo 72 bytes (las tildes y los emojis cuentan doble)',
+    PASSWORD_MIN_LENGTH: 'mínimo 8 caracteres',
+    POSITIVE_INTEGER: 'debe ser un entero positivo',
+    REQUIRED_FEMININE: 'es obligatoria',
+    REQUIRED_MASCULINE: 'es obligatorio',
   },
 };

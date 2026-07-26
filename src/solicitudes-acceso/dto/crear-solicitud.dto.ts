@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { K, t } from '../../i18n';
 import { NIVELES_SOLICITUD } from '../../catalogo-cargos/catalogo-cargos';
 import { RAMAS } from '../schemas/solicitud-acceso.schema';
 
@@ -9,13 +10,13 @@ export const crearSolicitudSchema = z.object({
     error: `debe ser uno de: ${NIVELES_SOLICITUD.join(', ')}`,
   }),
   cargo: z
-    .string({ error: 'es obligatorio' })
+    .string({ error: t(K.VALIDATION.REQUIRED_MASCULINE) })
     .trim()
-    .min(1, { error: 'no puede estar vacío' }),
+    .min(1, { error: t(K.VALIDATION.NOT_EMPTY_MASCULINE) }),
   telefono: z
-    .string({ error: 'es obligatorio' })
+    .string({ error: t(K.VALIDATION.REQUIRED_MASCULINE) })
     .trim()
-    .regex(TELEFONO_RE, { error: 'no es un teléfono válido' }),
+    .regex(TELEFONO_RE, { error: t(K.VALIDATION.INVALID_PHONE) }),
   rama: z.enum(RAMAS).optional(),
   groupId: z.number().int().positive().optional(),
   districtId: z.number().int().positive().optional(),

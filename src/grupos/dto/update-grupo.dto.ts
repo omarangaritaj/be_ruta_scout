@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { K, t } from '../../i18n';
 import { grupoBaseSchema } from './grupo-base.schema';
 
 /**
@@ -8,7 +9,7 @@ import { grupoBaseSchema } from './grupo-base.schema';
 export const updateGrupoSchema = grupoBaseSchema
   .partial()
   .refine((data) => Object.keys(data).length > 0, {
-    error: 'debe incluir al menos un campo a modificar',
+    error: t(K.VALIDATION.AT_LEAST_ONE_FIELD),
   });
 
 export type UpdateGrupoDto = z.infer<typeof updateGrupoSchema>;

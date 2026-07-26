@@ -1,5 +1,6 @@
 import { Types } from 'mongoose';
 import { z } from 'zod';
+import { K, t } from '../../i18n';
 
 /**
  * Valida un ObjectId recibido como string y lo transforma a `Types.ObjectId`.
@@ -9,8 +10,8 @@ import { z } from 'zod';
  * cualquier cadena de 12 caracteres, lo que deja pasar basura.
  */
 export const objectIdSchema = z
-  .string({ error: 'debe ser una cadena de texto' })
+  .string({ error: t(K.VALIDATION.MUST_BE_STRING) })
   .regex(/^[0-9a-fA-F]{24}$/, {
-    error: 'debe ser un ObjectId válido (24 caracteres hexadecimales)',
+    error: t(K.VALIDATION.OBJECT_ID),
   })
   .transform((value) => new Types.ObjectId(value));

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { K, t } from '../../i18n';
 import { objectIdSchema } from '../../common';
 
 /**
@@ -11,19 +12,19 @@ import { objectIdSchema } from '../../common';
  */
 export const grupoBaseSchema = z.object({
   nombre: z
-    .string({ error: 'es obligatorio' })
+    .string({ error: t(K.VALIDATION.REQUIRED_MASCULINE) })
     .trim()
-    .min(1, { error: 'no puede estar vacío' }),
+    .min(1, { error: t(K.VALIDATION.NOT_EMPTY_MASCULINE) }),
 
   region: z
-    .string({ error: 'es obligatoria' })
+    .string({ error: t(K.VALIDATION.REQUIRED_FEMININE) })
     .trim()
-    .min(1, { error: 'no puede estar vacía' }),
+    .min(1, { error: t(K.VALIDATION.NOT_EMPTY_FEMININE) }),
 
   ciudad: z
-    .string({ error: 'es obligatoria' })
+    .string({ error: t(K.VALIDATION.REQUIRED_FEMININE) })
     .trim()
-    .min(1, { error: 'no puede estar vacía' }),
+    .min(1, { error: t(K.VALIDATION.NOT_EMPTY_FEMININE) }),
 
   idJefeGrupo: objectIdSchema.optional(),
 

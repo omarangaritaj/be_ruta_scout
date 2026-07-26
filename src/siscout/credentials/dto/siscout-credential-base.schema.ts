@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { K, t } from '../../../i18n';
 
 export const alcanceSchema = z.discriminatedUnion('tipo', [
   z.object({ tipo: z.literal('nacional') }),
@@ -6,9 +7,12 @@ export const alcanceSchema = z.discriminatedUnion('tipo', [
     tipo: z.literal('zonas'),
     zoneIds: z
       .array(
-        z.number().int().positive({ error: 'debe ser un entero positivo' }),
+        z
+          .number()
+          .int()
+          .positive({ error: t(K.VALIDATION.POSITIVE_INTEGER) }),
       )
-      .min(1, { error: 'debe incluir al menos una zona' })
+      .min(1, { error: t(K.VALIDATION.AT_LEAST_ONE_ZONE) })
       .transform((ids) => [...new Set(ids)]),
   }),
 ]);
@@ -17,33 +21,33 @@ export type AlcanceDto = z.infer<typeof alcanceSchema>;
 
 export const siscoutCredentialBaseSchema = z.object({
   nombre: z
-    .string({ error: 'es obligatorio' })
+    .string({ error: t(K.VALIDATION.REQUIRED_MASCULINE) })
     .trim()
-    .min(1, { error: 'no puede estar vacío' })
+    .min(1, { error: t(K.VALIDATION.NOT_EMPTY_MASCULINE) })
     .regex(/^[a-z0-9-]+$/, {
-      error: 'solo admite minúsculas, números y guiones',
+      error: t(K.VALIDATION.LOWERCASE_SLUG),
     }),
 
   descripcion: z.string().trim().min(1).optional(),
 
   usuario: z
-    .string({ error: 'es obligatorio' })
+    .string({ error: t(K.VALIDATION.REQUIRED_MASCULINE) })
     .trim()
-    .min(1, { error: 'no puede estar vacío' }),
+    .min(1, { error: t(K.VALIDATION.NOT_EMPTY_MASCULINE) }),
 
   /**
    * Se recibe SIEMPRE en claro y se cifra antes de guardar. Nunca se devuelve:
    * no hay endpoint que lo exponga, ni siquiera cifrado.
    */
   password: z
-    .string({ error: 'es obligatoria' })
-    .min(1, { error: 'no puede estar vacía' }),
+    .string({ error: t(K.VALIDATION.REQUIRED_FEMININE) })
+    .min(1, { error: t(K.VALIDATION.NOT_EMPTY_FEMININE) }),
 
   changeRolPath: z
-    .string({ error: 'es obligatoria' })
+    .string({ error: t(K.VALIDATION.REQUIRED_FEMININE) })
     .trim()
-    .min(1, { error: 'no puede estar vacía' })
-    .startsWith('/', { error: 'debe empezar por /' }),
+    .min(1, { error: t(K.VALIDATION.NOT_EMPTY_FEMININE) })
+    .startsWith('/', { error: t(K.VALIDATION.MUST_START_WITH_SLASH) }),
 
   alcance: alcanceSchema,
 

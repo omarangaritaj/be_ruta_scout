@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { K, t } from '../../i18n';
 import { objectIdSchema } from '../../common';
 import { cargoSchema } from './cargo.schema';
 import { protagonistaFieldsSchema } from './protagonista.schema';
@@ -34,7 +35,10 @@ export const ESTADOS_ACCESO_GESTIONABLES = ['aprobado', 'suspendido'] as const;
  */
 export const updateUserSchema = z
   .object({
-    name: z.string().trim().min(1, { error: 'no puede estar vacío' }),
+    name: z
+      .string()
+      .trim()
+      .min(1, { error: t(K.VALIDATION.NOT_EMPTY_MASCULINE) }),
     estado: z.boolean(),
     roles: z.array(objectIdSchema),
     cargos: z.array(cargoSchema),
@@ -48,7 +52,7 @@ export const updateUserSchema = z
   .extend(protagonistaFieldsSchema.shape)
   .partial()
   .refine((data) => Object.keys(data).length > 0, {
-    error: 'debe incluir al menos un campo a modificar',
+    error: t(K.VALIDATION.AT_LEAST_ONE_FIELD),
   });
 
 export type UpdateUserDto = z.infer<typeof updateUserSchema>;
