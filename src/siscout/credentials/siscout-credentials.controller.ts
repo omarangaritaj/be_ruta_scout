@@ -8,7 +8,11 @@ import {
   Param,
   Patch,
   Post,
+  UseGuards,
 } from '@nestjs/common';
+import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
+import { PermissionsGuard } from '../../authz/permissions.guard';
+import { RequirePermissions } from '../../authz/require-permissions.decorator';
 import { ZodValidationPipe } from '../../common';
 import {
   createSiscoutCredentialSchema,
@@ -31,18 +35,16 @@ import {
  *
  * ⚠️ La contraseña ENTRA en claro y no SALE nunca, ni siquiera cifrada. Las
  * respuestas se construyen con una lista blanca de campos, no quitando el
- * password de una copia del documento.
- *
- * PENDIENTE: proteger con guard de autenticación/rol cuando exista auth. Estos
- * endpoints gobiernan el acceso al sistema externo y hoy están tan expuestos
- * como el resto de la API — la misma deuda anotada en el controlador de
- * configuración, aquí con más consecuencias.
+ * password de una copia del documento. Como gobierna el acceso al sistema
+ * externo, va tras el permiso dedicado `siscout:credentials`.
  */
+@UseGuards(JwtAuthGuard, PermissionsGuard)
 @Controller('siscout/credentials')
 export class SiscoutCredentialsController {
   constructor(private readonly credentialsService: SiscoutCredentialsService) {}
 
   @Post()
+  @RequirePermissions('siscout:credentials')
   async create(
     @Body(new ZodValidationPipe(createSiscoutCredentialSchema))
     dto: CreateSiscoutCredentialDto,
@@ -51,11 +53,13 @@ export class SiscoutCredentialsController {
   }
 
   @Get()
+  @RequirePermissions('siscout:credentials')
   async findAll(): Promise<SiscoutCredentialView[]> {
     return this.credentialsService.findAll();
   }
 
   @Get(':nombre')
+  @RequirePermissions('siscout:credentials')
   async findOne(
     @Param('nombre') nombre: string,
   ): Promise<SiscoutCredentialView> {
@@ -63,6 +67,7 @@ export class SiscoutCredentialsController {
   }
 
   @Patch(':nombre')
+  @RequirePermissions('siscout:credentials')
   async update(
     @Param('nombre') nombre: string,
     @Body(new ZodValidationPipe(updateSiscoutCredentialSchema))
@@ -73,6 +78,7 @@ export class SiscoutCredentialsController {
 
   @Delete(':nombre')
   @HttpCode(HttpStatus.NO_CONTENT)
+  @RequirePermissions('siscout:credentials')
   async remove(@Param('nombre') nombre: string): Promise<void> {
     return this.credentialsService.remove(nombre);
   }

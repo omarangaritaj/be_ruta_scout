@@ -8,7 +8,11 @@ import {
   Param,
   Patch,
   Post,
+  UseGuards,
 } from '@nestjs/common';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { PermissionsGuard } from '../authz/permissions.guard';
+import { RequirePermissions } from '../authz/require-permissions.decorator';
 import { ParseObjectIdPipe, ZodValidationPipe } from '../common';
 import {
   createUnidadSchema,
@@ -21,11 +25,13 @@ import {
 import { UnidadDocument } from './schemas/unidad.schema';
 import { UnidadesService } from './unidades.service';
 
+@UseGuards(JwtAuthGuard, PermissionsGuard)
 @Controller('unidades')
 export class UnidadesController {
   constructor(private readonly unidadesService: UnidadesService) {}
 
   @Post()
+  @RequirePermissions('unidad:create')
   async create(
     @Body(new ZodValidationPipe(createUnidadSchema)) dto: CreateUnidadDto,
   ): Promise<UnidadDocument> {
@@ -33,11 +39,13 @@ export class UnidadesController {
   }
 
   @Get()
+  @RequirePermissions('unidad:read')
   async findAll(): Promise<UnidadDocument[]> {
     return this.unidadesService.findAll();
   }
 
   @Get(':id')
+  @RequirePermissions('unidad:read')
   async findOne(
     @Param('id', ParseObjectIdPipe) id: string,
   ): Promise<UnidadDocument> {
@@ -45,6 +53,7 @@ export class UnidadesController {
   }
 
   @Patch(':id')
+  @RequirePermissions('unidad:update')
   async update(
     @Param('id', ParseObjectIdPipe) id: string,
     @Body(new ZodValidationPipe(updateUnidadSchema)) dto: UpdateUnidadDto,
@@ -54,6 +63,7 @@ export class UnidadesController {
 
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
+  @RequirePermissions('unidad:delete')
   async remove(@Param('id', ParseObjectIdPipe) id: string): Promise<void> {
     return this.unidadesService.remove(id);
   }

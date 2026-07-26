@@ -64,6 +64,11 @@ export const PERMISSIONS: PermissionDef[] = [
     descripcion: 'Editar la configuración de SiScout',
     lado: 'ambos',
   },
+  {
+    key: 'siscout:credentials',
+    descripcion: 'Gestionar el pool de credenciales de SiScout',
+    lado: 'be',
+  },
 
   {
     key: 'tablero:nacional',

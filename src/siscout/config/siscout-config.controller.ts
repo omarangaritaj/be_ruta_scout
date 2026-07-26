@@ -6,7 +6,11 @@ import {
   HttpStatus,
   Patch,
   Post,
+  UseGuards,
 } from '@nestjs/common';
+import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
+import { PermissionsGuard } from '../../authz/permissions.guard';
+import { RequirePermissions } from '../../authz/require-permissions.decorator';
 import { ZodValidationPipe } from '../../common';
 import {
   updateSiscoutConfigSchema,
@@ -23,19 +27,22 @@ import { SiscoutConfigService } from './siscout-config.service';
  * valores por defecto (POST /reset).
  *
  * No contiene secretos (solo tuning): credenciales y clave de cifrado siguen en
- * el entorno. PENDIENTE: proteger con guard de autenticación/rol cuando exista
- * auth, porque estos valores gobiernan la sincronización.
+ * el entorno. Aun así gobierna la sincronización, por eso va tras el permiso
+ * `siscout:config`.
  */
+@UseGuards(JwtAuthGuard, PermissionsGuard)
 @Controller('siscout/config')
 export class SiscoutConfigController {
   constructor(private readonly configService: SiscoutConfigService) {}
 
   @Get()
+  @RequirePermissions('siscout:config')
   get(): SiscoutConfigValues {
     return this.configService.get();
   }
 
   @Patch()
+  @RequirePermissions('siscout:config')
   async update(
     @Body(new ZodValidationPipe(updateSiscoutConfigSchema))
     patch: UpdateSiscoutConfigDto,
@@ -45,6 +52,7 @@ export class SiscoutConfigController {
 
   @Post('reset')
   @HttpCode(HttpStatus.OK)
+  @RequirePermissions('siscout:config')
   async reset(): Promise<SiscoutConfigValues> {
     return this.configService.reset();
   }
