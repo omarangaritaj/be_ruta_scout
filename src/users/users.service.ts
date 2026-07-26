@@ -1,11 +1,13 @@
 import {
   ConflictException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { Model, type QueryFilter } from 'mongoose';
 import type { CreateUserDto } from './dto/create-user.dto';
+import type { ListUsersDto, PaginatedUsers } from './dto/list-users.dto';
 import type { UpdateUserDto } from './dto/update-user.dto';
 import { User, UserDocument } from './schemas/user.schema';
 
@@ -18,6 +20,24 @@ function isDuplicateKey(error: unknown): boolean {
     error !== null &&
     'code' in error &&
     error.code === DUPLICATE_KEY
+  );
+}
+
+/** Escapa un término libre para usarlo dentro de un `$regex` sin inyección. */
+function escapeRegex(text: string): string {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/**
+ * ¿El cambio toca la gestión de acceso (no solo datos de perfil)? Determina si
+ * aplica la regla anti-auto-modificación: un admin no se edita su propio acceso.
+ */
+function touchesAccess(dto: UpdateUserDto): boolean {
+  return (
+    dto.estadoAcceso !== undefined ||
+    dto.nivelAcceso !== undefined ||
+    dto.districtId !== undefined ||
+    dto.groupId !== undefined
   );
 }
 
@@ -40,12 +60,72 @@ export class UsersService {
     }
   }
 
-  async findAll(): Promise<UserDocument[]> {
-    return this.userModel.find().exec();
+  /**
+   * Lista paginada para el panel de gestión. Solo usuarios GESTIONABLES (con
+   * acceso: aprobado o suspendido) y nunca el super_admin. Los filtros de nivel,
+   * región y nombre son opcionales; la búsqueda por nombre es case-insensitive.
+   */
+  async findAll(filtros: ListUsersDto): Promise<PaginatedUsers<UserDocument>> {
+    const { estado, nivel, region, q, page, pageSize } = filtros;
+
+    const query: QueryFilter<UserDocument> = {
+      estadoAcceso: estado ?? { $in: ['aprobado', 'suspendido'] },
+      // Un nivel concreto acota; sin él, se excluye al super_admin de la lista.
+      nivelAcceso: nivel ?? { $ne: 'super_admin' },
+    };
+    if (region !== undefined) query.districtId = region;
+    if (q) query.name = { $regex: escapeRegex(q), $options: 'i' };
+
+    const [items, total] = await Promise.all([
+      this.userModel
+        .find(query)
+        .sort({ name: 1 })
+        .skip((page - 1) * pageSize)
+        .limit(pageSize)
+        .populate('roles', 'nombre status')
+        .exec(),
+      this.userModel.countDocuments(query).exec(),
+    ]);
+
+    return { items, total, page, pageSize };
+  }
+
+  /**
+   * Regiones distintas presentes entre los usuarios gestionables. Alimenta el
+   * `<select>` de región del panel: sin esto el filtro exigiría adivinar IDs.
+   */
+  async distinctRegions(): Promise<
+    { districtId: number; districtName: string }[]
+  > {
+    const rows = await this.userModel
+      .aggregate<{ _id: number; districtName: string }>([
+        {
+          $match: {
+            districtId: { $ne: null },
+            estadoAcceso: { $in: ['aprobado', 'suspendido'] },
+          },
+        },
+        {
+          $group: {
+            _id: '$districtId',
+            districtName: { $first: '$districtName' },
+          },
+        },
+        { $sort: { districtName: 1 } },
+      ])
+      .exec();
+
+    return rows.map((r) => ({
+      districtId: r._id,
+      districtName: r.districtName,
+    }));
   }
 
   async findOne(id: string): Promise<UserDocument> {
-    const user = await this.userModel.findById(id).exec();
+    const user = await this.userModel
+      .findById(id)
+      .populate('roles', 'nombre status')
+      .exec();
 
     if (!user) {
       throw new NotFoundException(`No existe un usuario con id "${id}"`);
@@ -54,28 +134,40 @@ export class UsersService {
     return user;
   }
 
-  async update(id: string, dto: UpdateUserDto): Promise<UserDocument> {
-    let user: UserDocument | null;
+  /**
+   * Edita un usuario. Aquí vive la gestión de acceso (nivel, estado, territorio),
+   * protegida por dos invariantes:
+   *   1. Nadie modifica su propio acceso (evita que un admin se auto-escale).
+   *   2. Al super_admin no se le gestiona desde el panel.
+   */
+  async update(
+    actorId: string,
+    id: string,
+    dto: UpdateUserDto,
+  ): Promise<UserDocument> {
+    if (actorId === id && touchesAccess(dto)) {
+      throw new ForbiddenException('No puedes modificar tu propio acceso');
+    }
+
+    const target = await this.userModel.findById(id).exec();
+    if (!target) {
+      throw new NotFoundException(`No existe un usuario con id "${id}"`);
+    }
+    if (target.nivelAcceso === 'super_admin') {
+      throw new ForbiddenException(
+        'No se gestiona a un super administrador desde el panel',
+      );
+    }
 
     try {
-      user = await this.userModel
-        .findByIdAndUpdate(id, dto, {
-          returnDocument: 'after',
-          runValidators: true,
-        })
-        .exec();
+      target.set(dto);
+      return await target.save();
     } catch (error) {
       if (isDuplicateKey(error)) {
         throw new ConflictException('Ya existe una persona con ese idSiscout');
       }
       throw error;
     }
-
-    if (!user) {
-      throw new NotFoundException(`No existe un usuario con id "${id}"`);
-    }
-
-    return user;
   }
 
   async remove(id: string): Promise<void> {

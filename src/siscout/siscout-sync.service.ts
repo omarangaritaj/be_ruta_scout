@@ -38,6 +38,13 @@ import {
  */
 const PUBLIC_FIELDS: Partial<Record<keyof SiscoutMember, keyof User>> = {
   nombre: 'name',
+  // Territorio: afiliación organizacional, no PII. Se proyecta al documento
+  // público para poder filtrar/gestionar por grupo y región sin descifrar el
+  // snapshot. SiScout es la fuente de verdad; el sync reafirma estos campos.
+  group_id: 'groupId',
+  group_name: 'groupName',
+  district_id: 'districtId',
+  district_name: 'districtName',
 };
 
 /** Máximo de cambios detallados que se devuelven; los contadores cuentan todo. */

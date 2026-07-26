@@ -80,6 +80,23 @@ export class User {
   @Prop({ type: String, enum: NIVELES_ACCESO })
   nivelAcceso?: NivelAcceso;
 
+  // --- Territorio (afiliación organizacional, NO confidencial) ---
+  // El sync lo proyecta desde SiScout (lista blanca `PUBLIC_FIELDS`) y se puede
+  // ajustar al gestionar el acceso. Es filtrable, por eso `districtId` y
+  // `groupId` llevan índice. La PII (cédula, teléfono, correo) NO vive aquí:
+  // sigue cifrada en `siscout_snapshots`.
+  @Prop({ type: Number, index: true })
+  districtId?: number;
+
+  @Prop({ trim: true })
+  districtName?: string;
+
+  @Prop({ type: Number, index: true })
+  groupId?: number;
+
+  @Prop({ trim: true })
+  groupName?: string;
+
   // --- Datos de adulto ---
   @Prop({ type: [MongooseSchema.Types.ObjectId], ref: 'Role', default: [] })
   roles: Types.ObjectId[];
@@ -144,3 +161,16 @@ export class User {
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);
+
+// Secretos que NUNCA deben salir por la API: al serializar (lista, detalle,
+// resultado de un PATCH) se eliminan. El código interno los lee del documento
+// directamente, no del JSON, así que la lógica de auth/sync no se ve afectada.
+UserSchema.set('toJSON', {
+  transform(_doc, ret) {
+    const obj = ret as unknown as Record<string, unknown>;
+    delete obj.passwordHash;
+    delete obj.cedulaHash;
+    delete obj.__v;
+    return obj;
+  },
+});

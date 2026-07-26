@@ -25,3 +25,21 @@ describe('User — campos de acceso', () => {
     expect(u.validateSync()?.errors.estadoAcceso).toBeDefined();
   });
 });
+
+describe('User — serialización', () => {
+  const base = { name: 'Ana', tipo: 'adulto', idSiscout: 'X' } as const;
+
+  it('toJSON no expone passwordHash ni cedulaHash', () => {
+    const u = new UserModel({
+      ...base,
+      passwordHash: 'secreto-bcrypt',
+      cedulaHash: 'hmac-de-cedula',
+    });
+
+    const json = u.toJSON() as unknown as Record<string, unknown>;
+
+    expect(json.passwordHash).toBeUndefined();
+    expect(json.cedulaHash).toBeUndefined();
+    expect(json.name).toBe('Ana');
+  });
+});
