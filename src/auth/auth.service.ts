@@ -1,11 +1,4 @@
-import {
-  ConflictException,
-  ForbiddenException,
-  Inject,
-  Injectable,
-  NotFoundException,
-  UnauthorizedException,
-} from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { InjectModel } from '@nestjs/mongoose';
@@ -13,6 +6,13 @@ import { compare, hash } from 'bcryptjs';
 import { createHash, randomBytes } from 'node:crypto';
 import { Model } from 'mongoose';
 import { PermissionsService } from '../authz/permissions.service';
+import {
+  AppConflictException,
+  AppForbiddenException,
+  AppNotFoundException,
+  AppUnauthorizedException,
+} from '../common';
+import { K } from '../i18n';
 import type { AppConfigService } from '../config';
 import { CEDULA_HASHER, type CedulaHasher } from '../crypto';
 import {
@@ -99,12 +99,10 @@ export class AuthService {
   async register(cedula: string, password: string): Promise<AuthResult> {
     const user = await this.findByCedula(cedula);
     if (!user) {
-      throw new NotFoundException(
-        'No existe una persona con esa cédula en SiScout',
-      );
+      throw new AppNotFoundException(K.AUTH.PERSON_NOT_IN_SISCOUT);
     }
     if (user.passwordHash) {
-      throw new ConflictException('Ya existe una cuenta para esta cédula');
+      throw new AppConflictException(K.AUTH.ACCOUNT_ALREADY_EXISTS);
     }
 
     user.passwordHash = await hash(password, BCRYPT_ROUNDS);
@@ -119,10 +117,10 @@ export class AuthService {
   ): Promise<UserDocument> {
     const user = await this.findByCedula(cedula);
     if (!user?.passwordHash) {
-      throw new UnauthorizedException('Credenciales inválidas');
+      throw new AppUnauthorizedException(K.AUTH.INVALID_CREDENTIALS);
     }
     if (!(await compare(password, user.passwordHash))) {
-      throw new UnauthorizedException('Credenciales inválidas');
+      throw new AppUnauthorizedException(K.AUTH.INVALID_CREDENTIALS);
     }
     return user;
   }
@@ -136,7 +134,7 @@ export class AuthService {
       .findOne({ tokenHash: this.hashToken(refreshToken) })
       .exec();
     if (!stored || stored.revoked || stored.expiresAt.getTime() < Date.now()) {
-      throw new UnauthorizedException('Refresh token inválido o expirado');
+      throw new AppUnauthorizedException(K.AUTH.REFRESH_TOKEN_INVALID);
     }
 
     stored.revoked = true;
@@ -144,7 +142,7 @@ export class AuthService {
 
     const user = await this.userModel.findById(stored.userId).exec();
     if (!user) {
-      throw new UnauthorizedException('La cuenta ya no existe');
+      throw new AppUnauthorizedException(K.AUTH.ACCOUNT_GONE);
     }
     return this.issueAuthResult(user);
   }
@@ -161,7 +159,7 @@ export class AuthService {
   async me(userId: string): Promise<AuthenticatedUser> {
     const user = await this.userModel.findById(userId).exec();
     if (!user) {
-      throw new UnauthorizedException('La cuenta ya no existe');
+      throw new AppUnauthorizedException(K.AUTH.ACCOUNT_GONE);
     }
     const permissions = await this.permissions.effectivePermissions(userId);
     return { ...this.toPerson(user), permissions: [...permissions] };
@@ -175,12 +173,10 @@ export class AuthService {
   async powersyncToken(userId: string): Promise<PowerSyncTokenResult> {
     const user = await this.userModel.findById(userId).exec();
     if (!user) {
-      throw new UnauthorizedException('La cuenta ya no existe');
+      throw new AppUnauthorizedException(K.AUTH.ACCOUNT_GONE);
     }
     if (user.estadoAcceso !== 'aprobado') {
-      throw new ForbiddenException(
-        'Solo un usuario con acceso aprobado puede sincronizar datos de campo',
-      );
+      throw new AppForbiddenException(K.AUTH.SYNC_REQUIRES_APPROVED_ACCESS);
     }
 
     const subject = String(user._id);

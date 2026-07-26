@@ -1,14 +1,13 @@
-import {
-  ConflictException,
-  Inject,
-  Injectable,
-  Logger,
-  NotFoundException,
-  ServiceUnavailableException,
-} from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
+import {
+  AppConflictException,
+  AppNotFoundException,
+  AppServiceUnavailableException,
+} from '../../common';
 import { CREDENTIALS_CIPHER, FieldCipher, isEncrypted } from '../../crypto';
+import { K } from '../../i18n';
 import type { CreateSiscoutCredentialDto } from './dto/create-siscout-credential.dto';
 import type { UpdateSiscoutCredentialDto } from './dto/update-siscout-credential.dto';
 import {
@@ -79,8 +78,8 @@ export class SiscoutCredentialsService {
    */
   async resolveForZone(zoneId: number): Promise<SiscoutCredentialAuth[]> {
     if (!this.cipher.isReady()) {
-      throw new ServiceUnavailableException(
-        'Falta SISCOUT_CREDENTIALS_KEY: no se pueden descifrar las contraseñas del pool',
+      throw new AppServiceUnavailableException(
+        K.SISCOUT.MISSING_CREDENTIALS_KEY_READ,
       );
     }
 
@@ -191,7 +190,9 @@ export class SiscoutCredentialsService {
       .exec();
 
     if (!credential) {
-      throw new NotFoundException(`No existe la credencial '${nombre}'`);
+      throw new AppNotFoundException(K.SISCOUT.CREDENTIAL_NOT_FOUND, {
+        nombre,
+      });
     }
 
     return this.toView(credential);
@@ -222,7 +223,9 @@ export class SiscoutCredentialsService {
         .exec();
 
       if (!updated) {
-        throw new NotFoundException(`No existe la credencial '${nombre}'`);
+        throw new AppNotFoundException(K.SISCOUT.CREDENTIAL_NOT_FOUND, {
+          nombre,
+        });
       }
 
       this.logger.log(
@@ -231,7 +234,7 @@ export class SiscoutCredentialsService {
 
       return this.toView(updated);
     } catch (error) {
-      if (error instanceof NotFoundException) throw error;
+      if (error instanceof AppNotFoundException) throw error;
       throw this.translateDuplicate(error, dto.nombre ?? nombre);
     }
   }
@@ -242,7 +245,9 @@ export class SiscoutCredentialsService {
       .exec();
 
     if (deletedCount === 0) {
-      throw new NotFoundException(`No existe la credencial '${nombre}'`);
+      throw new AppNotFoundException(K.SISCOUT.CREDENTIAL_NOT_FOUND, {
+        nombre,
+      });
     }
 
     this.logger.log(`Credencial '${nombre}' eliminada`);
@@ -252,8 +257,8 @@ export class SiscoutCredentialsService {
 
   private requireCipher(): void {
     if (!this.cipher.isReady()) {
-      throw new ServiceUnavailableException(
-        'Falta SISCOUT_CREDENTIALS_KEY: no se guardan contraseñas sin cifrar',
+      throw new AppServiceUnavailableException(
+        K.SISCOUT.MISSING_CREDENTIALS_KEY_WRITE,
       );
     }
   }
@@ -285,7 +290,9 @@ export class SiscoutCredentialsService {
   /** El índice único de `nombre` se traduce a un 409, no a un 500. */
   private translateDuplicate(error: unknown, nombre: string): unknown {
     if ((error as { code?: number }).code === 11000) {
-      return new ConflictException(`Ya existe una credencial '${nombre}'`);
+      return new AppConflictException(K.SISCOUT.CREDENTIAL_ALREADY_EXISTS, {
+        nombre,
+      });
     }
     return error;
   }

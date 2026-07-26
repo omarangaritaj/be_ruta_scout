@@ -1,6 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
+import { AppNotFoundException } from '../common';
+import { K } from '../i18n';
 import type { CreateGrupoDto } from './dto/create-grupo.dto';
 import type { UpdateGrupoDto } from './dto/update-grupo.dto';
 import { Grupo, GrupoDocument } from './schemas/grupo.schema';
@@ -24,7 +26,7 @@ export class GruposService {
     const grupo = await this.grupoModel.findById(id).exec();
 
     if (!grupo) {
-      throw new NotFoundException(`No existe un grupo con id "${id}"`);
+      throw new AppNotFoundException(K.GROUPS.NOT_FOUND, { id });
     }
 
     return grupo;
@@ -39,7 +41,7 @@ export class GruposService {
       .exec();
 
     if (!grupo) {
-      throw new NotFoundException(`No existe un grupo con id "${id}"`);
+      throw new AppNotFoundException(K.GROUPS.NOT_FOUND, { id });
     }
 
     return grupo;
@@ -49,7 +51,7 @@ export class GruposService {
     const deleted = await this.grupoModel.findByIdAndDelete(id).exec();
 
     if (!deleted) {
-      throw new NotFoundException(`No existe un grupo con id "${id}"`);
+      throw new AppNotFoundException(K.GROUPS.NOT_FOUND, { id });
     }
   }
 }

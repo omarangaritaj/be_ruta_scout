@@ -1,6 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
+import { AppNotFoundException } from '../common';
+import { K } from '../i18n';
 import type { CreateUnidadDto } from './dto/create-unidad.dto';
 import type { UpdateUnidadDto } from './dto/update-unidad.dto';
 import { Unidad, UnidadDocument } from './schemas/unidad.schema';
@@ -24,7 +26,7 @@ export class UnidadesService {
     const unidad = await this.unidadModel.findById(id).exec();
 
     if (!unidad) {
-      throw new NotFoundException(`No existe una unidad con id "${id}"`);
+      throw new AppNotFoundException(K.UNITS.NOT_FOUND, { id });
     }
 
     return unidad;
@@ -39,7 +41,7 @@ export class UnidadesService {
       .exec();
 
     if (!unidad) {
-      throw new NotFoundException(`No existe una unidad con id "${id}"`);
+      throw new AppNotFoundException(K.UNITS.NOT_FOUND, { id });
     }
 
     return unidad;
@@ -49,7 +51,7 @@ export class UnidadesService {
     const deleted = await this.unidadModel.findByIdAndDelete(id).exec();
 
     if (!deleted) {
-      throw new NotFoundException(`No existe una unidad con id "${id}"`);
+      throw new AppNotFoundException(K.UNITS.NOT_FOUND, { id });
     }
   }
 }

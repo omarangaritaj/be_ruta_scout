@@ -4,6 +4,7 @@ import {
   ETIQUETA_NIVEL_SOLICITABLE,
   type NivelSolicitud,
 } from '../../catalogo-cargos/catalogo-cargos';
+import { K, t } from '../../i18n';
 import {
   clasesEmail,
   CONTACTO_EMAIL,
@@ -36,11 +37,11 @@ export default function SolicitudResuelta({
 
   return (
     <EmailLayout
-      preview={
+      preview={t(
         aprobado
-          ? 'Tu acceso a Ruta fue aprobado'
-          : 'Sobre tu solicitud de acceso a Ruta'
-      }
+          ? K.EMAIL.RESOLVED_APPROVED_PREVIEW
+          : K.EMAIL.RESOLVED_REJECTED_PREVIEW,
+      )}
       siteUrl={siteUrl}
     >
       <Section style={estilosEmail.contenido}>
@@ -49,9 +50,12 @@ export default function SolicitudResuelta({
           className={clasesEmail.heading}
           style={estilosEmail.titulo}
         >
-          {aprobado
-            ? `Hola ${primerNombre}, tu acceso fue aprobado`
-            : `Hola ${primerNombre}, sobre tu solicitud`}
+          {t(
+            aprobado
+              ? K.EMAIL.RESOLVED_APPROVED_HEADING
+              : K.EMAIL.RESOLVED_REJECTED_HEADING,
+            { nombre: primerNombre },
+          )}
         </Heading>
         <Text
           className={clasesEmail.text}
@@ -62,28 +66,14 @@ export default function SolicitudResuelta({
             color: '#475569',
           }}
         >
-          {aprobado ? (
-            <>
-              Tu solicitud de acceso a{' '}
-              <strong
-                className={clasesEmail.strong}
-                style={{ color: '#1e293b' }}
-              >
-                R.U.T.A.
-              </strong>{' '}
-              fue aprobada con estos datos:
-            </>
-          ) : (
-            <>
-              Tu solicitud de acceso a{' '}
-              <strong
-                className={clasesEmail.strong}
-                style={{ color: '#1e293b' }}
-              >
-                R.U.T.A.
-              </strong>{' '}
-              no fue aprobada en esta ocasión.
-            </>
+          {t(K.EMAIL.RESOLVED_REQUEST_PREFIX)}
+          <strong className={clasesEmail.strong} style={{ color: '#1e293b' }}>
+            {t(K.EMAIL.BRAND_RUTA)}
+          </strong>
+          {t(
+            aprobado
+              ? K.EMAIL.RESOLVED_APPROVED_SUFFIX
+              : K.EMAIL.RESOLVED_REJECTED_SUFFIX,
           )}
         </Text>
 
@@ -97,7 +87,7 @@ export default function SolicitudResuelta({
                 className={clasesEmail.strong}
                 style={{ color: '#1e293b' }}
               >
-                Nivel:
+                {t(K.EMAIL.LABEL_LEVEL)}
               </strong>{' '}
               {nivel ? ETIQUETA_NIVEL_SOLICITABLE[nivel] : ''}
             </Text>
@@ -113,7 +103,7 @@ export default function SolicitudResuelta({
                 className={clasesEmail.strong}
                 style={{ color: '#1e293b' }}
               >
-                Cargo:
+                {t(K.EMAIL.LABEL_POSITION)}
               </strong>{' '}
               {cargo ? etiquetaCargo(cargo) : ''}
             </Text>
@@ -126,7 +116,7 @@ export default function SolicitudResuelta({
                   className={clasesEmail.strong}
                   style={{ color: '#1e293b' }}
                 >
-                  Nota de quien aprobó:
+                  {t(K.EMAIL.LABEL_APPROVER_NOTE)}
                 </strong>{' '}
                 {nota}
               </Text>
@@ -150,7 +140,7 @@ export default function SolicitudResuelta({
                 className={clasesEmail.strong}
                 style={{ color: '#1e293b' }}
               >
-                Motivo indicado:
+                {t(K.EMAIL.LABEL_REJECTION_REASON)}
               </strong>{' '}
               {nota ?? ''}
             </Text>
@@ -159,7 +149,7 @@ export default function SolicitudResuelta({
 
         {aprobado ? (
           <>
-            <EmailButton href={siteUrl}>Entrar a R.U.T.A.</EmailButton>
+            <EmailButton href={siteUrl}>{t(K.EMAIL.RESOLVED_CTA)}</EmailButton>
             <Text
               className={clasesEmail.textSm}
               style={{
@@ -169,9 +159,7 @@ export default function SolicitudResuelta({
                 color: '#64748b',
               }}
             >
-              Al ingresar a la plataforma se activará un tutorial paso a paso.
-              Te invitamos a seguirlo completo para conocer el flujo principal
-              de R.U.T.A.
+              {t(K.EMAIL.RESOLVED_TUTORIAL_NOTICE)}
             </Text>
           </>
         ) : (
@@ -184,8 +172,7 @@ export default function SolicitudResuelta({
               color: '#475569',
             }}
           >
-            Si crees que hubo un error o tus datos cambiaron, puedes corregirlos
-            y enviar una nueva solicitud desde la app.
+            {t(K.EMAIL.RESOLVED_REJECTED_RETRY)}
           </Text>
         )}
 
@@ -198,7 +185,7 @@ export default function SolicitudResuelta({
             color: '#64748b',
           }}
         >
-          Si tienes preguntas, escríbenos a{' '}
+          {t(K.EMAIL.CONTACT_PROMPT)}
           <Link
             href={`mailto:${CONTACTO_EMAIL}`}
             className={clasesEmail.link}

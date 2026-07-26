@@ -1,17 +1,16 @@
-import {
-  BadRequestException,
-  ConflictException,
-  Inject,
-  Injectable,
-  Logger,
-  NotFoundException,
-} from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import {
   cargoEsValido,
   type NivelSolicitud,
 } from '../catalogo-cargos/catalogo-cargos';
+import {
+  AppBadRequestException,
+  AppConflictException,
+  AppNotFoundException,
+} from '../common';
+import { K } from '../i18n';
 import {
   EMAIL_NOTIFIER,
   type EmailNotifier,
@@ -106,16 +105,16 @@ export class SolicitudesAccesoService {
     const persona = await this.userModel.findById(userId).exec();
 
     if (!persona) {
-      throw new NotFoundException('No existe la persona autenticada');
+      throw new AppNotFoundException(K.REQUESTS.AUTHENTICATED_PERSON_NOT_FOUND);
     }
     if (persona.estadoAcceso === 'aprobado') {
-      throw new ConflictException('El acceso ya está aprobado');
+      throw new AppConflictException(K.REQUESTS.ACCESS_ALREADY_APPROVED);
     }
     if (persona.estadoAcceso === 'suspendido') {
-      throw new ConflictException('El acceso está suspendido');
+      throw new AppConflictException(K.REQUESTS.ACCESS_SUSPENDED);
     }
     if (!cargoEsValido(dto.cargo, dto.nivel)) {
-      throw new BadRequestException('El cargo no corresponde al nivel');
+      throw new AppBadRequestException(K.REQUESTS.POSITION_LEVEL_MISMATCH);
     }
 
     const activa = await this.solicitudModel
@@ -125,7 +124,7 @@ export class SolicitudesAccesoService {
       })
       .exec();
     if (activa) {
-      throw new ConflictException('Ya hay una solicitud en curso');
+      throw new AppConflictException(K.REQUESTS.ALREADY_IN_PROGRESS);
     }
 
     const snapshot = await this.snapshots.findDecrypted(persona.idSiscout);
@@ -135,7 +134,7 @@ export class SolicitudesAccesoService {
       districtId: dto.districtId,
     });
     if ('error' in territorio) {
-      throw new BadRequestException(territorio.error);
+      throw new AppBadRequestException(territorio.error);
     }
 
     const solicitud = await this.solicitudModel.create({
@@ -195,7 +194,7 @@ export class SolicitudesAccesoService {
       .populate('idPersona', 'name idSiscout tipo')
       .exec();
     if (!solicitud) {
-      throw new NotFoundException(`No existe la solicitud "${id}"`);
+      throw new AppNotFoundException(K.REQUESTS.NOT_FOUND, { id });
     }
     return solicitud;
   }
@@ -211,7 +210,7 @@ export class SolicitudesAccesoService {
   }> {
     const persona = await this.userModel.findById(userId).exec();
     if (!persona) {
-      throw new NotFoundException('No existe la persona autenticada');
+      throw new AppNotFoundException(K.REQUESTS.AUTHENTICATED_PERSON_NOT_FOUND);
     }
 
     const snapshot = await this.snapshots.findDecrypted(persona.idSiscout);
@@ -240,7 +239,7 @@ export class SolicitudesAccesoService {
     const cargo = dto.cargo ?? solicitud.cargoSolicitado;
 
     if (!cargoEsValido(cargo, nivel)) {
-      throw new BadRequestException('El cargo no corresponde al nivel');
+      throw new AppBadRequestException(K.REQUESTS.POSITION_LEVEL_MISMATCH);
     }
 
     await this.userModel
@@ -306,13 +305,13 @@ export class SolicitudesAccesoService {
     const solicitud = await this.solicitudModel.findById(id).exec();
 
     if (!solicitud) {
-      throw new NotFoundException(`No existe la solicitud "${id}"`);
+      throw new AppNotFoundException(K.REQUESTS.NOT_FOUND, { id });
     }
     if (
       solicitud.estado !== 'pendiente' &&
       solicitud.estado !== 'en_revision'
     ) {
-      throw new ConflictException('La solicitud ya fue resuelta');
+      throw new AppConflictException(K.REQUESTS.ALREADY_RESOLVED);
     }
 
     return solicitud;

@@ -1,11 +1,12 @@
-import {
-  BadRequestException,
-  ConflictException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
+import {
+  AppBadRequestException,
+  AppConflictException,
+  AppNotFoundException,
+} from '../common';
+import { K } from '../i18n';
 import type { CreateRoleDto } from './dto/create-role.dto';
 import type { UpdateRoleDto } from './dto/update-role.dto';
 import { Role, RoleDocument } from './schemas/role.schema';
@@ -23,13 +24,13 @@ export class RolesService {
 
   async findOne(id: string): Promise<RoleDocument> {
     const role = await this.roleModel.findById(id).exec();
-    if (!role) throw new NotFoundException(`No existe el rol "${id}"`);
+    if (!role) throw new AppNotFoundException(K.ROLES.NOT_FOUND, { id });
     return role;
   }
 
   async create(dto: CreateRoleDto): Promise<RoleDocument> {
     const existe = await this.roleModel.findOne({ nombre: dto.nombre }).exec();
-    if (existe) throw new ConflictException('Ya existe un rol con ese nombre');
+    if (existe) throw new AppConflictException(K.ROLES.NAME_ALREADY_EXISTS);
     return this.roleModel.create(dto);
   }
 
@@ -40,9 +41,7 @@ export class RolesService {
     // descripción. Es la salvaguarda para no dejar al super_admin sin poderes.
     if (role.esSistema) {
       if (dto.permissions || dto.status === 'inactivo' || dto.nombre) {
-        throw new BadRequestException(
-          'No se pueden alterar los permisos, el nombre ni el estado de un rol del sistema',
-        );
+        throw new AppBadRequestException(K.ROLES.SYSTEM_ROLE_LOCKED);
       }
     }
 
@@ -50,8 +49,7 @@ export class RolesService {
       const existe = await this.roleModel
         .findOne({ nombre: dto.nombre, _id: { $ne: role._id } })
         .exec();
-      if (existe)
-        throw new ConflictException('Ya existe un rol con ese nombre');
+      if (existe) throw new AppConflictException(K.ROLES.NAME_ALREADY_EXISTS);
     }
 
     if (dto.nombre !== undefined) role.nombre = dto.nombre;
@@ -65,7 +63,7 @@ export class RolesService {
   async remove(id: string): Promise<void> {
     const role = await this.findOne(id);
     if (role.esSistema) {
-      throw new BadRequestException('No se puede eliminar un rol del sistema');
+      throw new AppBadRequestException(K.ROLES.CANNOT_DELETE_SYSTEM_ROLE);
     }
     await role.deleteOne();
   }

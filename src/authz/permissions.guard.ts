@@ -1,16 +1,10 @@
-import {
-  CanActivate,
-  ExecutionContext,
-  ForbiddenException,
-  Injectable,
-} from '@nestjs/common';
+import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import type { AuthUser } from '../auth/strategies/jwt.strategy';
+import { AppForbiddenException } from '../common';
+import { K } from '../i18n';
 import { PermissionsService } from './permissions.service';
 import { REQUIRE_PERMISSIONS } from './require-permissions.decorator';
-
-export const MENSAJE_ACCESO_DENEGADO =
-  'Debes solicitar acceso para realizar esta acción, solicítalo a tu administrador';
 
 /**
  * Valida los permisos declarados con `@RequirePermissions`. Corre DESPUÉS de
@@ -36,7 +30,7 @@ export class PermissionsGuard implements CanActivate {
     const req = context.switchToHttp().getRequest<{ user?: AuthUser }>();
     const userId = req.user?.userId;
     if (!userId || !(await this.permissions.can(userId, required))) {
-      throw new ForbiddenException(MENSAJE_ACCESO_DENEGADO);
+      throw new AppForbiddenException(K.AUTHZ.ACCESS_DENIED);
     }
     return true;
   }

@@ -10,6 +10,7 @@ import {
   Text,
 } from '@react-email/components';
 import type { ReactNode } from 'react';
+import { K, t } from '../../i18n';
 
 export const MORADO = '#4d006e';
 export const CONTACTO_EMAIL = 'desarrollo.tecnologico@scout.org.co';
@@ -144,7 +145,7 @@ export function EmailLayout({
                   <td style={{ verticalAlign: 'middle' }}>
                     <Img
                       src={`${siteUrl}/brand/logo-dnpj.png`}
-                      alt="Dirección Nacional de Programa de Jóvenes"
+                      alt={t(K.EMAIL.LOGO_DNPJ_FULL_ALT)}
                       width="58"
                       height="52"
                       style={{ display: 'block', border: 0 }}
@@ -164,7 +165,7 @@ export function EmailLayout({
                   <td style={{ verticalAlign: 'middle' }}>
                     <Img
                       src={`${siteUrl}/brand/logo-scouts-colombia-positive.png`}
-                      alt="Scouts de Colombia"
+                      alt={t(K.EMAIL.LOGO_SCOUTS_ALT)}
                       width="149"
                       height="64"
                       style={{ display: 'block', border: 0 }}
@@ -202,7 +203,7 @@ export function EmailLayout({
                   >
                     <Img
                       src={`${siteUrl}/brand/logo-dnpj.png`}
-                      alt="DNPJ"
+                      alt={t(K.EMAIL.LOGO_DNPJ_ALT)}
                       width="40"
                       height="36"
                       style={{ display: 'block', border: 0, opacity: 0.6 }}
@@ -222,12 +223,12 @@ export function EmailLayout({
                         className="email-footer-title"
                         style={{ color: MORADO }}
                       >
-                        Herramienta Ruta
+                        {t(K.EMAIL.FOOTER_TOOL)}
                       </strong>
                       <br />
-                      Dirección Nacional de Programa de Jóvenes
+                      {t(K.EMAIL.FOOTER_DIRECTORATE)}
                       <br />
-                      Asociación Scouts de Colombia
+                      {t(K.EMAIL.FOOTER_ORGANIZATION)}
                     </Text>
                   </td>
                 </tr>

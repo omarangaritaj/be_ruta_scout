@@ -1,9 +1,11 @@
 import { Module } from '@nestjs/common';
+import { APP_FILTER } from '@nestjs/core';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
 import { AuthzModule } from './authz/authz.module';
 import { CatalogoCargosModule } from './catalogo-cargos/catalogo-cargos.module';
+import { CodedExceptionFilter } from './common';
 import { AppConfigModule } from './config';
 import { CryptoModule } from './crypto';
 import { DatabaseModule } from './database/database.module';
@@ -40,6 +42,9 @@ import { UsersModule } from './users/users.module';
     PowersyncModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [
+    AppService,
+    { provide: APP_FILTER, useClass: CodedExceptionFilter },
+  ],
 })
 export class AppModule {}

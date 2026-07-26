@@ -1,5 +1,7 @@
-import { BadRequestException, Injectable, PipeTransform } from '@nestjs/common';
+import { Injectable, PipeTransform } from '@nestjs/common';
 import type { ZodType } from 'zod';
+import { K, t } from '../../i18n';
+import { AppBadRequestException } from '../exceptions/app.exceptions';
 
 /**
  * Valida el cuerpo de la petición contra un esquema Zod.
@@ -18,10 +20,9 @@ export class ZodValidationPipe<T> implements PipeTransform<unknown, T> {
     const result = this.schema.safeParse(value);
 
     if (!result.success) {
-      throw new BadRequestException({
-        message: 'Datos de entrada inválidos',
+      throw new AppBadRequestException(K.VALIDATION.INVALID_INPUT, undefined, {
         errores: result.error.issues.map((issue) => ({
-          campo: issue.path.join('.') || '(cuerpo)',
+          campo: issue.path.join('.') || t(K.VALIDATION.BODY_FIELD),
           mensaje: issue.message,
         })),
       });

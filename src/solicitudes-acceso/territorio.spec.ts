@@ -1,3 +1,4 @@
+import { K } from '../i18n';
 import { resolverTerritorio } from './territorio';
 
 describe('resolverTerritorio', () => {
@@ -21,7 +22,7 @@ describe('resolverTerritorio', () => {
 
   it('grupo: sin group_id en ningún lado → error', () => {
     expect(resolverTerritorio('grupo', null, {})).toEqual({
-      error: 'Falta el grupo',
+      error: K.REQUESTS.MISSING_GROUP,
     });
   });
 

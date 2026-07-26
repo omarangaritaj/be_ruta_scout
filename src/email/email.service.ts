@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { render } from '@react-email/components';
 import type { AppConfigService } from '../config';
 import type { NivelSolicitud } from '../catalogo-cargos/catalogo-cargos';
+import { K, t } from '../i18n';
 import type { EmailNotifier } from './email-notifier.port';
 import { EMAIL_SENDER, type EmailSender } from './email-sender.port';
 import SolicitudRecibida from './templates/solicitud-recibida';
@@ -45,7 +46,7 @@ export class EmailService implements EmailNotifier {
     );
     await this.sender.send({
       to: params.to,
-      subject: 'Recibimos tu solicitud de acceso a Ruta',
+      subject: t(K.EMAIL.RECEIVED_SUBJECT),
       html,
     });
   }
@@ -71,10 +72,11 @@ export class EmailService implements EmailNotifier {
     );
     await this.sender.send({
       to: params.to,
-      subject:
+      subject: t(
         params.resultado === 'aprobado'
-          ? '¡Tu acceso a Ruta fue aprobado!'
-          : 'Sobre tu solicitud de acceso a Ruta',
+          ? K.EMAIL.RESOLVED_APPROVED_SUBJECT
+          : K.EMAIL.RESOLVED_REJECTED_SUBJECT,
+      ),
       html,
     });
   }

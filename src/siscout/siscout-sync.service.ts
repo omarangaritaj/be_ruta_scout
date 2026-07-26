@@ -1,18 +1,15 @@
-import {
-  Inject,
-  Injectable,
-  Logger,
-  ServiceUnavailableException,
-} from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { randomUUID } from 'node:crypto';
 import { Model } from 'mongoose';
+import { AppServiceUnavailableException } from '../common';
 import {
   CEDULA_HASHER,
   SNAPSHOT_CIPHER,
   type CedulaHasher,
   type FieldCipher,
 } from '../crypto';
+import { K } from '../i18n';
 import {
   User,
   UserDocument,
@@ -116,29 +113,25 @@ export class SiscoutSyncService {
 
   async synchronize(): Promise<SyncResult> {
     if (!this.client.isConfigured()) {
-      throw new ServiceUnavailableException(
-        'El cliente de SiScout no está configurado (falta SISCOUT_BASE_URL)',
-      );
+      throw new AppServiceUnavailableException(K.SISCOUT.CLIENT_NOT_CONFIGURED);
     }
 
     if (!this.credentials.isReady()) {
-      throw new ServiceUnavailableException(
-        'Falta SISCOUT_CREDENTIALS_KEY: no se pueden descifrar las credenciales del pool',
+      throw new AppServiceUnavailableException(
+        K.SISCOUT.MISSING_CREDENTIALS_KEY_SYNC,
       );
     }
 
     if (!this.cipher.isReady()) {
-      throw new ServiceUnavailableException(
-        'Falta SISCOUT_ENCRYPTION_KEY: no se sincroniza sin poder cifrar los campos sensibles',
+      throw new AppServiceUnavailableException(
+        K.SISCOUT.MISSING_ENCRYPTION_KEY_SYNC,
       );
     }
 
     // Dos corridas simultáneas se pisarían el syncId y se marcarían huérfanos
     // registros que la otra todavía no ha procesado.
     if (this.inProgress) {
-      throw new ServiceUnavailableException(
-        'Ya hay una sincronización en curso',
-      );
+      throw new AppServiceUnavailableException(K.SISCOUT.SYNC_IN_PROGRESS);
     }
 
     // La configuración vigente se lee al inicio de cada corrida: cualquier
@@ -209,8 +202,8 @@ export class SiscoutSyncService {
    */
   async importMembers(members: SiscoutMember[]): Promise<SyncResult> {
     if (!this.cipher.isReady()) {
-      throw new ServiceUnavailableException(
-        'Falta SISCOUT_ENCRYPTION_KEY: no se importa sin poder cifrar los campos sensibles',
+      throw new AppServiceUnavailableException(
+        K.SISCOUT.MISSING_ENCRYPTION_KEY_IMPORT,
       );
     }
 

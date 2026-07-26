@@ -1,11 +1,7 @@
-import {
-  BadRequestException,
-  Controller,
-  Get,
-  Query,
-  UseGuards,
-} from '@nestjs/common';
+import { Controller, Get, Query, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { AppBadRequestException } from '../common';
+import { K } from '../i18n';
 import {
   CARGOS,
   cargosPorNivel,
@@ -24,9 +20,7 @@ export class CatalogoCargosController {
       return CARGOS;
     }
     if (!esNivelSolicitud(nivel)) {
-      throw new BadRequestException(
-        `nivel inválido: debe ser rama, grupo, region o nacion`,
-      );
+      throw new AppBadRequestException(K.VALIDATION.INVALID_LEVEL);
     }
     return cargosPorNivel(nivel);
   }

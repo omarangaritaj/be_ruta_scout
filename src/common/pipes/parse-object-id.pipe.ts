@@ -1,4 +1,6 @@
-import { BadRequestException, Injectable, PipeTransform } from '@nestjs/common';
+import { Injectable, PipeTransform } from '@nestjs/common';
+import { K } from '../../i18n';
+import { AppBadRequestException } from '../exceptions/app.exceptions';
 
 /**
  * Valida que un parámetro de ruta sea un ObjectId con forma válida,
@@ -8,9 +10,9 @@ import { BadRequestException, Injectable, PipeTransform } from '@nestjs/common';
 export class ParseObjectIdPipe implements PipeTransform<string, string> {
   transform(value: string): string {
     if (!/^[0-9a-fA-F]{24}$/.test(value)) {
-      throw new BadRequestException(
-        `"${value}" no es un ObjectId válido (se esperan 24 caracteres hexadecimales)`,
-      );
+      throw new AppBadRequestException(K.VALIDATION.INVALID_OBJECT_ID, {
+        valor: value,
+      });
     }
 
     return value;

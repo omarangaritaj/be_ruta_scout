@@ -1,11 +1,12 @@
-import {
-  ConflictException,
-  ForbiddenException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, type QueryFilter } from 'mongoose';
+import {
+  AppConflictException,
+  AppForbiddenException,
+  AppNotFoundException,
+} from '../common';
+import { K } from '../i18n';
 import type { CreateUserDto } from './dto/create-user.dto';
 import type { ListUsersDto, PaginatedUsers } from './dto/list-users.dto';
 import type { UpdateUserDto } from './dto/update-user.dto';
@@ -54,7 +55,7 @@ export class UsersService {
     } catch (error) {
       // `idSiscout` es único: sin esto Mongoose devolvería un 500 opaco.
       if (isDuplicateKey(error)) {
-        throw new ConflictException('Ya existe una persona con ese idSiscout');
+        throw new AppConflictException(K.USERS.SISCOUT_ID_ALREADY_EXISTS);
       }
       throw error;
     }
@@ -128,7 +129,7 @@ export class UsersService {
       .exec();
 
     if (!user) {
-      throw new NotFoundException(`No existe un usuario con id "${id}"`);
+      throw new AppNotFoundException(K.USERS.NOT_FOUND, { id });
     }
 
     return user;
@@ -146,17 +147,15 @@ export class UsersService {
     dto: UpdateUserDto,
   ): Promise<UserDocument> {
     if (actorId === id && touchesAccess(dto)) {
-      throw new ForbiddenException('No puedes modificar tu propio acceso');
+      throw new AppForbiddenException(K.USERS.CANNOT_MODIFY_OWN_ACCESS);
     }
 
     const target = await this.userModel.findById(id).exec();
     if (!target) {
-      throw new NotFoundException(`No existe un usuario con id "${id}"`);
+      throw new AppNotFoundException(K.USERS.NOT_FOUND, { id });
     }
     if (target.nivelAcceso === 'super_admin') {
-      throw new ForbiddenException(
-        'No se gestiona a un super administrador desde el panel',
-      );
+      throw new AppForbiddenException(K.USERS.CANNOT_MANAGE_SUPER_ADMIN);
     }
 
     try {
@@ -164,7 +163,7 @@ export class UsersService {
       return await target.save();
     } catch (error) {
       if (isDuplicateKey(error)) {
-        throw new ConflictException('Ya existe una persona con ese idSiscout');
+        throw new AppConflictException(K.USERS.SISCOUT_ID_ALREADY_EXISTS);
       }
       throw error;
     }
@@ -174,7 +173,7 @@ export class UsersService {
     const deleted = await this.userModel.findByIdAndDelete(id).exec();
 
     if (!deleted) {
-      throw new NotFoundException(`No existe un usuario con id "${id}"`);
+      throw new AppNotFoundException(K.USERS.NOT_FOUND, { id });
     }
   }
 }

@@ -1,15 +1,16 @@
-import {
-  BadRequestException,
-  ForbiddenException,
-  Injectable,
-  UnauthorizedException,
-} from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import {
   Asistencia,
   AsistenciaDocument,
 } from '../asistencia/asistencia.schema';
+import {
+  AppBadRequestException,
+  AppForbiddenException,
+  AppUnauthorizedException,
+} from '../common';
+import { K } from '../i18n';
 import { User, UserDocument } from '../users/schemas/user.schema';
 import type { WriteOp } from './dto/write-batch.dto';
 
@@ -39,10 +40,10 @@ export class PowersyncService {
   async applyWrites(actorId: string, ops: WriteOp[]): Promise<void> {
     const actor = await this.userModel.findById(actorId).exec();
     if (!actor) {
-      throw new UnauthorizedException('La cuenta ya no existe');
+      throw new AppUnauthorizedException(K.AUTH.ACCOUNT_GONE);
     }
     if (actor.estadoAcceso !== 'aprobado') {
-      throw new ForbiddenException('Tu acceso no está aprobado');
+      throw new AppForbiddenException(K.POWERSYNC.ACCESS_NOT_APPROVED);
     }
 
     const scope: WriteScope = {
@@ -53,7 +54,9 @@ export class PowersyncService {
 
     for (const op of ops) {
       if (op.table !== 'asistencia') {
-        throw new BadRequestException(`Tabla no soportada: ${op.table}`);
+        throw new AppBadRequestException(K.POWERSYNC.UNSUPPORTED_TABLE, {
+          tabla: op.table,
+        });
       }
       await this.applyAsistencia(op, scope);
     }
@@ -79,18 +82,14 @@ export class PowersyncService {
     const fechaRaw = text(data.fecha);
 
     if (!idUnidad || !idProtagonista || !fechaRaw) {
-      throw new BadRequestException(
-        'asistencia requiere idUnidad, idProtagonista y fecha',
-      );
+      throw new AppBadRequestException(K.POWERSYNC.ATTENDANCE_REQUIRED_FIELDS);
     }
     if (!this.canWrite(idUnidad, scope)) {
-      throw new ForbiddenException(
-        'Solo puedes registrar asistencia de tu unidad',
-      );
+      throw new AppForbiddenException(K.POWERSYNC.ATTENDANCE_OTHER_UNIT);
     }
     const fecha = new Date(fechaRaw);
     if (Number.isNaN(fecha.getTime())) {
-      throw new BadRequestException('fecha inválida');
+      throw new AppBadRequestException(K.POWERSYNC.INVALID_DATE);
     }
 
     await this.asistenciaModel

@@ -4,6 +4,7 @@ import {
   ETIQUETA_NIVEL_SOLICITABLE,
   type NivelSolicitud,
 } from '../../catalogo-cargos/catalogo-cargos';
+import { K, t } from '../../i18n';
 import {
   clasesEmail,
   CONTACTO_EMAIL,
@@ -28,22 +29,22 @@ export default function SolicitudRecibida({
   siteUrl,
 }: SolicitudRecibidaProps) {
   const primerNombre = nombre.trim().split(/\s+/)[0] || nombre;
-  const nivelConTerritorio = `${ETIQUETA_NIVEL_SOLICITABLE[nivel]}${
-    territorioNombre ? ` - ${territorioNombre}` : ''
-  }`;
+  const nivelConTerritorio = territorioNombre
+    ? t(K.EMAIL.LEVEL_WITH_TERRITORY, {
+        nivel: ETIQUETA_NIVEL_SOLICITABLE[nivel],
+        territorio: territorioNombre,
+      })
+    : ETIQUETA_NIVEL_SOLICITABLE[nivel];
 
   return (
-    <EmailLayout
-      preview="Bienvenido a Ruta: recibimos tu solicitud de acceso"
-      siteUrl={siteUrl}
-    >
+    <EmailLayout preview={t(K.EMAIL.RECEIVED_PREVIEW)} siteUrl={siteUrl}>
       <Section style={estilosEmail.contenido}>
         <Heading
           as="h2"
           className={clasesEmail.heading}
           style={estilosEmail.titulo}
         >
-          ¡Hola, {primerNombre}!
+          {t(K.EMAIL.RECEIVED_GREETING, { nombre: primerNombre })}
         </Heading>
         <Text
           className={clasesEmail.text}
@@ -54,12 +55,11 @@ export default function SolicitudRecibida({
             color: '#475569',
           }}
         >
-          Nos alegra mucho que estés aquí. Tu cuenta en{' '}
+          {t(K.EMAIL.RECEIVED_INTRO_BEFORE)}
           <strong className={clasesEmail.strong} style={{ color: '#1e293b' }}>
-            R.U.T.A.
+            {t(K.EMAIL.BRAND_RUTA)}
           </strong>
-          , la herramienta de Registro de Unidad, Trayectoria y Acompañamiento
-          de la Dirección Nacional de Programa de Jóvenes, ya está lista.
+          {t(K.EMAIL.RECEIVED_INTRO_AFTER)}
         </Text>
         <Text
           className={clasesEmail.text}
@@ -70,7 +70,7 @@ export default function SolicitudRecibida({
             color: '#475569',
           }}
         >
-          También recibimos tu solicitud de acceso con estos datos:
+          {t(K.EMAIL.RECEIVED_DATA_INTRO)}
         </Text>
 
         <Section className={clasesEmail.detail} style={estilosEmail.detalle}>
@@ -79,7 +79,7 @@ export default function SolicitudRecibida({
             style={{ margin: '0 0 6px 0', fontSize: 13, color: '#64748b' }}
           >
             <strong className={clasesEmail.strong} style={{ color: '#1e293b' }}>
-              Nivel:
+              {t(K.EMAIL.LABEL_LEVEL)}
             </strong>{' '}
             {nivelConTerritorio}
           </Text>
@@ -88,7 +88,7 @@ export default function SolicitudRecibida({
             style={{ margin: 0, fontSize: 13, color: '#64748b' }}
           >
             <strong className={clasesEmail.strong} style={{ color: '#1e293b' }}>
-              Cargo:
+              {t(K.EMAIL.LABEL_POSITION)}
             </strong>{' '}
             {etiquetaCargo(cargo)}
           </Text>
@@ -103,8 +103,7 @@ export default function SolicitudRecibida({
             color: '#475569',
           }}
         >
-          Alguien de tu organización revisará tu solicitud y recibirás un correo
-          cuando sea aprobada o rechazada.
+          {t(K.EMAIL.RECEIVED_REVIEW_NOTICE)}
         </Text>
         <Text
           className={clasesEmail.textSm}
@@ -115,7 +114,7 @@ export default function SolicitudRecibida({
             color: '#64748b',
           }}
         >
-          Si tienes preguntas, escríbenos a{' '}
+          {t(K.EMAIL.CONTACT_PROMPT)}
           <Link
             href={`mailto:${CONTACTO_EMAIL}`}
             className={clasesEmail.link}
