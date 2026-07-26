@@ -21,10 +21,6 @@ RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --prod --frozen-l
 FROM base AS build
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-# El gate va aquí y no en un runner de CI: así ninguna imagen desplegable puede
-# existir sin haber pasado tipos, lint, tests y el guard del catálogo i18n, se
-# construya donde se construya. `verify` usa `lint:check` (sin --fix), porque un
-# lint que corrige en vez de fallar no es un gate.
 RUN pnpm verify
 RUN pnpm build
 
