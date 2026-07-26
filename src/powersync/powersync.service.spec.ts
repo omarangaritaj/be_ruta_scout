@@ -110,6 +110,12 @@ describe('PowersyncService', () => {
     });
   });
 
+  it('interpreta presente como 0/1 (integer del SQLite del cliente)', async () => {
+    await make(superAdmin);
+    await service.applyWrites('a', [put({ ...validData, presente: 0 })]);
+    expect(lastUpsert?.set.presente).toBe(false);
+  });
+
   it('un dirigente NO puede escribir asistencia de otra unidad', async () => {
     await make(dirigente);
     await expect(

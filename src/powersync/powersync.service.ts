@@ -101,7 +101,8 @@ export class PowersyncService {
             idUnidad,
             idProtagonista,
             fecha,
-            presente: data.presente !== false,
+            // El cliente (SQLite) manda presente como integer 0/1, no boolean.
+            presente: data.presente === true || data.presente === 1,
             registradoPor: scope.actorId,
           },
         },
