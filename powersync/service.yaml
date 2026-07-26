@@ -37,10 +37,15 @@ client_auth:
   supabase: false
   audience:
     - !env PS_JWT_AUDIENCE
-  jwks_uri: !env PS_JWKS_URI
-  # jwks:
-  #   keys:
-  #     - kty: oct
-  #       alg: HS256
-  #       kid: be_ruta-hs256
-  #       k: !env PS_JWT_SECRET_B64URL
+  # Slice actual (paso 1): HS256 con el secreto de be_ruta. El token lo emite
+  # be_ruta en GET /auth/powersync-token (aud=powersync, exp 5m). Requiere
+  # PS_JWT_SECRET_B64URL = base64url del JWT_SECRET de be_ruta.
+  jwks:
+    keys:
+      - kty: oct
+        alg: HS256
+        kid: be_ruta-hs256
+        k: !env PS_JWT_SECRET_B64URL
+  # Endurecimiento (paso 2): RS256 vía JWKS. Comenta el bloque `jwks:` de arriba
+  # y descomenta esto, apuntando PS_JWKS_URI a be_ruta GET /auth/jwks.
+  # jwks_uri: !env PS_JWKS_URI

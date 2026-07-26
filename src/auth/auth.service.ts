@@ -1,5 +1,6 @@
 import {
   ConflictException,
+  ForbiddenException,
   Inject,
   Injectable,
   NotFoundException,
@@ -54,8 +55,20 @@ export interface AuthResult {
   nextStep: NextStep;
 }
 
+/** Credenciales que el cliente offline usa para conectarse a PowerSync. */
+export interface PowerSyncTokenResult {
+  token: string;
+  powersyncUrl: string | null;
+}
+
 const BCRYPT_ROUNDS = 12;
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
+
+// Audiencia que debe llevar el token PowerSync; DEBE coincidir con
+// `client_auth.audience` en powersync/service.yaml (PS_JWT_AUDIENCE).
+const POWERSYNC_AUDIENCE = 'powersync';
+// Vida corta: el cliente lo renueva vía fetchCredentials cuando reconecta.
+const POWERSYNC_TOKEN_TTL = '5m';
 
 @Injectable()
 export class AuthService {
@@ -150,6 +163,32 @@ export class AuthService {
     }
     const permissions = await this.permissions.effectivePermissions(userId);
     return { ...this.toPerson(user), permissions: [...permissions] };
+  }
+
+  /**
+   * Emite un token de corta vida para que el cliente se autentique contra
+   * PowerSync (sync offline de campo). Solo para usuarios con acceso aprobado:
+   * los datos de campo son de menores y solo un dirigente con acceso los sincroniza.
+   */
+  async powersyncToken(userId: string): Promise<PowerSyncTokenResult> {
+    const user = await this.userModel.findById(userId).exec();
+    if (!user) {
+      throw new UnauthorizedException('La cuenta ya no existe');
+    }
+    if (user.estadoAcceso !== 'aprobado') {
+      throw new ForbiddenException(
+        'Solo un usuario con acceso aprobado puede sincronizar datos de campo',
+      );
+    }
+
+    const token = await this.jwt.signAsync(
+      { sub: String(user._id) },
+      { audience: POWERSYNC_AUDIENCE, expiresIn: POWERSYNC_TOKEN_TTL },
+    );
+    const powersyncUrl =
+      this.config.get('POWERSYNC_URL', { infer: true }) ?? null;
+
+    return { token, powersyncUrl };
   }
 
   private async issueAuthResult(user: UserDocument): Promise<AuthResult> {

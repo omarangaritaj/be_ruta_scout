@@ -1,5 +1,6 @@
 import {
   ConflictException,
+  ForbiddenException,
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
@@ -60,6 +61,36 @@ describe('AuthService', () => {
       const r = await svc.check('1');
       expect(r.status).toBe('registered');
       expect(r.person?.name).toBe('Ana');
+    });
+  });
+
+  describe('powersyncToken', () => {
+    it('emite un token con audiencia powersync para un usuario aprobado', async () => {
+      const { svc } = makeService({
+        user: { ...base, estadoAcceso: 'aprobado' },
+      });
+      const res = await svc.powersyncToken('abc');
+      expect(res.token).toBe('access.jwt');
+      expect(jwt.signAsync).toHaveBeenCalledWith(
+        { sub: 'abc' },
+        expect.objectContaining({ audience: 'powersync' }),
+      );
+    });
+
+    it('rechaza a quien no tiene acceso aprobado', async () => {
+      const { svc } = makeService({
+        user: { ...base, estadoAcceso: 'pendiente' },
+      });
+      await expect(svc.powersyncToken('abc')).rejects.toBeInstanceOf(
+        ForbiddenException,
+      );
+    });
+
+    it('falla si el usuario ya no existe', async () => {
+      const { svc } = makeService({ user: null });
+      await expect(svc.powersyncToken('abc')).rejects.toBeInstanceOf(
+        UnauthorizedException,
+      );
     });
   });
 

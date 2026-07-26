@@ -59,12 +59,13 @@ El stack queda **cableado**; esto es lo que sigue, en orden. Nada de esto está
 hecho todavía.
 
 ### be_ruta (backend)
-1. **Token PowerSync** — `GET /auth/powersync-token` (tras `JwtAuthGuard`) que
-   devuelve un JWT con `{ sub: userId, aud: "powersync", exp: ~5min }`. Firmado
-   HS256 con `JWT_SECRET` (arranque rápido) o RS256 (paso 2).
-2. **JWKS (recomendado)** — par RS256 + `GET /auth/jwks` público con la clave
-   pública. Cambia el token del paso 1 a RS256 y apunta `PS_JWKS_URI` aquí. Esto
-   evita compartir el secreto simétrico con PowerSync.
+1. ✅ **HECHO — Token PowerSync** — `GET /auth/powersync-token` (tras
+   `JwtAuthGuard`, solo usuarios con acceso **aprobado**) emite un JWT **HS256**
+   con `{ sub: userId, aud: "powersync", exp: 5m }` y devuelve `{ token,
+   powersyncUrl }`. `service.yaml` valida por HS256 (`PS_JWT_SECRET_B64URL`).
+2. **JWKS (endurecimiento)** — par RS256 + `GET /auth/jwks` público con la clave
+   pública. Cambia el token del paso 1 a RS256 y `service.yaml` a `jwks_uri`
+   (`PS_JWKS_URI`). Evita compartir el secreto simétrico con PowerSync.
 3. **Endpoint de subida** — `POST /powersync/write` que recibe el batch de
    operaciones del cliente (`put`/`patch`/`delete` por colección) y las aplica a
    Mongo respetando permisos y el scope por unidad.

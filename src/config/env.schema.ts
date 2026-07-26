@@ -109,6 +109,10 @@ export const envSchema = z.object({
   // URL pública del sitio, para los enlaces y logos de los correos.
   SITE_URL: z.string().url().default('https://ruta.scout.org.co'),
 
+  // URL del servicio PowerSync (offline-first). Se devuelve al cliente junto al
+  // token para que conecte. Opcional: sin ella el token igual se emite.
+  POWERSYNC_URL: optionalEnv(z.url({ error: 'debe ser una URL válida' })),
+
   // Los ajustes operativos de la sincronización (zonas, tamaños de página y de
   // lote, cron e interruptor) NO viven aquí: son configuración editable en
   // tiempo de ejecución, en la colección `siscout_config`. Ver
