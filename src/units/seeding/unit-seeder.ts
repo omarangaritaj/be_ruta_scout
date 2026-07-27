@@ -26,8 +26,20 @@ export interface PlannedUnit {
 
 export type SeedSkipReason = 'no-people' | 'no-adults' | 'no-protagonists';
 
+/**
+ * Protagonista cuyo `cargoSiscout` no está en el catálogo de alias de rama. Se
+ * queda sin unidad y hay que reportarlo: el texto va **literal**, sin
+ * normalizar, porque es justo lo que hace falta para ampliar el catálogo.
+ */
+export interface DiscardedPerson {
+  _id: string;
+  name: string;
+  cargoSiscout?: string;
+}
+
 export interface SeedPlan {
   units: PlannedUnit[];
+  discarded: DiscardedPerson[];
   skipped?: SeedSkipReason;
 }
 
@@ -36,27 +48,47 @@ export function placeholderName(branch: Branch, index = 1): string {
   return index > 1 ? `${base} ${index}` : base;
 }
 
-function membersByBranch(people: SeedPerson[]): Map<Branch, string[]> {
+interface Classification {
+  grouped: Map<Branch, string[]>;
+  discarded: DiscardedPerson[];
+}
+
+function classifyProtagonists(people: SeedPerson[]): Classification {
   const grouped = new Map<Branch, string[]>();
+  const discarded: DiscardedPerson[] = [];
 
   for (const person of people) {
     if (person.tipo !== D.PERSON_TYPE.PROTAGONIST) continue;
     const branch = ramaDeEtiquetaSiscout(person.cargoSiscout);
-    if (!branch) continue;
+    if (!branch) {
+      discarded.push({
+        _id: person._id,
+        name: person.name,
+        cargoSiscout: person.cargoSiscout,
+      });
+      continue;
+    }
     grouped.set(branch, [...(grouped.get(branch) ?? []), person._id]);
   }
 
-  return grouped;
+  return { grouped, discarded };
 }
 
 export function planGroupSeed({ groupId, people }: SeedInput): SeedPlan {
-  if (people.length === 0) return { units: [], skipped: 'no-people' };
+  if (people.length === 0) {
+    return { units: [], discarded: [], skipped: 'no-people' };
+  }
+
+  const { grouped, discarded } = classifyProtagonists(people);
 
   const adults = people.filter((p) => p.tipo === D.PERSON_TYPE.ADULT);
-  if (adults.length === 0) return { units: [], skipped: 'no-adults' };
+  if (adults.length === 0) {
+    return { units: [], discarded, skipped: 'no-adults' };
+  }
 
-  const grouped = membersByBranch(people);
-  if (grouped.size === 0) return { units: [], skipped: 'no-protagonists' };
+  if (grouped.size === 0) {
+    return { units: [], discarded, skipped: 'no-protagonists' };
+  }
 
   const withDistrict = people.find((p) => p.districtId !== undefined);
 
@@ -73,5 +105,5 @@ export function planGroupSeed({ groupId, people }: SeedInput): SeedPlan {
     }),
   );
 
-  return { units };
+  return { units, discarded };
 }

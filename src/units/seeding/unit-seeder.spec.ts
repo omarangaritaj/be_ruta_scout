@@ -73,6 +73,7 @@ describe('planGroupSeed', () => {
   it('sin personas no siembra', () => {
     expect(planGroupSeed({ groupId: 304, people: [] })).toEqual({
       units: [],
+      discarded: [],
       skipped: 'no-people',
     });
   });
@@ -80,6 +81,7 @@ describe('planGroupSeed', () => {
   it('sin adultos no puede haber jefe y no siembra', () => {
     expect(planGroupSeed({ groupId: 304, people: [cub] })).toEqual({
       units: [],
+      discarded: [],
       skipped: 'no-adults',
     });
   });
@@ -87,7 +89,67 @@ describe('planGroupSeed', () => {
   it('sin protagonistas no hay unidad que crear', () => {
     expect(planGroupSeed({ groupId: 304, people: [chief] })).toEqual({
       units: [],
+      discarded: [],
       skipped: 'no-protagonists',
+    });
+  });
+
+  describe('protagonistas sin rama legible', () => {
+    const stray = {
+      _id: 'p9',
+      name: 'Iván Soto',
+      tipo: 'protagonista' as const,
+      cargoSiscout: 'LoBaToS  DE  ALGO RARO',
+    };
+
+    it('no los mete en ninguna unidad', () => {
+      const plan = planGroupSeed({
+        groupId: 304,
+        people: [chief, cub, stray],
+      });
+      const everyone = plan.units.flatMap((u) => u.members);
+      expect(everyone).not.toContain('p9');
+    });
+
+    it('los reporta con el cargoSiscout literal, sin normalizar', () => {
+      const plan = planGroupSeed({
+        groupId: 304,
+        people: [chief, cub, stray],
+      });
+      expect(plan.discarded).toEqual([
+        {
+          _id: 'p9',
+          name: 'Iván Soto',
+          cargoSiscout: 'LoBaToS  DE  ALGO RARO',
+        },
+      ]);
+    });
+
+    it('reporta también a quien no trae cargoSiscout alguno', () => {
+      const plan = planGroupSeed({
+        groupId: 304,
+        people: [
+          chief,
+          cub,
+          { _id: 'p8', name: 'Sin Cargo', tipo: 'protagonista' as const },
+        ],
+      });
+      expect(plan.discarded).toEqual([
+        { _id: 'p8', name: 'Sin Cargo', cargoSiscout: undefined },
+      ]);
+    });
+
+    it('los reporta aunque el grupo no tenga ningún adulto', () => {
+      const plan = planGroupSeed({ groupId: 304, people: [stray] });
+      expect(plan.skipped).toBe('no-adults');
+      expect(plan.discarded).toHaveLength(1);
+    });
+
+    it('un grupo cuyos protagonistas son todos ilegibles no genera unidades', () => {
+      const plan = planGroupSeed({ groupId: 304, people: [chief, stray] });
+      expect(plan.units).toEqual([]);
+      expect(plan.skipped).toBe('no-protagonists');
+      expect(plan.discarded).toHaveLength(1);
     });
   });
 });
