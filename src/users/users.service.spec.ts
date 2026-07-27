@@ -3,6 +3,7 @@ import { getModelToken } from '@nestjs/mongoose';
 import { Test } from '@nestjs/testing';
 import type { ListUsersDto } from './dto/list-users.dto';
 import type { UpdateUserDto } from './dto/update-user.dto';
+import { CurrentUserService } from '../current-user/current-user.service';
 import { User } from './schemas/user.schema';
 import { UsersService } from './users.service';
 
@@ -58,6 +59,10 @@ describe('UsersService', () => {
       providers: [
         UsersService,
         { provide: getModelToken(User.name), useValue: model },
+        {
+          provide: CurrentUserService,
+          useValue: { refresh: jest.fn(), invalidate: jest.fn() },
+        },
       ],
     }).compile();
 

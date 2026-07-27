@@ -3,7 +3,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { AppNotFoundException } from '../common';
 import { K } from '../i18n';
-import { RedisService } from '../redis/redis.service';
+import { CurrentUserService } from '../current-user/current-user.service';
 import type { CreateUnidadDto } from './dto/create-unidad.dto';
 import type { UpdateUnidadDto } from './dto/update-unidad.dto';
 import { Unidad, UnidadDocument } from './schemas/unidad.schema';
@@ -16,7 +16,7 @@ export class UnidadesService {
   constructor(
     @InjectModel(Unidad.name)
     private readonly unidadModel: Model<UnidadDocument>,
-    private readonly redis: RedisService,
+    private readonly currentUser: CurrentUserService,
   ) {}
 
   async create(dto: CreateUnidadDto): Promise<UnidadDocument> {
@@ -24,7 +24,7 @@ export class UnidadesService {
   }
 
   async findAll(user: AuthUser): Promise<UnidadDocument[]> {
-    const currentUser = await this.redis.getCurrentUser(user.idSiscout!);
+    const currentUser = await this.currentUser.get(user.idSiscout!);
     this.logger.debug(
       `findAll — current_user → ${JSON.stringify(currentUser)}`,
     );

@@ -6,6 +6,7 @@ import {
   AppConflictException,
   AppNotFoundException,
 } from '../common';
+import { CurrentUserService } from '../current-user/current-user.service';
 import { K } from '../i18n';
 import type { CreateRoleDto } from './dto/create-role.dto';
 import type { UpdateRoleDto } from './dto/update-role.dto';
@@ -16,6 +17,7 @@ export class RolesService {
   constructor(
     @InjectModel(Role.name)
     private readonly roleModel: Model<RoleDocument>,
+    private readonly currentUser: CurrentUserService,
   ) {}
 
   list(): Promise<RoleDocument[]> {
@@ -57,6 +59,7 @@ export class RolesService {
     if (dto.permissions !== undefined) role.permissions = dto.permissions;
     if (dto.status !== undefined) role.status = dto.status;
     await role.save();
+    await this.currentUser.refreshByRole(id);
     return role;
   }
 
@@ -66,5 +69,6 @@ export class RolesService {
       throw new AppBadRequestException(K.ROLES.CANNOT_DELETE_SYSTEM_ROLE);
     }
     await role.deleteOne();
+    await this.currentUser.refreshByRole(id);
   }
 }

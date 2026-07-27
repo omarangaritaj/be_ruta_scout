@@ -6,6 +6,7 @@ import {
   AppForbiddenException,
   AppNotFoundException,
 } from '../common';
+import { CurrentUserService } from '../current-user/current-user.service';
 import { K } from '../i18n';
 import type { CreateUserDto } from './dto/create-user.dto';
 import type { ListUsersDto, PaginatedUsers } from './dto/list-users.dto';
@@ -47,6 +48,7 @@ export class UsersService {
   constructor(
     @InjectModel(User.name)
     private readonly userModel: Model<UserDocument>,
+    private readonly currentUser: CurrentUserService,
   ) {}
 
   async create(dto: CreateUserDto): Promise<UserDocument> {
@@ -160,7 +162,9 @@ export class UsersService {
 
     try {
       target.set(dto);
-      return await target.save();
+      const saved = await target.save();
+      await this.currentUser.refresh(saved.idSiscout);
+      return saved;
     } catch (error) {
       if (isDuplicateKey(error)) {
         throw new AppConflictException(K.USERS.SISCOUT_ID_ALREADY_EXISTS);
@@ -175,5 +179,7 @@ export class UsersService {
     if (!deleted) {
       throw new AppNotFoundException(K.USERS.NOT_FOUND, { id });
     }
+
+    await this.currentUser.invalidate(deleted.idSiscout);
   }
 }

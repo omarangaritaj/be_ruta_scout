@@ -9,6 +9,7 @@ import { CatalogoCargosModule } from './catalogo-cargos/catalogo-cargos.module';
 import { CodedExceptionFilter } from './common';
 import { AppConfigModule } from './config';
 import { CryptoModule } from './crypto';
+import { CurrentUserModule } from './current-user/current-user.module';
 import { DatabaseModule } from './database/database.module';
 import { EmailModule } from './email/email.module';
 import { GruposModule } from './grupos/grupos.module';
@@ -31,6 +32,7 @@ import { UsersModule } from './users/users.module';
     DatabaseModule,
     AppSettingsModule,
     RedisModule,
+    CurrentUserModule,
     SiscoutConfigModule,
     SiscoutCredentialsModule,
     RolesModule,
