@@ -1,3 +1,5 @@
+import { PERMISSION_KEYS, type PermissionKey } from '../domain';
+
 /** Comodín total: concede cualquier permiso (super_admin). */
 export const ALL_PERMISSION = '*';
 
@@ -5,7 +7,7 @@ export const ALL_PERMISSION = '*';
 export type PermissionSide = 'be' | 'fe' | 'ambos';
 
 export interface PermissionDef {
-  key: string;
+  key: PermissionKey;
   descripcion: string;
   lado: PermissionSide;
 }
@@ -77,8 +79,8 @@ export const PERMISSIONS: PermissionDef[] = [
   },
 ];
 
-export const PERMISSION_KEYS = PERMISSIONS.map((p) => p.key);
-const PERMISSION_SET = new Set(PERMISSION_KEYS);
+export { PERMISSION_KEYS };
+const PERMISSION_SET = new Set<string>(PERMISSION_KEYS);
 
 /** ¿`value` es un permiso válido: del catálogo, comodín total o de recurso? */
 export function isValidPermission(value: string): boolean {
