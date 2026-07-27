@@ -1,70 +1,70 @@
-import { resolverAlcance } from './alcance-unidades';
+import { resolveUnitScope } from './unit-scope';
 
 describe('alcance de unidades', () => {
   it('el super admin y la nación no filtran', () => {
-    expect(resolverAlcance({ nivelAcceso: 'super_admin' })).toEqual({
+    expect(resolveUnitScope({ nivelAcceso: 'super_admin' })).toEqual({
       type: 'all',
     });
-    expect(resolverAlcance({ nivelAcceso: 'nacion', groupId: 7 })).toEqual({
+    expect(resolveUnitScope({ nivelAcceso: 'nacion', groupId: 7 })).toEqual({
       type: 'all',
     });
   });
 
   it('sin grupo no hay unidades que mostrar', () => {
-    expect(resolverAlcance({ cargoSiscout: 'JEFE DE MANADA' })).toEqual({
-      type: 'sin-grupo',
+    expect(resolveUnitScope({ cargoSiscout: 'JEFE DE MANADA' })).toEqual({
+      type: 'no-group',
     });
   });
 
   it('deriva la rama del cargo de SiScout', () => {
     expect(
-      resolverAlcance({ groupId: 304, cargoSiscout: 'JEFE DE TROPA' }),
-    ).toEqual({ type: 'rama', rama: 'tropa', groupId: 304 });
+      resolveUnitScope({ groupId: 304, cargoSiscout: 'JEFE DE TROPA' }),
+    ).toEqual({ type: 'branch', branch: 'tropa', groupId: 304 });
   });
 
   it('deriva la rama de un protagonista, que trae la rama y no un cargo', () => {
-    expect(resolverAlcance({ groupId: 304, cargoSiscout: 'LOBATO' })).toEqual({
-      type: 'rama',
-      rama: 'manada',
+    expect(resolveUnitScope({ groupId: 304, cargoSiscout: 'LOBATO' })).toEqual({
+      type: 'branch',
+      branch: 'manada',
       groupId: 304,
     });
   });
 
   it('el cargo asignado por la plataforma gana al de SiScout', () => {
     expect(
-      resolverAlcance({
+      resolveUnitScope({
         groupId: 304,
         cargoSiscout: 'JEFE DE TROPA',
         cargos: [{ nombreCargo: 'JEFE DE CLAN', nivel: 'rama' }],
       }),
-    ).toEqual({ type: 'rama', rama: 'clan', groupId: 304 });
+    ).toEqual({ type: 'branch', branch: 'clan', groupId: 304 });
   });
 
   it('el jefe de grupo ve todas las unidades de su grupo', () => {
     expect(
-      resolverAlcance({ groupId: 304, cargoSiscout: 'JEFE DE GRUPO' }),
-    ).toEqual({ type: 'grupo', groupId: 304 });
+      resolveUnitScope({ groupId: 304, cargoSiscout: 'JEFE DE GRUPO' }),
+    ).toEqual({ type: 'group', groupId: 304 });
   });
 
   it('un cargo que no determina rama exige preguntar la jefatura', () => {
     expect(
-      resolverAlcance({ groupId: 304, cargoSiscout: 'COLABORADOR DE GRUPO' }),
-    ).toEqual({ type: 'jefatura-requerida', groupId: 304 });
+      resolveUnitScope({ groupId: 304, cargoSiscout: 'COLABORADOR DE GRUPO' }),
+    ).toEqual({ type: 'leadership-required', groupId: 304 });
   });
 
   it('sin cargo alguno también hay que preguntar', () => {
-    expect(resolverAlcance({ groupId: 304 })).toEqual({
-      type: 'jefatura-requerida',
+    expect(resolveUnitScope({ groupId: 304 })).toEqual({
+      type: 'leadership-required',
       groupId: 304,
     });
   });
 
   it('un cargo de otro nivel no se confunde con una jefatura de rama', () => {
     expect(
-      resolverAlcance({
+      resolveUnitScope({
         groupId: 304,
         cargoSiscout: 'COMISIONADO(A) NACIONAL PARA LOBATOS',
       }),
-    ).toEqual({ type: 'jefatura-requerida', groupId: 304 });
+    ).toEqual({ type: 'leadership-required', groupId: 304 });
   });
 });
