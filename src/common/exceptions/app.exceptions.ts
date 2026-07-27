@@ -2,6 +2,7 @@ import {
   BadRequestException,
   ConflictException,
   ForbiddenException,
+  HttpException,
   HttpStatus,
   NotFoundException,
   ServiceUnavailableException,
@@ -79,6 +80,22 @@ export class AppConflictException extends ConflictException {
 
   constructor(code: MessageKey, params?: MessageParams) {
     super(body(HttpStatus.CONFLICT, code, params));
+    this.code = code;
+  }
+}
+
+/**
+ * Nest no trae una excepción propia para 429, así que extiende `HttpException`
+ * directamente en lugar de una nativa como las demás de este archivo.
+ */
+export class AppTooManyRequestsException extends HttpException {
+  readonly code: MessageKey;
+
+  constructor(code: MessageKey, params?: MessageParams) {
+    super(
+      body(HttpStatus.TOO_MANY_REQUESTS, code, params),
+      HttpStatus.TOO_MANY_REQUESTS,
+    );
     this.code = code;
   }
 }

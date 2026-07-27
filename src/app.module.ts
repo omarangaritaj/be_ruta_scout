@@ -14,6 +14,7 @@ import { DatabaseModule } from './database/database.module';
 import { EmailModule } from './email/email.module';
 import { GruposModule } from './grupos/grupos.module';
 import { NotificacionesModule } from './notificaciones/notificaciones.module';
+import { PasswordResetModule } from './password-reset/password-reset.module';
 import { PowersyncModule } from './powersync/powersync.module';
 import { RedisModule } from './redis/redis.module';
 import { RolesModule } from './roles/roles.module';
@@ -42,6 +43,7 @@ import { UsersModule } from './users/users.module';
     UnidadesModule,
     SiscoutModule,
     AuthModule,
+    PasswordResetModule,
     CatalogoCargosModule,
     NotificacionesModule,
     SolicitudesAccesoModule,

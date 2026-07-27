@@ -60,6 +60,19 @@ export const CATALOG = {
     RECEIVED_REVIEW_NOTICE:
       'Alguien de tu organización revisará tu solicitud y recibirás un correo cuando sea aprobada o rechazada.',
     RECEIVED_SUBJECT: 'Recibimos tu solicitud de acceso a Ruta',
+    RESET_CTA: 'Restablecer mi contraseña',
+    RESET_EXPIRATION:
+      'El enlace vence en {minutos, plural, one {# minuto} other {# minutos}}. Si se te pasa el tiempo, pide uno nuevo desde la app.',
+    RESET_FALLBACK:
+      'Si el botón no funciona, copia este enlace y pégalo en tu navegador:',
+    RESET_GREETING: 'Hola, {nombre}',
+    RESET_IGNORE:
+      'Si no pediste este cambio, ignora este correo: tu contraseña sigue siendo la misma y nadie más puede entrar con ella.',
+    RESET_INTRO:
+      'Recibimos una solicitud para restablecer la contraseña de tu cuenta en ',
+    RESET_INTRO_AFTER: '. Puedes crear una nueva desde aquí:',
+    RESET_PREVIEW: 'Restablece tu contraseña de Ruta',
+    RESET_SUBJECT: 'Restablece tu contraseña de Ruta',
     RESOLVED_APPROVED_HEADING: 'Hola {nombre}, tu acceso fue aprobado',
     RESOLVED_APPROVED_PREVIEW: 'Tu acceso a Ruta fue aprobado',
     RESOLVED_APPROVED_SUBJECT: '¡Tu acceso a Ruta fue aprobado!',
@@ -77,6 +90,12 @@ export const CATALOG = {
   },
   GROUPS: {
     NOT_FOUND: 'No existe un grupo con id "{id}"',
+  },
+  PASSWORD_RESET: {
+    INVALID_TOKEN:
+      'El enlace para restablecer la contraseña no es válido o ya venció. Pide uno nuevo.',
+    TOO_MANY_REQUESTS:
+      'Ya enviamos varios correos de recuperación para esta cédula. Espera unos minutos antes de pedir otro.',
   },
   POWERSYNC: {
     ACCESS_NOT_APPROVED: 'Tu acceso no está aprobado',

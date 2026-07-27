@@ -4,6 +4,7 @@ export {
   AppForbiddenException,
   AppNotFoundException,
   AppServiceUnavailableException,
+  AppTooManyRequestsException,
   AppUnauthorizedException,
   type CodedErrorBody,
 } from './exceptions/app.exceptions';

@@ -116,6 +116,15 @@ export const envSchema = z.object({
     .default(900),
   JWT_REFRESH_TTL_DAYS: z.coerce.number().int().min(1).default(30),
 
+  // Vida del enlace de recuperación de contraseña. Corta a propósito: el enlace
+  // viaja a un buzón, y cualquiera con acceso a ese buzón puede usarlo.
+  PASSWORD_RESET_TTL_MINUTES: z.coerce
+    .number({ error: 'debe ser un número' })
+    .int({ error: 'debe ser un número entero' })
+    .min(5, { error: 'debe estar entre 5 y 1440' })
+    .max(1440, { error: 'debe estar entre 5 y 1440' })
+    .default(30),
+
   // Bootstrap del super admin (seed de un solo uso). Opcionales y descartables:
   // si se omiten, el seed usa sus valores por defecto. Ver `src/seeds`.
   CEDULA_SUPER_ADMIN: optionalEnv(z.string().trim()),

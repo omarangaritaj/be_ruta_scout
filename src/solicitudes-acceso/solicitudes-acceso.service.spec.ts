@@ -38,6 +38,7 @@ function service(solicitud: unknown) {
   const email = {
     sendSolicitudRecibida: jest.fn(() => Promise.resolve()),
     sendSolicitudResuelta: jest.fn(() => Promise.resolve()),
+    sendPasswordReset: jest.fn(() => Promise.resolve()),
   };
   const svc = new SolicitudesAccesoService(
     solicitudModel as never,

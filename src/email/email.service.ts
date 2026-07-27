@@ -6,6 +6,7 @@ import type { NivelSolicitud } from '../catalogo-cargos/catalogo-cargos';
 import { K, t } from '../i18n';
 import type { EmailNotifier } from './email-notifier.port';
 import { EMAIL_SENDER, type EmailSender } from './email-sender.port';
+import PasswordReset from './templates/password-reset';
 import SolicitudRecibida from './templates/solicitud-recibida';
 import SolicitudResuelta from './templates/solicitud-resuelta';
 
@@ -77,6 +78,28 @@ export class EmailService implements EmailNotifier {
           ? K.EMAIL.RESOLVED_APPROVED_SUBJECT
           : K.EMAIL.RESOLVED_REJECTED_SUBJECT,
       ),
+      html,
+    });
+  }
+
+  /** Enlace de un solo uso para volver a entrar tras olvidar la contraseña. */
+  async sendPasswordReset(params: {
+    to: string;
+    nombre: string;
+    url: string;
+    minutos: number;
+  }): Promise<void> {
+    const html = await render(
+      PasswordReset({
+        nombre: params.nombre,
+        url: params.url,
+        minutos: params.minutos,
+        siteUrl: this.siteUrl,
+      }),
+    );
+    await this.sender.send({
+      to: params.to,
+      subject: t(K.EMAIL.RESET_SUBJECT),
       html,
     });
   }

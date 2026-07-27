@@ -25,4 +25,11 @@ export interface EmailNotifier {
     cargo?: string;
     nota?: string | null;
   }): Promise<void>;
+
+  sendPasswordReset(params: {
+    to: string;
+    nombre: string;
+    url: string;
+    minutos: number;
+  }): Promise<void>;
 }
