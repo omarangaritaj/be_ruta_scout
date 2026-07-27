@@ -82,6 +82,39 @@ $ pnpm run test:e2e
 $ pnpm run test:cov
 ```
 
+## Reiniciar la base en desarrollo
+
+**Advertencia: esto borra toda la base.** Úsalo solo contra una base desechable
+de desarrollo, nunca contra Atlas de producción ni contra cualquier base con
+datos que importen.
+
+```bash
+mongosh "$MONGODB_URI" --eval "db.dropDatabase()"
+pnpm seed:super-admin
+pnpm seed:siscout-import
+pnpm seed:units
+```
+
+El orden importa: `seed:units` necesita usuarios con `groupId`, y ese campo lo
+pone `seed:siscout-import` al proyectar el snapshot de SiScout.
+
+El módulo de unidades escribe en tres colecciones (`units`, `unit_memberships`
+y `users`) dentro de una misma transacción de Mongo, y las transacciones
+exigen un replica set. Atlas siempre lo es, así que ahí `pnpm seed:units`
+funciona sin nada extra. Un `mongod` local en modo standalone, en cambio,
+falla con `Transaction numbers are only allowed on a replica set member or
+mongos`. Para levantarlo localmente:
+
+```bash
+mongod --replSet rs0
+```
+
+Y una sola vez, contra esa instancia:
+
+```bash
+mongosh --eval "rs.initiate()"
+```
+
 ## Deployment
 
 When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
