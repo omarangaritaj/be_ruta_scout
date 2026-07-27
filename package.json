@@ -18,7 +18,7 @@
     "domain:gen": "ts-node -P tsconfig.json scripts/domain-gen.ts",
     "domain:check": "ts-node -P tsconfig.json scripts/domain-check.ts",
     "typecheck": "tsc --noEmit",
-    "verify": "pnpm typecheck && pnpm lint:check && pnpm test && pnpm i18n:check",
+    "verify": "pnpm typecheck && pnpm lint:check && pnpm test && pnpm i18n:check && pnpm domain:check",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",

@@ -25,6 +25,31 @@
 
 [Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
 
+## Diccionario de dominio
+
+El vocabulario del dominio (ramas, estados de acceso, estados de solicitud,
+niveles, tipos de persona, permisos y códigos de error de la API) se edita en un
+único sitio: **`domain-manifest.json`**.
+
+`src/domain/` es **generado**: no se edita a mano. De ahí salen las constantes
+con tipos literales, el accesor `D` y `.domain-vocabulary.json`, que alimenta la
+regla de ESLint que prohíbe volver a escribir esos literales sueltos.
+
+```bash
+pnpm domain:gen     # regenera src/domain/ y .domain-vocabulary.json
+pnpm domain:check   # falla si lo generado está desfasado o difiere de fe_ruta
+```
+
+`pnpm verify` incluye `domain:check`. Para añadir un valor al vocabulario:
+edítalo en el manifiesto, corre `pnpm domain:gen`, y **copia el manifiesto a
+`fe_ruta/` con el mismo contenido** (el check compara los dos por SHA-256
+cuando ambos repos están presentes).
+
+Fuera del manifiesto quedan a propósito los valores que no cruzan la frontera
+con el frontend, como los estados del outbox de notificaciones. Su `pendiente`
+es homónimo del estado de acceso pero es otro concepto, y atarlos acoplaría dos
+ciclos de vida independientes.
+
 ## Project setup
 
 ```bash

@@ -65,7 +65,7 @@ export default tseslint.config(
     ignores: ['src/domain/**', 'src/**/*.spec.ts'],
     rules: {
       'no-restricted-syntax': [
-        'warn',
+        'error',
         domainLiteral('BinaryExpression', 'Literal', 'en una comparación'),
         domainLiteral('VariableDeclarator', 'Literal', 'en una asignación'),
         domainLiteral('CallExpression', 'Literal', 'como argumento'),
