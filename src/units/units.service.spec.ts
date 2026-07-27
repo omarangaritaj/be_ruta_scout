@@ -286,6 +286,21 @@ describe('UnitsService', () => {
     });
   });
 
+  describe('seedGroup', () => {
+    it('no siembra si el grupo ya tiene unidades', async () => {
+      unitModel.exists.mockReturnValueOnce(Promise.resolve(true));
+
+      const outcome = await service.seedGroup(304);
+
+      expect(outcome).toEqual({
+        status: 'skipped',
+        reason: 'already-seeded',
+      });
+      expect(unitModel.create).not.toHaveBeenCalled();
+      expect(userModel.find).not.toHaveBeenCalled();
+    });
+  });
+
   describe('updateUnitSchema', () => {
     it('ignora members, branch y groupId: solo setMembers y la siembra los tocan', () => {
       const parsed = updateUnitSchema.parse({

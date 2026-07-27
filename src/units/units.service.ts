@@ -23,6 +23,7 @@ import {
   placeholderName,
   planGroupSeed,
   type PlannedUnit,
+  type SeedSkipReason,
 } from './seeding/unit-seeder';
 import { resolveUnitScope } from './unit-scope';
 
@@ -36,6 +37,10 @@ function isDuplicateKey(error: unknown): boolean {
     error.code === DUPLICATE_KEY
   );
 }
+
+export type SeedGroupOutcome =
+  | { status: 'seeded'; units: PlannedUnit[] }
+  | { status: 'skipped'; reason: SeedSkipReason | 'already-seeded' };
 
 @Injectable()
 export class UnitsService {
@@ -86,14 +91,16 @@ export class UnitsService {
   }
 
   private async ofGroup(groupId: number): Promise<UnitDocument[]> {
-    const existing = await this.unitModel.find({ groupId }).exec();
-    if (existing.length > 0) return existing;
-
     await this.seedGroup(groupId);
     return this.unitModel.find({ groupId }).exec();
   }
 
-  async seedGroup(groupId: number): Promise<PlannedUnit[]> {
+  async seedGroup(groupId: number): Promise<SeedGroupOutcome> {
+    const alreadySeeded = await this.unitModel.exists({ groupId });
+    if (alreadySeeded) {
+      return { status: 'skipped', reason: 'already-seeded' };
+    }
+
     const people = await this.userModel
       .find({ groupId, estado: true })
       .select('_id name tipo cargoSiscout cargos districtId districtName')
@@ -105,7 +112,9 @@ export class UnitsService {
       people: people.map((p) => ({ ...p, _id: p._id.toString() })),
     });
 
-    if (plan.units.length === 0) return [];
+    if (plan.units.length === 0) {
+      return { status: 'skipped', reason: plan.skipped! };
+    }
 
     await this.inTransaction(async (session) => {
       for (const planned of plan.units) {
@@ -123,7 +132,7 @@ export class UnitsService {
       }
     });
 
-    return plan.units;
+    return { status: 'seeded', units: plan.units };
   }
 
   private async inTransaction<T>(

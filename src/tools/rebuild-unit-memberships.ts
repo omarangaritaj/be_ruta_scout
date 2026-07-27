@@ -1,13 +1,13 @@
 import { NestFactory } from '@nestjs/core';
-import { getModelToken } from '@nestjs/mongoose';
-import { Model, Types } from 'mongoose';
+import { getConnectionToken, getModelToken } from '@nestjs/mongoose';
+import { Connection, Model } from 'mongoose';
 import { AppModule } from '../app.module';
-import { projectMemberships } from '../units/membership-projection';
 import {
   UnitMembership,
   UnitMembershipDocument,
 } from '../units/schemas/unit-membership.schema';
 import { Unit, UnitDocument } from '../units/schemas/unit.schema';
+import { rebuildUnitMembership } from './rebuild-memberships/rebuild-membership';
 
 async function rebuildUnitMemberships(): Promise<void> {
   const app = await NestFactory.createApplicationContext(AppModule, {
@@ -22,33 +22,26 @@ async function rebuildUnitMemberships(): Promise<void> {
       getModelToken(UnitMembership.name),
       { strict: false },
     );
+    const connection = app.get<Connection>(getConnectionToken(), {
+      strict: false,
+    });
 
     const units = await unitModel.find().lean().exec();
 
     let totalRows = 0;
 
     for (const unit of units) {
-      const rows = projectMemberships({
-        _id: unit._id.toString(),
-        groupId: unit.groupId,
-        unitLeaderId: unit.unitLeaderId.toString(),
-        leaders: unit.leaders.map((id) => id.toString()),
-        members: unit.members.map((id) => id.toString()),
-      });
-
-      await membershipModel.deleteMany({ unitId: unit._id });
-      if (rows.length > 0) {
-        await membershipModel.insertMany(
-          rows.map((row) => ({
-            userId: new Types.ObjectId(row.userId),
-            unitId: new Types.ObjectId(row.unitId),
-            role: row.role,
-            groupId: row.groupId,
-          })),
-        );
-      }
-
-      totalRows += rows.length;
+      totalRows += await rebuildUnitMembership(
+        {
+          _id: unit._id.toString(),
+          groupId: unit.groupId,
+          unitLeaderId: unit.unitLeaderId.toString(),
+          leaders: unit.leaders.map((id) => id.toString()),
+          members: unit.members.map((id) => id.toString()),
+        },
+        membershipModel,
+        connection,
+      );
     }
 
     console.log(

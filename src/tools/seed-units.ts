@@ -3,14 +3,9 @@ import { getModelToken } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { AppModule } from '../app.module';
 import { User, UserDocument } from '../users/schemas/user.schema';
-import { Unit, UnitDocument } from '../units/schemas/unit.schema';
-import {
-  planGroupSeed,
-  type SeedSkipReason,
-} from '../units/seeding/unit-seeder';
-import { UnitsService } from '../units/units.service';
+import { UnitsService, type SeedGroupOutcome } from '../units/units.service';
 
-type SkipReason = SeedSkipReason | 'already-seeded';
+type SkipReason = Extract<SeedGroupOutcome, { status: 'skipped' }>['reason'];
 
 interface SkippedGroup {
   groupId: number;
@@ -27,9 +22,6 @@ async function seedUnits(): Promise<void> {
     const userModel = app.get<Model<UserDocument>>(getModelToken(User.name), {
       strict: false,
     });
-    const unitModel = app.get<Model<UnitDocument>>(getModelToken(Unit.name), {
-      strict: false,
-    });
 
     const groupIds = await userModel.distinct('groupId', {
       estado: true,
@@ -41,36 +33,15 @@ async function seedUnits(): Promise<void> {
     const skipped: SkippedGroup[] = [];
 
     for (const groupId of groupIds) {
-      // `seedGroup` no valida unidades previas: sin este chequeo, una segunda
-      // corrida chocaría con el índice único (groupId, name) en `units`.
-      const alreadySeeded = await unitModel.exists({ groupId });
-      if (alreadySeeded) {
-        skipped.push({ groupId, reason: 'already-seeded' });
+      const outcome = await unitsService.seedGroup(groupId);
+
+      if (outcome.status === 'skipped') {
+        skipped.push({ groupId, reason: outcome.reason });
         continue;
       }
 
-      const people = await userModel
-        .find({ groupId, estado: true })
-        .select('_id name tipo cargoSiscout cargos districtId districtName')
-        .lean()
-        .exec();
-
-      const plan = planGroupSeed({
-        groupId,
-        people: people.map((person) => ({
-          ...person,
-          _id: person._id.toString(),
-        })),
-      });
-
-      if (plan.units.length === 0) {
-        skipped.push({ groupId, reason: plan.skipped! });
-        continue;
-      }
-
-      const created = await unitsService.seedGroup(groupId);
       seededGroups += 1;
-      createdUnits += created.length;
+      createdUnits += outcome.units.length;
     }
 
     console.log('Resumen de siembra de unidades:');
