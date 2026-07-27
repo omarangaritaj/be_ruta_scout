@@ -1,0 +1,8 @@
+// GENERADO por `pnpm domain:gen` desde domain-manifest.json. No editar a mano.
+
+export * from './access';
+export * from './branches';
+export * from './dictionary';
+export * from './errors';
+export * from './permissions';
+export * from './roles';

@@ -1,0 +1,95 @@
+{
+  "version": 1,
+  "branches": [
+    {
+      "name": "FAMILIA",
+      "value": "familia",
+      "order": 1,
+      "siscoutAliases": ["FAMILIA", "CACHORRO", "CACHORROS"]
+    },
+    {
+      "name": "MANADA",
+      "value": "manada",
+      "order": 2,
+      "siscoutAliases": ["MANADA", "LOBATO", "LOBATOS"]
+    },
+    {
+      "name": "TROPA",
+      "value": "tropa",
+      "order": 3,
+      "siscoutAliases": ["TROPA", "SCOUT", "SCOUTS"]
+    },
+    {
+      "name": "COMUNIDAD",
+      "value": "comunidad",
+      "order": 4,
+      "siscoutAliases": [
+        "COMUNIDAD",
+        "NOMADA",
+        "NOMADA SCOUT",
+        "NOMADAS SCOUT"
+      ]
+    },
+    {
+      "name": "CLAN",
+      "value": "clan",
+      "order": 5,
+      "siscoutAliases": ["CLAN", "ROVER", "ROVERS"]
+    }
+  ],
+  "accessStates": [
+    { "name": "NO_REQUEST", "value": "sin_solicitud" },
+    { "name": "PENDING", "value": "pendiente" },
+    { "name": "APPROVED", "value": "aprobado" },
+    { "name": "REJECTED", "value": "rechazado" },
+    { "name": "SUSPENDED", "value": "suspendido" }
+  ],
+  "accessLevels": [
+    { "name": "RAMA", "value": "rama" },
+    { "name": "GRUPO", "value": "grupo" },
+    { "name": "REGION", "value": "region" },
+    { "name": "NACION", "value": "nacion" },
+    { "name": "SUPER_ADMIN", "value": "super_admin" }
+  ],
+  "roleLevels": [
+    { "name": "RAMA", "value": "rama" },
+    { "name": "GRUPO", "value": "grupo" },
+    { "name": "REGION", "value": "region" },
+    { "name": "NACION", "value": "nacion" }
+  ],
+  "personTypes": [
+    { "name": "ADULT", "value": "adulto" },
+    { "name": "PROTAGONIST", "value": "protagonista" }
+  ],
+  "permissions": [
+    { "key": "role:read", "side": "both" },
+    { "key": "role:create", "side": "both" },
+    { "key": "role:update", "side": "both" },
+    { "key": "role:delete", "side": "both" },
+    { "key": "user:read", "side": "both" },
+    { "key": "user:approve", "side": "both" },
+    { "key": "solicitud:read", "side": "both" },
+    { "key": "solicitud:approve", "side": "both" },
+    { "key": "solicitud:reject", "side": "both" },
+    { "key": "unidad:read", "side": "both" },
+    { "key": "unidad:create", "side": "both" },
+    { "key": "unidad:update", "side": "both" },
+    { "key": "unidad:delete", "side": "both" },
+    { "key": "grupo:read", "side": "both" },
+    { "key": "grupo:create", "side": "both" },
+    { "key": "grupo:update", "side": "both" },
+    { "key": "grupo:delete", "side": "both" },
+    { "key": "siscout:sync", "side": "be" },
+    { "key": "siscout:config", "side": "both" },
+    { "key": "siscout:credentials", "side": "be" },
+    { "key": "tablero:nacional", "side": "fe" }
+  ],
+  "apiErrorCodes": [
+    {
+      "name": "UNITS_LEADERSHIP_REQUIRED",
+      "value": "UNITS.LEADERSHIP_REQUIRED"
+    },
+    { "name": "UNITS_MISSING_GROUP", "value": "UNITS.MISSING_GROUP" },
+    { "name": "VALIDATION_INVALID_INPUT", "value": "VALIDATION.INVALID_INPUT" }
+  ]
+}
