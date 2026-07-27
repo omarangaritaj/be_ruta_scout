@@ -213,20 +213,17 @@ export class SolicitudesAccesoService {
       throw new AppNotFoundException(K.REQUESTS.AUTHENTICATED_PERSON_NOT_FOUND);
     }
 
-    const snapshot = await this.snapshots.findDecrypted(persona.idSiscout);
-    const texto = (valor: unknown): string | null =>
-      typeof valor === 'string' ? valor : null;
-    const entero = (valor: unknown): number | null =>
-      typeof valor === 'number' ? valor : null;
-
+    // Territorio y cargo se leen del documento público: el sync los proyecta
+    // desde la lista blanca, así que descifrar el snapshot para esto sería
+    // pagar una lectura de la colección privada por datos que no son PII.
     return {
       estadoAcceso: persona.estadoAcceso,
       nivelAcceso: persona.nivelAcceso,
-      groupId: entero(snapshot?.group_id),
-      groupName: texto(snapshot?.group_name),
-      districtId: entero(snapshot?.district_id),
-      districtName: texto(snapshot?.district_name),
-      cargoSiscout: texto(snapshot?.cargo),
+      groupId: persona.groupId ?? null,
+      groupName: persona.groupName ?? null,
+      districtId: persona.districtId ?? null,
+      districtName: persona.districtName ?? null,
+      cargoSiscout: persona.cargoSiscout ?? null,
     };
   }
 
