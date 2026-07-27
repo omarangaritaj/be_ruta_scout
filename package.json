@@ -27,7 +27,9 @@
     "seed:super-admin": "nest build && node dist/seeds/seed-super-admin.js",
     "seed:siscout-import": "nest build && node dist/seeds/seed-siscout-import.js",
     "siscout:decrypt": "nest build && node dist/tools/decrypt-snapshot.js",
-    "siscout:anonymize": "ts-node -P tsconfig.json src/tools/anonymize-sample.ts"
+    "siscout:anonymize": "ts-node -P tsconfig.json src/tools/anonymize-sample.ts",
+    "seed:units": "nest build && node dist/tools/seed-units.js",
+    "units:rebuild-memberships": "nest build && node dist/tools/rebuild-unit-memberships.js"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.1",
