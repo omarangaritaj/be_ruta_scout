@@ -5,17 +5,12 @@ import {
   type NivelSolicitud,
 } from '../../catalogo-cargos/catalogo-cargos';
 import { RAMAS, type Rama } from '../../catalogo-cargos/ramas';
+import { D, REQUEST_STATES, type RequestState } from '../../domain';
 
 export type SolicitudAccesoDocument = HydratedDocument<SolicitudAcceso>;
 
-export const ESTADOS_SOLICITUD = [
-  'pendiente',
-  'en_revision',
-  'aprobada',
-  'rechazada',
-  'cancelada',
-] as const;
-export type EstadoSolicitud = (typeof ESTADOS_SOLICITUD)[number];
+export const ESTADOS_SOLICITUD = REQUEST_STATES;
+export type EstadoSolicitud = RequestState;
 
 export { RAMAS, type Rama };
 
@@ -49,7 +44,7 @@ export class SolicitudAcceso {
   @Prop({
     type: String,
     enum: ESTADOS_SOLICITUD,
-    default: 'pendiente',
+    default: D.REQUEST_STATE.PENDING,
     index: true,
   })
   estado: EstadoSolicitud;
@@ -76,5 +71,8 @@ export const SolicitudAccesoSchema =
 // Una sola solicitud pendiente por persona.
 SolicitudAccesoSchema.index(
   { idPersona: 1 },
-  { unique: true, partialFilterExpression: { estado: 'pendiente' } },
+  {
+    unique: true,
+    partialFilterExpression: { estado: D.REQUEST_STATE.PENDING },
+  },
 );

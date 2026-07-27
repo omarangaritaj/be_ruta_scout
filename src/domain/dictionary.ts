@@ -15,6 +15,13 @@ export const D = {
     REJECTED: 'rechazado',
     SUSPENDED: 'suspendido',
   },
+  REQUEST_STATE: {
+    PENDING: 'pendiente',
+    IN_REVIEW: 'en_revision',
+    APPROVED: 'aprobada',
+    REJECTED: 'rechazada',
+    CANCELLED: 'cancelada',
+  },
   ACCESS_LEVEL: {
     RAMA: 'rama',
     GRUPO: 'grupo',

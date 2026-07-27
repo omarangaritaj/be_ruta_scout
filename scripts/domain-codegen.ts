@@ -17,6 +17,7 @@ export interface DomainManifest {
   version: number;
   branches: BranchEntry[];
   accessStates: NamedValue[];
+  requestStates: NamedValue[];
   accessLevels: NamedValue[];
   roleLevels: NamedValue[];
   personTypes: NamedValue[];
@@ -43,6 +44,7 @@ export function readManifest(raw: string): DomainManifest {
   const ordenado = { ...manifest, branches };
   assertUnique(ordenado.branches, 'branches');
   assertUnique(ordenado.accessStates, 'accessStates');
+  assertUnique(ordenado.requestStates, 'requestStates');
   assertUnique(ordenado.accessLevels, 'accessLevels');
   assertUnique(ordenado.roleLevels, 'roleLevels');
   assertUnique(ordenado.personTypes, 'personTypes');
@@ -97,7 +99,9 @@ export function generateFiles(manifest: DomainManifest): Map<string, string> {
     HEADER +
       constAndType('ACCESS_STATES', 'AccessState', manifest.accessStates) +
       '\n' +
-      constAndType('ACCESS_LEVELS', 'AccessLevel', manifest.accessLevels),
+      constAndType('ACCESS_LEVELS', 'AccessLevel', manifest.accessLevels) +
+      '\n' +
+      constAndType('REQUEST_STATES', 'RequestState', manifest.requestStates),
   );
 
   archivos.set(
@@ -127,6 +131,7 @@ export function generateFiles(manifest: DomainManifest): Map<string, string> {
       'export const D = {\n' +
       dictionaryGroup('BRANCH', manifest.branches) +
       dictionaryGroup('ACCESS_STATE', manifest.accessStates) +
+      dictionaryGroup('REQUEST_STATE', manifest.requestStates) +
       dictionaryGroup('ACCESS_LEVEL', manifest.accessLevels) +
       dictionaryGroup('ROLE_LEVEL', manifest.roleLevels) +
       dictionaryGroup('PERSON_TYPE', manifest.personTypes) +
@@ -148,6 +153,7 @@ export function generateFiles(manifest: DomainManifest): Map<string, string> {
   const vocabulario = [
     ...manifest.branches,
     ...manifest.accessStates,
+    ...manifest.requestStates,
     ...manifest.accessLevels,
     ...manifest.roleLevels,
     ...manifest.personTypes,

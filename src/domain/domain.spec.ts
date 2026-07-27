@@ -6,6 +6,7 @@ import {
   D,
   PERMISSION_KEYS,
   PERSON_TYPES,
+  REQUEST_STATES,
   ROLE_LEVELS,
 } from './index';
 
@@ -34,6 +35,18 @@ describe('diccionario de dominio', () => {
       'rechazado',
       'suspendido',
     ]);
+  });
+
+  it('separa el estado de una solicitud del estado de acceso', () => {
+    expect(REQUEST_STATES).toEqual([
+      'pendiente',
+      'en_revision',
+      'aprobada',
+      'rechazada',
+      'cancelada',
+    ]);
+    expect(D.REQUEST_STATE.APPROVED).toBe('aprobada');
+    expect(D.ACCESS_STATE.APPROVED).toBe('aprobado');
   });
 
   it('distingue niveles de acceso de niveles de cargo', () => {

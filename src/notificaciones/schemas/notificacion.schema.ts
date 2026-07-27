@@ -3,12 +3,22 @@ import { HydratedDocument, Schema as MongooseSchema } from 'mongoose';
 
 export type NotificacionDocument = HydratedDocument<Notificacion>;
 
-export const ESTADOS_NOTIFICACION = [
-  'pendiente',
-  'enviada',
-  'fallida',
-] as const;
-export type EstadoNotificacion = (typeof ESTADOS_NOTIFICACION)[number];
+/**
+ * Vocabulario propio del outbox: NO viaja al frontend, así que no está en
+ * domain-manifest.json. Su `pendiente` es homónimo del estado de acceso y del
+ * de solicitud, pero es otro concepto: atarlos acoplaría tres ciclos de vida
+ * independientes.
+ */
+export const ESTADO_NOTIFICACION = {
+  // eslint-disable-next-line no-restricted-syntax -- ver el comentario de arriba: homónimo, no el mismo concepto
+  PENDIENTE: 'pendiente',
+  ENVIADA: 'enviada',
+  FALLIDA: 'fallida',
+} as const;
+
+export const ESTADOS_NOTIFICACION = Object.values(ESTADO_NOTIFICACION);
+export type EstadoNotificacion =
+  (typeof ESTADO_NOTIFICACION)[keyof typeof ESTADO_NOTIFICACION];
 
 @Schema({ collection: 'notificaciones', timestamps: true })
 export class Notificacion {
@@ -24,7 +34,7 @@ export class Notificacion {
   @Prop({
     type: String,
     enum: ESTADOS_NOTIFICACION,
-    default: 'pendiente',
+    default: ESTADO_NOTIFICACION.PENDIENTE,
     index: true,
   })
   estado: EstadoNotificacion;

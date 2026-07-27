@@ -1,30 +1,26 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument, Schema as MongooseSchema, Types } from 'mongoose';
+import {
+  ACCESS_LEVELS,
+  ACCESS_STATES,
+  PERSON_TYPES,
+  type AccessLevel,
+  type AccessState,
+  type PersonType,
+} from '../../domain';
 import { Acudiente, AcudienteSchema } from './acudiente.subschema';
 import { Cargo, CargoSchema } from './cargo.subschema';
 
 export type UserDocument = HydratedDocument<User>;
 
-export const TIPOS_PERSONA = ['adulto', 'protagonista'] as const;
-export type TipoPersona = (typeof TIPOS_PERSONA)[number];
+export const TIPOS_PERSONA = PERSON_TYPES;
+export type TipoPersona = PersonType;
 
-export const ESTADOS_ACCESO = [
-  'sin_solicitud',
-  'pendiente',
-  'aprobado',
-  'rechazado',
-  'suspendido',
-] as const;
-export type EstadoAcceso = (typeof ESTADOS_ACCESO)[number];
+export const ESTADOS_ACCESO = ACCESS_STATES;
+export type EstadoAcceso = AccessState;
 
-export const NIVELES_ACCESO = [
-  'rama',
-  'grupo',
-  'region',
-  'nacion',
-  'super_admin',
-] as const;
-export type NivelAcceso = (typeof NIVELES_ACCESO)[number];
+export const NIVELES_ACCESO = ACCESS_LEVELS;
+export type NivelAcceso = AccessLevel;
 
 /**
  * Persona del dominio. `tipo` determina qué es:

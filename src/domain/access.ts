@@ -17,3 +17,12 @@ export const ACCESS_LEVELS = [
   'super_admin',
 ] as const;
 export type AccessLevel = (typeof ACCESS_LEVELS)[number];
+
+export const REQUEST_STATES = [
+  'pendiente',
+  'en_revision',
+  'aprobada',
+  'rechazada',
+  'cancelada',
+] as const;
+export type RequestState = (typeof REQUEST_STATES)[number];

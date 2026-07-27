@@ -1,7 +1,8 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
+import { ROLE_LEVELS, type RoleLevel } from '../../domain';
 
-export const NIVELES_CARGO = ['rama', 'grupo', 'region', 'nacion'] as const;
-export type NivelCargo = (typeof NIVELES_CARGO)[number];
+export const NIVELES_CARGO = ROLE_LEVELS;
+export type NivelCargo = RoleLevel;
 
 /**
  * Cargo scout embebido en el usuario.
