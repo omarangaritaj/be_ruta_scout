@@ -10,6 +10,7 @@ import {
   AppForbiddenException,
   AppUnauthorizedException,
 } from '../common';
+import { D } from '../domain';
 import { K } from '../i18n';
 import { User, UserDocument } from '../users/schemas/user.schema';
 import type { WriteOp } from './dto/write-batch.dto';
@@ -42,13 +43,13 @@ export class PowersyncService {
     if (!actor) {
       throw new AppUnauthorizedException(K.AUTH.ACCOUNT_GONE);
     }
-    if (actor.estadoAcceso !== 'aprobado') {
+    if (actor.estadoAcceso !== D.ACCESS_STATE.APPROVED) {
       throw new AppForbiddenException(K.POWERSYNC.ACCESS_NOT_APPROVED);
     }
 
     const scope: WriteScope = {
       actorId,
-      isSuperAdmin: actor.nivelAcceso === 'super_admin',
+      isSuperAdmin: actor.nivelAcceso === D.ACCESS_LEVEL.SUPER_ADMIN,
       actorUnidad: actor.idUnidad ? String(actor.idUnidad) : null,
     };
 

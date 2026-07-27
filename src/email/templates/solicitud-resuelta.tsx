@@ -4,6 +4,8 @@ import {
   ETIQUETA_NIVEL_SOLICITABLE,
   type NivelSolicitud,
 } from '../../catalogo-cargos/catalogo-cargos';
+import { D } from '../../domain';
+import type { ResultadoResolucion } from '../email-notifier.port';
 import { K, t } from '../../i18n';
 import {
   clasesEmail,
@@ -16,7 +18,7 @@ import {
 
 export interface SolicitudResueltaProps {
   nombre: string;
-  resultado: 'aprobado' | 'rechazado';
+  resultado: ResultadoResolucion;
   /** Nivel y cargo definitivos (solo cuando resultado = aprobado). */
   nivel?: NivelSolicitud;
   cargo?: string;
@@ -32,7 +34,7 @@ export default function SolicitudResuelta({
   nota = null,
   siteUrl,
 }: SolicitudResueltaProps) {
-  const aprobado = resultado === 'aprobado';
+  const aprobado = resultado === D.ACCESS_STATE.APPROVED;
   const primerNombre = nombre.trim().split(/\s+/)[0] || nombre;
 
   return (

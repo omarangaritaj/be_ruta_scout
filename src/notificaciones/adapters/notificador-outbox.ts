@@ -3,6 +3,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Notificador, type NuevaNotificacion } from '../notificador.port';
 import {
+  ESTADO_NOTIFICACION,
   Notificacion,
   NotificacionDocument,
 } from '../schemas/notificacion.schema';
@@ -17,6 +18,9 @@ export class NotificadorOutbox extends Notificador {
   }
 
   async encolar(notificacion: NuevaNotificacion): Promise<void> {
-    await this.model.create({ ...notificacion, estado: 'pendiente' });
+    await this.model.create({
+      ...notificacion,
+      estado: ESTADO_NOTIFICACION.PENDIENTE,
+    });
   }
 }

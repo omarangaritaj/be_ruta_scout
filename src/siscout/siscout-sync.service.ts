@@ -16,6 +16,7 @@ import {
   type TipoPersona,
 } from '../users/schemas/user.schema';
 import { SiscoutConfigService } from './config/siscout-config.service';
+import { D } from '../domain';
 import { SiscoutCredentialsService } from './credentials';
 import { encryptSensitiveFields } from './crypto/encrypted-fields';
 import { canonicalHash } from './hash/canonical-hash';
@@ -76,7 +77,9 @@ const DETAIL_CAP = 500;
  */
 function classifyTipo(member: SiscoutMember): TipoPersona {
   const tipo = (member.tipomiembro ?? '').toUpperCase();
-  return tipo.includes('ADULTO') ? 'adulto' : 'protagonista';
+  return tipo.includes('ADULTO')
+    ? D.PERSON_TYPE.ADULT
+    : D.PERSON_TYPE.PROTAGONIST;
 }
 
 export interface RoleChange {

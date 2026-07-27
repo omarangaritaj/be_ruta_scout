@@ -3,6 +3,7 @@ import { HydratedDocument, Schema as MongooseSchema, Types } from 'mongoose';
 import {
   ACCESS_LEVELS,
   ACCESS_STATES,
+  D,
   PERSON_TYPES,
   type AccessLevel,
   type AccessState,
@@ -67,7 +68,7 @@ export class User {
   @Prop({
     type: String,
     enum: ESTADOS_ACCESO,
-    default: 'sin_solicitud',
+    default: D.ACCESS_STATE.NO_REQUEST,
     index: true,
   })
   estadoAcceso: EstadoAcceso;

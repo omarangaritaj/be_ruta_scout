@@ -1,6 +1,11 @@
 import type { NivelSolicitud } from '../catalogo-cargos/catalogo-cargos';
+import type { D } from '../domain';
 
 export const EMAIL_NOTIFIER = 'EMAIL_NOTIFIER';
+
+/** Las dos únicas resoluciones que se comunican por correo. */
+export type ResultadoResolucion =
+  typeof D.ACCESS_STATE.APPROVED | typeof D.ACCESS_STATE.REJECTED;
 
 /**
  * Port de notificaciones por correo del dominio de solicitudes. Los consumidores
@@ -20,7 +25,7 @@ export interface EmailNotifier {
   sendSolicitudResuelta(params: {
     to: string;
     nombre: string;
-    resultado: 'aprobado' | 'rechazado';
+    resultado: ResultadoResolucion;
     nivel?: NivelSolicitud;
     cargo?: string;
     nota?: string | null;

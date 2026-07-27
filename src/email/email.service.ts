@@ -3,8 +3,9 @@ import { ConfigService } from '@nestjs/config';
 import { render } from '@react-email/components';
 import type { AppConfigService } from '../config';
 import type { NivelSolicitud } from '../catalogo-cargos/catalogo-cargos';
+import { D } from '../domain';
 import { K, t } from '../i18n';
-import type { EmailNotifier } from './email-notifier.port';
+import type { EmailNotifier, ResultadoResolucion } from './email-notifier.port';
 import { EMAIL_SENDER, type EmailSender } from './email-sender.port';
 import PasswordReset from './templates/password-reset';
 import SolicitudRecibida from './templates/solicitud-recibida';
@@ -56,7 +57,7 @@ export class EmailService implements EmailNotifier {
   async sendSolicitudResuelta(params: {
     to: string;
     nombre: string;
-    resultado: 'aprobado' | 'rechazado';
+    resultado: ResultadoResolucion;
     nivel?: NivelSolicitud;
     cargo?: string;
     nota?: string | null;
@@ -74,7 +75,7 @@ export class EmailService implements EmailNotifier {
     await this.sender.send({
       to: params.to,
       subject: t(
-        params.resultado === 'aprobado'
+        params.resultado === D.ACCESS_STATE.APPROVED
           ? K.EMAIL.RESOLVED_APPROVED_SUBJECT
           : K.EMAIL.RESOLVED_REJECTED_SUBJECT,
       ),

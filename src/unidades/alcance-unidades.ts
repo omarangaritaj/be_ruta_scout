@@ -15,14 +15,12 @@ import type { NivelAcceso } from '../users/schemas/user.schema';
  * manifiesto: nombran formas de esta respuesta, no valores que viajen como
  * dato. Por eso `'grupo'` y `'rama'` aquí no salen del diccionario.
  */
-/* eslint-disable no-restricted-syntax -- discriminantes de la unión, ver el comentario de arriba */
 export type AlcanceUnidades =
   | { type: 'all' }
   | { type: 'grupo'; groupId: number }
   | { type: 'rama'; rama: Rama; groupId: number }
   | { type: 'jefatura-requerida'; groupId: number }
   | { type: 'sin-grupo' };
-/* eslint-enable no-restricted-syntax */
 
 export interface PerfilParaAlcance {
   nivelAcceso?: NivelAcceso;
@@ -63,6 +61,7 @@ function ramaSegunSiscout(perfil: PerfilParaAlcance): Rama | undefined {
   );
 }
 
+/* eslint-disable no-restricted-syntax -- los `type` que se devuelven aquí son discriminantes de AlcanceUnidades, no vocabulario del manifiesto */
 export function resolverAlcance(perfil: PerfilParaAlcance): AlcanceUnidades {
   if (perfil.nivelAcceso && NIVELES_SIN_FILTRO.includes(perfil.nivelAcceso)) {
     return { type: 'all' };
@@ -83,3 +82,4 @@ export function resolverAlcance(perfil: PerfilParaAlcance): AlcanceUnidades {
 
   return { type: 'jefatura-requerida', groupId };
 }
+/* eslint-enable no-restricted-syntax */

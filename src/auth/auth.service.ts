@@ -23,6 +23,7 @@ import {
   type TipoPersona,
 } from '../users/schemas/user.schema';
 import { CurrentUserService } from '../current-user/current-user.service';
+import { D } from '../domain';
 import { PowerSyncKeyService, type PowerSyncJwks } from './powersync-keys';
 import {
   RefreshToken,
@@ -179,7 +180,7 @@ export class AuthService {
     if (!user) {
       throw new AppUnauthorizedException(K.AUTH.ACCOUNT_GONE);
     }
-    if (user.estadoAcceso !== 'aprobado') {
+    if (user.estadoAcceso !== D.ACCESS_STATE.APPROVED) {
       throw new AppForbiddenException(K.AUTH.SYNC_REQUIRES_APPROVED_ACCESS);
     }
 
@@ -256,8 +257,8 @@ export class AuthService {
   }
 
   private resolveNextStep(accessStatus: EstadoAcceso): NextStep {
-    if (accessStatus === 'aprobado') return 'app';
-    if (accessStatus === 'suspendido') return 'suspended';
+    if (accessStatus === D.ACCESS_STATE.APPROVED) return 'app';
+    if (accessStatus === D.ACCESS_STATE.SUSPENDED) return 'suspended';
     return 'onboarding';
   }
 }

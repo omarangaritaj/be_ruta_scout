@@ -6,9 +6,11 @@ import { Model } from 'mongoose';
 import { AppModule } from '../app.module';
 import type { AppConfigService } from '../config';
 import { CEDULA_HASHER, type CedulaHasher } from '../crypto';
+import { D } from '../domain';
 import { Role, RoleDocument } from '../roles/schemas/role.schema';
 import { User, UserDocument } from '../users/schemas/user.schema';
 
+// eslint-disable-next-line no-restricted-syntax -- nombre del documento en `roles`, no el enum nivelAcceso
 const ROLE_NAME = 'super_admin';
 const PERMISSIONS = ['*'];
 const BCRYPT_ROUNDS = 12;
@@ -72,8 +74,8 @@ async function seed(): Promise<void> {
     const existing = await userModel.findOne({ cedulaHash }).exec();
     if (existing) {
       existing.estado = true;
-      existing.estadoAcceso = 'aprobado';
-      existing.nivelAcceso = 'super_admin';
+      existing.estadoAcceso = D.ACCESS_STATE.APPROVED;
+      existing.nivelAcceso = D.ACCESS_LEVEL.SUPER_ADMIN;
       existing.passwordHash = passwordHash;
       if (!existing.roles.some((id) => String(id) === String(roleId))) {
         existing.roles.push(roleId);
@@ -85,13 +87,13 @@ async function seed(): Promise<void> {
     } else {
       await userModel.create({
         name: 'Super Admin',
-        tipo: 'adulto',
+        tipo: D.PERSON_TYPE.ADULT,
         idSiscout: `seed-super-admin-${cedula}`,
         cedulaHash,
         estado: true,
         estadoSiscout: false,
-        estadoAcceso: 'aprobado',
-        nivelAcceso: 'super_admin',
+        estadoAcceso: D.ACCESS_STATE.APPROVED,
+        nivelAcceso: D.ACCESS_LEVEL.SUPER_ADMIN,
         roles: [roleId],
         passwordHash,
       });
