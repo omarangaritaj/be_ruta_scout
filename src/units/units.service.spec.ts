@@ -90,6 +90,12 @@ const groupLeader = (groupId: number) => ({
   groupId,
   cargoSiscout: 'JEFE DE GRUPO',
 });
+const collaborator = (groupId: number) => ({
+  _id: actorId.toString(),
+  groupId,
+  cargoSiscout: 'COLABORADOR DE GRUPO',
+  cargos: [] as { nombreCargo: string; nivel: 'rama' }[],
+});
 
 function configureDto() {
   return {
@@ -140,7 +146,7 @@ describe('UnitsService', () => {
     };
     userModel = {
       updateMany: jest.fn(() => Promise.resolve({})),
-      updateOne: jest.fn(() => chain({})),
+      updateOne: jest.fn(() => chain({ modifiedCount: 1 })),
       countDocuments: jest.fn((filter: { _id: { $in: unknown[] } }) =>
         Promise.resolve(filter._id.$in.length),
       ),
@@ -751,6 +757,110 @@ describe('UnitsService', () => {
       unitModel.create.mockRejectedValue(new Error('se cayó la red'));
 
       await expect(service.seedGroup(304)).rejects.toThrow('se cayó la red');
+    });
+  });
+
+  describe('declareLeadership', () => {
+    it('deja declarar a quien no tiene rama ni por SiScout ni asignada', async () => {
+      currentUser.get.mockResolvedValue(collaborator(304));
+      const troop = makeUnit({ groupId: 304, branch: 'tropa' });
+      const pack = makeUnit({ groupId: 304, branch: 'manada' });
+      unitModel.find.mockReturnValue(chain([troop, pack]));
+
+      const result = await service.declareLeadership(actor, 'JEFE DE TROPA');
+
+      expect(result).toEqual([troop]);
+      expect(userModel.updateOne).toHaveBeenCalledWith(
+        expect.objectContaining({ _id: actorId.toString() }),
+        {
+          $push: { cargos: { nombreCargo: 'JEFE DE TROPA', nivel: 'rama' } },
+        },
+      );
+      expect(currentUser.refresh).toHaveBeenCalledWith('99');
+    });
+
+    it('el ataque: la jefa de manada no se auto-concede la tropa', async () => {
+      currentUser.get.mockResolvedValue(packLeader(304));
+      unitModel.find.mockReturnValue(
+        chain([makeUnit({ groupId: 304, branch: 'tropa', name: 'Tropa 304' })]),
+      );
+
+      await expect(
+        service.declareLeadership(actor, 'JEFE DE TROPA'),
+      ).rejects.toMatchObject({ code: K.UNITS.LEADERSHIP_ALREADY_SCOPED });
+
+      expect(userModel.updateOne).not.toHaveBeenCalled();
+      expect(currentUser.refresh).not.toHaveBeenCalled();
+    });
+
+    it('responde 403 al ataque, no 400: es una escalada, no un dato mal escrito', async () => {
+      currentUser.get.mockResolvedValue(packLeader(304));
+
+      await expect(
+        service.declareLeadership(actor, 'JEFE DE TROPA'),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+    });
+
+    it('quien ya declaró una jefatura no puede declarar otra', async () => {
+      currentUser.get.mockResolvedValue({
+        ...collaborator(304),
+        cargos: [{ nombreCargo: 'JEFE DE TROPA', nivel: 'rama' as const }],
+      });
+
+      await expect(
+        service.declareLeadership(actor, 'JEFE DE CLAN'),
+      ).rejects.toMatchObject({ code: K.UNITS.LEADERSHIP_ALREADY_SCOPED });
+      expect(userModel.updateOne).not.toHaveBeenCalled();
+    });
+
+    it('el jefe de grupo tampoco declara: ya alcanza todas las ramas', async () => {
+      currentUser.get.mockResolvedValue(groupLeader(304));
+
+      await expect(
+        service.declareLeadership(actor, 'JEFE DE TROPA'),
+      ).rejects.toMatchObject({ code: K.UNITS.LEADERSHIP_ALREADY_SCOPED });
+      expect(userModel.updateOne).not.toHaveBeenCalled();
+    });
+
+    it('sin grupo el problema es otro: MISSING_GROUP', async () => {
+      currentUser.get.mockResolvedValue({
+        _id: actorId.toString(),
+        cargoSiscout: 'COLABORADOR DE GRUPO',
+      });
+
+      await expect(
+        service.declareLeadership(actor, 'JEFE DE TROPA'),
+      ).rejects.toMatchObject({ code: K.UNITS.MISSING_GROUP });
+      expect(userModel.updateOne).not.toHaveBeenCalled();
+    });
+
+    it('rechaza un cargo que no es jefatura de rama antes de mirar el perfil', async () => {
+      currentUser.get.mockResolvedValue(collaborator(304));
+
+      await expect(
+        service.declareLeadership(actor, 'JEFE DE GRUPO'),
+      ).rejects.toMatchObject({ code: K.UNITS.LEADERSHIP_NOT_A_BRANCH });
+      expect(userModel.updateOne).not.toHaveBeenCalled();
+    });
+
+    it('si la escritura no prende, nadie recibe unidades de una rama que no obtuvo', async () => {
+      currentUser.get.mockResolvedValue(collaborator(304));
+      userModel.updateOne.mockReturnValue(chain({ modifiedCount: 0 }));
+
+      await expect(
+        service.declareLeadership(actor, 'JEFE DE TROPA'),
+      ).rejects.toMatchObject({ code: K.UNITS.LEADERSHIP_ALREADY_SCOPED });
+    });
+
+    it('la escritura solo prende si no hay ya un cargo de rama, no solo si no se repite el nombre', async () => {
+      currentUser.get.mockResolvedValue(collaborator(304));
+
+      await service.declareLeadership(actor, 'JEFE DE TROPA');
+
+      expect(userModel.updateOne).toHaveBeenCalledWith(
+        { _id: actorId.toString(), 'cargos.nivel': { $ne: 'rama' } },
+        expect.anything(),
+      );
     });
   });
 

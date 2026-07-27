@@ -527,6 +527,14 @@ export class UnitsService {
     });
   }
 
+  /**
+   * Esto escribe el atributo sobre el que se apoya el alcance, así que la única
+   * condición admisible es la que justifica el endpoint: no tener rama todavía,
+   * ni por SiScout ni por una declaración previa. Eso ya es `leadership-required`,
+   * y por eso la guarda pregunta por el alcance en vez de comparar cargos:
+   * contrastar el declarado contra `cargoSiscout` cerraría el endpoint a quien lo
+   * necesita, que es justo quien no tiene rama ahí (un colaborador de grupo).
+   */
   async declareLeadership(
     user: AuthUser,
     nombreCargo: string,
@@ -539,19 +547,31 @@ export class UnitsService {
     }
 
     const profile = await this.currentUser.get(user.idSiscout!);
-    if (!profile.groupId) {
+    const scope = resolveUnitScope(profile);
+    if (scope.type === 'no-group') {
       throw new AppBadRequestException(K.UNITS.MISSING_GROUP);
     }
+    if (scope.type !== 'leadership-required') {
+      throw new AppForbiddenException(K.UNITS.LEADERSHIP_ALREADY_SCOPED);
+    }
 
-    await this.userModel
+    // El filtro es "ningún cargo de rama", no "este cargo sin repetir": el
+    // perfil que leyó la guarda viene de la caché, así que dos peticiones a la
+    // vez la pasarían las dos. Que la escritura no prenda significa que otra
+    // llegó primero, y entonces la rama concedida no es la que se pidió.
+    const { modifiedCount } = await this.userModel
       .updateOne(
-        { _id: profile._id, 'cargos.nombreCargo': { $ne: nombreCargo } },
+        { _id: profile._id, 'cargos.nivel': { $ne: D.ROLE_LEVEL.RAMA } },
         { $push: { cargos: { nombreCargo, nivel: D.ROLE_LEVEL.RAMA } } },
       )
       .exec();
+    if (modifiedCount === 0) {
+      throw new AppForbiddenException(K.UNITS.LEADERSHIP_ALREADY_SCOPED);
+    }
+
     await this.currentUser.refresh(user.idSiscout!);
 
-    const units = await this.ofGroup(profile.groupId);
+    const units = await this.ofGroup(scope.groupId);
     return units.filter((unit) => unit.branch === branch);
   }
 }

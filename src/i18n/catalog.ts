@@ -151,6 +151,8 @@ export const CATALOG = {
   UNITS: {
     CANNOT_DELETE_WITH_MEMBERS:
       'No se puede eliminar una unidad con protagonistas',
+    LEADERSHIP_ALREADY_SCOPED:
+      'Tu cargo ya determina las unidades que ves: no puedes declarar jefatura',
     LEADERSHIP_NOT_A_BRANCH: 'El cargo "{cargo}" no es una jefatura de rama',
     LEADERSHIP_REQUIRED:
       'Tu cargo no determina una rama: indica qué jefatura tienes',
