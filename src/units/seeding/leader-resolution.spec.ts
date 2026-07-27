@@ -5,7 +5,11 @@ const branchChief = {
   name: 'Zulema Ruiz',
   cargoSiscout: 'JEFE DE MANADA',
 };
-const groupChief = { _id: 'a2', name: 'Bruno Diaz', cargoSiscout: 'JEFE DE GRUPO' };
+const groupChief = {
+  _id: 'a2',
+  name: 'Bruno Diaz',
+  cargoSiscout: 'JEFE DE GRUPO',
+};
 const collaborator = {
   _id: 'a3',
   name: 'Carla Pena',
@@ -26,7 +30,9 @@ describe('resolveUnitLeader', () => {
   });
 
   it('sin jefe de grupo pasa al colaborador', () => {
-    expect(resolveUnitLeader('manada', [anyAdult, collaborator])?._id).toBe('a3');
+    expect(resolveUnitLeader('manada', [anyAdult, collaborator])?._id).toBe(
+      'a3',
+    );
   });
 
   it('en ultimo lugar cualquier adulto', () => {
@@ -39,7 +45,9 @@ describe('resolveUnitLeader', () => {
       name: 'Elsa Mora',
       cargoSiscout: 'JEFE DE TROPA',
     };
-    expect(resolveUnitLeader('manada', [otherBranch, groupChief])?._id).toBe('a2');
+    expect(resolveUnitLeader('manada', [otherBranch, groupChief])?._id).toBe(
+      'a2',
+    );
   });
 
   it('el cargo asignado por la plataforma gana al de SiScout', () => {
@@ -63,7 +71,11 @@ describe('resolveUnitLeader', () => {
 
   it('desempata alfabeticamente para ser determinista', () => {
     const first = { _id: 'a8', name: 'Ana Lopez', cargoSiscout: 'ACOMPANANTE' };
-    const second = { _id: 'a9', name: 'Zoe Marin', cargoSiscout: 'ACOMPANANTE' };
+    const second = {
+      _id: 'a9',
+      name: 'Zoe Marin',
+      cargoSiscout: 'ACOMPANANTE',
+    };
     expect(resolveUnitLeader('manada', [second, first])?._id).toBe('a8');
   });
 

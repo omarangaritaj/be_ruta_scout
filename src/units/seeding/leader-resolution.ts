@@ -36,7 +36,8 @@ function leadsBranch(candidate: LeaderCandidate, branch: Branch): boolean {
 
 function isDeputy(candidate: LeaderCandidate, branch: Branch): boolean {
   return titlesOf(candidate).some(
-    (title) => ramaDeCargo(title) === branch && normalize(title).startsWith('SUB'),
+    (title) =>
+      ramaDeCargo(title) === branch && normalize(title).startsWith('SUB'),
   );
 }
 

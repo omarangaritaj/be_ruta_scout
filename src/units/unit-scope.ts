@@ -5,7 +5,7 @@ import type { NivelCargo } from '../users/schemas/cargo.subschema';
 import type { NivelAcceso } from '../users/schemas/user.schema';
 
 /**
- * Qué unidades le tocan a quien entra a `/unidades`.
+ * Qué unidades le tocan a quien entra a `/units`.
  *
  * `leadership-required` no es un error: es la respuesta legítima para quien
  * pertenece a un grupo pero cuyo cargo no dice sobre qué rama manda (un
@@ -44,8 +44,8 @@ const WHOLE_GROUP_TITLES = ['JEFE DE GRUPO', 'SUBJEFE DE GRUPO'];
 function assignedBranch(profile: ScopeProfile): Rama | undefined {
   for (const cargo of profile.cargos ?? []) {
     if (cargo.nivel !== D.ROLE_LEVEL.RAMA) continue;
-    const rama = ramaDeCargo(cargo.nombreCargo);
-    if (rama) return rama;
+    const branch = ramaDeCargo(cargo.nombreCargo);
+    if (branch) return branch;
   }
   return undefined;
 }
