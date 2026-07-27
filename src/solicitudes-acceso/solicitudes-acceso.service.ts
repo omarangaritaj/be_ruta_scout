@@ -10,6 +10,7 @@ import {
   AppConflictException,
   AppNotFoundException,
 } from '../common';
+import { D } from '../domain';
 import { K } from '../i18n';
 import {
   EMAIL_NOTIFIER,
@@ -53,10 +54,16 @@ export class SolicitudesAccesoService {
     nivel: NivelSolicitud,
     snapshot: Record<string, unknown> | null,
   ): string | null {
-    if (nivel === 'grupo' && typeof snapshot?.group_name === 'string') {
+    if (
+      nivel === D.ROLE_LEVEL.GRUPO &&
+      typeof snapshot?.group_name === 'string'
+    ) {
       return snapshot.group_name;
     }
-    if (nivel === 'region' && typeof snapshot?.district_name === 'string') {
+    if (
+      nivel === D.ROLE_LEVEL.REGION &&
+      typeof snapshot?.district_name === 'string'
+    ) {
       return snapshot.district_name;
     }
     return null;
@@ -75,7 +82,7 @@ export class SolicitudesAccesoService {
 
   private async enviarResolucion(
     idPersona: Types.ObjectId,
-    resultado: 'aprobado' | 'rechazado',
+    resultado: typeof D.ACCESS_STATE.APPROVED | typeof D.ACCESS_STATE.REJECTED,
     extra: { nivel?: NivelSolicitud; cargo?: string; nota?: string | null },
   ): Promise<void> {
     try {
@@ -107,10 +114,10 @@ export class SolicitudesAccesoService {
     if (!persona) {
       throw new AppNotFoundException(K.REQUESTS.AUTHENTICATED_PERSON_NOT_FOUND);
     }
-    if (persona.estadoAcceso === 'aprobado') {
+    if (persona.estadoAcceso === D.ACCESS_STATE.APPROVED) {
       throw new AppConflictException(K.REQUESTS.ACCESS_ALREADY_APPROVED);
     }
-    if (persona.estadoAcceso === 'suspendido') {
+    if (persona.estadoAcceso === D.ACCESS_STATE.SUSPENDED) {
       throw new AppConflictException(K.REQUESTS.ACCESS_SUSPENDED);
     }
     if (!cargoEsValido(dto.cargo, dto.nivel)) {
@@ -120,7 +127,7 @@ export class SolicitudesAccesoService {
     const activa = await this.solicitudModel
       .findOne({
         idPersona: persona._id,
-        estado: { $in: ['pendiente', 'en_revision'] },
+        estado: { $in: [D.REQUEST_STATE.PENDING, D.REQUEST_STATE.IN_REVIEW] },
       })
       .exec();
     if (activa) {
@@ -145,11 +152,14 @@ export class SolicitudesAccesoService {
       rama: territorio.rama,
       groupId: territorio.groupId,
       districtId: territorio.districtId,
-      estado: 'pendiente',
+      estado: D.REQUEST_STATE.PENDING,
     });
 
     await this.userModel
-      .updateOne({ _id: persona._id }, { $set: { estadoAcceso: 'pendiente' } })
+      .updateOne(
+        { _id: persona._id },
+        { $set: { estadoAcceso: D.ACCESS_STATE.PENDING } },
+      )
       .exec();
 
     await this.notificador.encolar({
@@ -182,7 +192,9 @@ export class SolicitudesAccesoService {
 
   async listarPendientes(): Promise<SolicitudAccesoDocument[]> {
     return this.solicitudModel
-      .find({ estado: { $in: ['pendiente', 'en_revision'] } })
+      .find({
+        estado: { $in: [D.REQUEST_STATE.PENDING, D.REQUEST_STATE.IN_REVIEW] },
+      })
       .populate('idPersona', 'name idSiscout tipo')
       .sort({ createdAt: 1 })
       .exec();
@@ -242,11 +254,11 @@ export class SolicitudesAccesoService {
     await this.userModel
       .updateOne(
         { _id: solicitud.idPersona },
-        { $set: { estadoAcceso: 'aprobado', nivelAcceso: nivel } },
+        { $set: { estadoAcceso: D.ACCESS_STATE.APPROVED, nivelAcceso: nivel } },
       )
       .exec();
 
-    solicitud.estado = 'aprobada';
+    solicitud.estado = D.REQUEST_STATE.APPROVED;
     solicitud.nivelAprobado = nivel;
     solicitud.cargoAprobado = cargo;
     solicitud.notaAprobador = dto.nota;
@@ -256,10 +268,10 @@ export class SolicitudesAccesoService {
     await this.notificador.encolar({
       tipo: 'solicitud_resuelta',
       destinatario: { personaId: String(solicitud.idPersona) },
-      datos: { resultado: 'aprobada', nivel, cargo },
+      datos: { resultado: D.REQUEST_STATE.APPROVED, nivel, cargo },
     });
 
-    await this.enviarResolucion(solicitud.idPersona, 'aprobado', {
+    await this.enviarResolucion(solicitud.idPersona, D.ACCESS_STATE.APPROVED, {
       nivel,
       cargo,
     });
@@ -276,11 +288,11 @@ export class SolicitudesAccesoService {
     await this.userModel
       .updateOne(
         { _id: solicitud.idPersona },
-        { $set: { estadoAcceso: 'rechazado' } },
+        { $set: { estadoAcceso: D.ACCESS_STATE.REJECTED } },
       )
       .exec();
 
-    solicitud.estado = 'rechazada';
+    solicitud.estado = D.REQUEST_STATE.REJECTED;
     solicitud.notaAprobador = dto.nota;
     solicitud.resueltoEn = new Date();
     await solicitud.save();
@@ -288,10 +300,10 @@ export class SolicitudesAccesoService {
     await this.notificador.encolar({
       tipo: 'solicitud_resuelta',
       destinatario: { personaId: String(solicitud.idPersona) },
-      datos: { resultado: 'rechazada' },
+      datos: { resultado: D.REQUEST_STATE.REJECTED },
     });
 
-    await this.enviarResolucion(solicitud.idPersona, 'rechazado', {
+    await this.enviarResolucion(solicitud.idPersona, D.ACCESS_STATE.REJECTED, {
       nota: dto.nota,
     });
 
@@ -305,8 +317,8 @@ export class SolicitudesAccesoService {
       throw new AppNotFoundException(K.REQUESTS.NOT_FOUND, { id });
     }
     if (
-      solicitud.estado !== 'pendiente' &&
-      solicitud.estado !== 'en_revision'
+      solicitud.estado !== D.REQUEST_STATE.PENDING &&
+      solicitud.estado !== D.REQUEST_STATE.IN_REVIEW
     ) {
       throw new AppConflictException(K.REQUESTS.ALREADY_RESOLVED);
     }

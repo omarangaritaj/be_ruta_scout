@@ -7,6 +7,7 @@ import {
   AppNotFoundException,
 } from '../common';
 import { CurrentUserService } from '../current-user/current-user.service';
+import { D } from '../domain';
 import { K } from '../i18n';
 import type { CreateUserDto } from './dto/create-user.dto';
 import type { ListUsersDto, PaginatedUsers } from './dto/list-users.dto';
@@ -72,9 +73,11 @@ export class UsersService {
     const { estado, nivel, region, q, page, pageSize } = filtros;
 
     const query: QueryFilter<UserDocument> = {
-      estadoAcceso: estado ?? { $in: ['aprobado', 'suspendido'] },
+      estadoAcceso: estado ?? {
+        $in: [D.ACCESS_STATE.APPROVED, D.ACCESS_STATE.SUSPENDED],
+      },
       // Un nivel concreto acota; sin él, se excluye al super_admin de la lista.
-      nivelAcceso: nivel ?? { $ne: 'super_admin' },
+      nivelAcceso: nivel ?? { $ne: D.ACCESS_LEVEL.SUPER_ADMIN },
     };
     if (region !== undefined) query.districtId = region;
     if (q) query.name = { $regex: escapeRegex(q), $options: 'i' };
@@ -105,7 +108,9 @@ export class UsersService {
         {
           $match: {
             districtId: { $ne: null },
-            estadoAcceso: { $in: ['aprobado', 'suspendido'] },
+            estadoAcceso: {
+              $in: [D.ACCESS_STATE.APPROVED, D.ACCESS_STATE.SUSPENDED],
+            },
           },
         },
         {
@@ -156,7 +161,7 @@ export class UsersService {
     if (!target) {
       throw new AppNotFoundException(K.USERS.NOT_FOUND, { id });
     }
-    if (target.nivelAcceso === 'super_admin') {
+    if (target.nivelAcceso === D.ACCESS_LEVEL.SUPER_ADMIN) {
       throw new AppForbiddenException(K.USERS.CANNOT_MANAGE_SUPER_ADMIN);
     }
 

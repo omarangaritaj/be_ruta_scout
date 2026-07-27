@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { D } from '../../domain';
 import { K, t } from '../../i18n';
 import { objectIdSchema } from '../../common';
 import { cargoSchema } from './cargo.schema';
@@ -17,7 +18,7 @@ const idSiscout = z
 
 /** Adulto: con cargos y roles (los dirigentes de una unidad son adultos). */
 const createAdultoSchema = z.object({
-  tipo: z.literal('adulto'),
+  tipo: z.literal(D.PERSON_TYPE.ADULT),
   name,
   idSiscout,
   roles: z.array(objectIdSchema).default([]),
@@ -27,7 +28,7 @@ const createAdultoSchema = z.object({
 /** Protagonista: joven del programa, con sus datos aplanados en User. */
 const createProtagonistaSchema = z
   .object({
-    tipo: z.literal('protagonista'),
+    tipo: z.literal(D.PERSON_TYPE.PROTAGONIST),
     name,
     idSiscout,
   })

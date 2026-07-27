@@ -1,5 +1,6 @@
 import type { NivelSolicitud } from '../catalogo-cargos/catalogo-cargos';
 import { ramaDeEtiquetaSiscout } from '../catalogo-cargos/ramas';
+import { D } from '../domain';
 import { K, type MessageKey } from '../i18n';
 import type { Rama } from './schemas/solicitud-acceso.schema';
 
@@ -33,7 +34,7 @@ export function resolverTerritorio(
   snapshot: Record<string, unknown> | null,
   cliente: Territorio,
 ): Territorio | { error: MessageKey } {
-  if (nivel === 'nacion') {
+  if (nivel === D.ROLE_LEVEL.NACION) {
     return {};
   }
 
@@ -41,12 +42,12 @@ export function resolverTerritorio(
   const groupId = entero(snapshot?.group_id) ?? cliente.groupId;
   const rama = ramaDeSnapshot(snapshot) ?? cliente.rama;
 
-  if (nivel === 'region') {
+  if (nivel === D.ROLE_LEVEL.REGION) {
     if (!districtId) return { error: K.REQUESTS.MISSING_REGION };
     return { districtId };
   }
 
-  if (nivel === 'grupo') {
+  if (nivel === D.ROLE_LEVEL.GRUPO) {
     if (!groupId) return { error: K.REQUESTS.MISSING_GROUP };
     return { groupId, districtId };
   }

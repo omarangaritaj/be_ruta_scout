@@ -1,15 +1,14 @@
 import { z } from 'zod';
+import { D, ROLE_LEVELS } from '../../domain';
 
 /** Estados gestionables desde el panel: quienes ya tienen acceso. */
-export const ESTADOS_GESTIONABLES = ['aprobado', 'suspendido'] as const;
-
-/** Niveles filtrables (el super_admin nunca se lista aquí). */
-export const NIVELES_FILTRABLES = [
-  'rama',
-  'grupo',
-  'region',
-  'nacion',
+export const ESTADOS_GESTIONABLES = [
+  D.ACCESS_STATE.APPROVED,
+  D.ACCESS_STATE.SUSPENDED,
 ] as const;
+
+/** Niveles filtrables: los territoriales (el super_admin nunca se lista aquí). */
+export const NIVELES_FILTRABLES = ROLE_LEVELS;
 
 /**
  * Filtros de la lista de usuarios. Llegan como query string, así que los

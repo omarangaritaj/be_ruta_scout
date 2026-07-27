@@ -9,7 +9,7 @@ import {
 import { ramaDeEtiquetaSiscout, type Rama } from '../catalogo-cargos/ramas';
 import { AppBadRequestException, AppNotFoundException } from '../common';
 import { CurrentUserService } from '../current-user/current-user.service';
-import { BRANCH_MESSAGE_KEY } from '../domain';
+import { BRANCH_MESSAGE_KEY, D } from '../domain';
 import { K, t } from '../i18n';
 import type { CurrentUser } from '../users/queries/currentUser.query';
 import { User, UserDocument } from '../users/schemas/user.schema';
@@ -94,7 +94,7 @@ export class UnidadesService {
     await this.userModel
       .updateOne(
         { _id: perfil._id, 'cargos.nombreCargo': { $ne: nombreCargo } },
-        { $push: { cargos: { nombreCargo, nivel: 'rama' } } },
+        { $push: { cargos: { nombreCargo, nivel: D.ROLE_LEVEL.RAMA } } },
       )
       .exec();
     await this.currentUser.refresh(user.idSiscout!);
@@ -192,7 +192,7 @@ export class UnidadesService {
     groupId: number,
   ): Promise<Types.ObjectId[]> {
     const candidatos = await this.userModel
-      .find({ tipo: 'protagonista', groupId, estado: true })
+      .find({ tipo: D.PERSON_TYPE.PROTAGONIST, groupId, estado: true })
       .select('_id cargoSiscout')
       .lean<{ _id: Types.ObjectId; cargoSiscout?: string }[]>()
       .exec();

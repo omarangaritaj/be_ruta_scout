@@ -1,26 +1,27 @@
 import { z } from 'zod';
+import { D, ROLE_LEVELS } from '../../domain';
 import { K, t } from '../../i18n';
 import { objectIdSchema } from '../../common';
 import { cargoSchema } from './cargo.schema';
 import { protagonistaFieldsSchema } from './protagonista.schema';
 
 /**
- * Niveles de acceso otorgables al gestionar un usuario. Excluye `super_admin`:
- * ese estatus no se concede editando desde el panel.
+ * Niveles de acceso otorgables al gestionar un usuario. Son los territoriales,
+ * es decir `ACCESS_LEVELS` menos `super_admin`: ese estatus no se concede
+ * editando desde el panel. Coincide con `ROLE_LEVELS` por construcción, no por
+ * casualidad: un nivel es otorgable si y solo si es un nivel de cargo.
  */
-export const NIVELES_OTORGABLES = [
-  'rama',
-  'grupo',
-  'region',
-  'nacion',
-] as const;
+export const NIVELES_OTORGABLES = ROLE_LEVELS;
 
 /**
  * Estados de acceso fijables a mano al gestionar. `aprobado`/`suspendido` son
  * las dos caras de la gestión (reactivar/suspender); `pendiente`, `rechazado` y
  * `sin_solicitud` los produce el flujo de solicitudes, no una edición directa.
  */
-export const ESTADOS_ACCESO_GESTIONABLES = ['aprobado', 'suspendido'] as const;
+export const ESTADOS_ACCESO_GESTIONABLES = [
+  D.ACCESS_STATE.APPROVED,
+  D.ACCESS_STATE.SUSPENDED,
+] as const;
 
 /**
  * Actualización de una persona. `tipo` e `idSiscout` NO se cambian por PATCH
