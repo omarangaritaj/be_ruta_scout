@@ -50,7 +50,7 @@ export class PowersyncService {
     const scope: WriteScope = {
       actorId,
       isSuperAdmin: actor.nivelAcceso === D.ACCESS_LEVEL.SUPER_ADMIN,
-      actorUnidad: actor.idUnidad ? String(actor.idUnidad) : null,
+      actorUnidad: actor.unitId ? String(actor.unitId) : null,
     };
 
     for (const op of ops) {

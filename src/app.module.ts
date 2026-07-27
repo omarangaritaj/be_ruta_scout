@@ -22,7 +22,7 @@ import { SolicitudesAccesoModule } from './solicitudes-acceso/solicitudes-acceso
 import { SiscoutConfigModule } from './siscout/config/siscout-config.module';
 import { SiscoutCredentialsModule } from './siscout/credentials';
 import { SiscoutModule } from './siscout/siscout.module';
-import { UnidadesModule } from './unidades/unidades.module';
+import { UnitsModule } from './units/units.module';
 import { UsersModule } from './users/users.module';
 
 @Module({
@@ -40,7 +40,7 @@ import { UsersModule } from './users/users.module';
     AuthzModule,
     UsersModule,
     GruposModule,
-    UnidadesModule,
+    UnitsModule,
     SiscoutModule,
     AuthModule,
     PasswordResetModule,

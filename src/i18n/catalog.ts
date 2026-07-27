@@ -152,7 +152,10 @@ export const CATALOG = {
     LEADERSHIP_NOT_A_BRANCH: 'El cargo "{cargo}" no es una jefatura de rama',
     LEADERSHIP_REQUIRED:
       'Tu cargo no determina una rama: indica qué jefatura tienes',
+    MEMBERS_NOT_IN_UNIT: 'Algún protagonista no pertenece a esta unidad',
+    MEMBERS_REQUIRED: 'Una unidad necesita al menos un protagonista',
     MISSING_GROUP: 'No perteneces a ningún grupo',
+    NAME_TAKEN: 'Ya existe una unidad con ese nombre en el grupo',
     NOT_FOUND: 'No existe una unidad con id "{id}"',
   },
   USERS: {

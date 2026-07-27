@@ -132,8 +132,8 @@ export class User {
   @Prop({ type: Date })
   fechaBajaSiscout?: Date;
 
-  @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'Unidad' })
-  idUnidad?: Types.ObjectId;
+  @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'Unit' })
+  unitId?: Types.ObjectId;
 
   // El modelo Subgrupo todavía no existe: populate('idSubgrupo') fallará hasta que se cree.
   @Prop({ type: MongooseSchema.Types.ObjectId, ref: 'Subgrupo' })

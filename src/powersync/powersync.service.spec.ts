@@ -24,12 +24,12 @@ function put(data: Record<string, unknown>): WriteOp {
 const superAdmin = {
   estadoAcceso: 'aprobado',
   nivelAcceso: 'super_admin',
-  idUnidad: null,
+  unitId: null,
 };
 const dirigente = {
   estadoAcceso: 'aprobado',
   nivelAcceso: 'grupo',
-  idUnidad: 'U1',
+  unitId: 'U1',
 };
 
 describe('PowersyncService', () => {

@@ -17,7 +17,7 @@ export const acudienteSchema = z.object({
  * SiScout aún no los tiene (se completan en la aplicación).
  */
 export const protagonistaFieldsSchema = z.object({
-  idUnidad: objectIdSchema.optional(),
+  unitId: objectIdSchema.optional(),
   idSubgrupo: objectIdSchema.optional(),
   nombrePreferido: textoOpcional,
   fechaNacimiento: z.coerce.date().optional(),
