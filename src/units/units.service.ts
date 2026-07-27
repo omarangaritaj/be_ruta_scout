@@ -204,9 +204,6 @@ export class UnitsService {
       const current = unit.members.map((m) => m.toString());
       const staying = new Set(memberIds);
 
-      if (staying.size === 0) {
-        throw new AppBadRequestException(K.UNITS.MEMBERS_REQUIRED);
-      }
       if (memberIds.some((memberId) => !current.includes(memberId))) {
         throw new AppBadRequestException(K.UNITS.MEMBERS_NOT_IN_UNIT);
       }
@@ -257,10 +254,18 @@ export class UnitsService {
 
   async update(id: string, dto: UpdateUnitDto): Promise<UnitDocument> {
     return this.inTransaction(async (session) => {
+      const patch = { ...dto };
+      if (patch.unitLeaderId && patch.leaders) {
+        const unitLeaderId = patch.unitLeaderId;
+        patch.leaders = patch.leaders.filter(
+          (leaderId) => !leaderId.equals(unitLeaderId),
+        );
+      }
+
       let unit: UnitDocument | null;
       try {
         unit = await this.unitModel
-          .findByIdAndUpdate(id, dto, {
+          .findByIdAndUpdate(id, patch, {
             returnDocument: 'after',
             runValidators: true,
             session,

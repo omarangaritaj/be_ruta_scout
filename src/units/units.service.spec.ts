@@ -131,13 +131,36 @@ describe('UnitsService', () => {
   });
 
   describe('setMembers', () => {
-    it('rechaza una lista vacia con MEMBERS_REQUIRED', async () => {
-      const unit = makeUnit({ members: [new Types.ObjectId()] });
+    it('con lista vacia sobre una unidad con miembros, la clon se lleva a todos y el origen queda vacio', async () => {
+      const first = new Types.ObjectId();
+      const second = new Types.ObjectId();
+      const unit = makeUnit({ members: [first, second] });
       unitModel.findById.mockReturnValue(chain(unit));
 
-      await expect(
-        service.setMembers(unit._id.toString(), []),
-      ).rejects.toMatchObject({ code: K.UNITS.MEMBERS_REQUIRED });
+      let clone: Record<string, unknown> | undefined;
+      unitModel.create.mockImplementation((docs: Record<string, unknown>[]) => {
+        clone = { ...docs[0], _id: new Types.ObjectId() };
+        return Promise.resolve([clone]);
+      });
+
+      const result = await service.setMembers(unit._id.toString(), []);
+
+      expect(unitModel.create).toHaveBeenCalledTimes(1);
+      expect(result).toHaveLength(2);
+      expect(unit.members).toEqual([]);
+      expect((clone?.members as Types.ObjectId[]).map(String).sort()).toEqual(
+        [first.toString(), second.toString()].sort(),
+      );
+    });
+
+    it('con lista vacia sobre una unidad ya vacia, no crea ninguna clon', async () => {
+      const unit = makeUnit({ members: [] });
+      unitModel.findById.mockReturnValue(chain(unit));
+
+      const result = await service.setMembers(unit._id.toString(), []);
+
+      expect(unitModel.create).not.toHaveBeenCalled();
+      expect(result).toEqual([unit]);
     });
 
     it('rechaza un id ajeno a la unidad con MEMBERS_NOT_IN_UNIT', async () => {
@@ -219,6 +242,47 @@ describe('UnitsService', () => {
 
       expect(unitModel.findByIdAndDelete).toHaveBeenCalledTimes(1);
       expect(deletedFilter).toEqual({ unitId: unit._id });
+    });
+  });
+
+  describe('update', () => {
+    it('traduce la clave duplicada a NAME_TAKEN en vez de un error crudo de Mongo', async () => {
+      const unit = makeUnit();
+      const duplicateKeyError = Object.assign(
+        new Error('E11000 duplicate key'),
+        { code: 11000 },
+      );
+      unitModel.findByIdAndUpdate.mockReturnValue({
+        exec: jest.fn(() => Promise.reject(duplicateKeyError)),
+      });
+
+      await expect(
+        service.update(unit._id.toString(), { name: 'Ya existe' }),
+      ).rejects.toMatchObject({ code: K.UNITS.NAME_TAKEN });
+    });
+
+    it('excluye al jefe de leaders cuando ambos llegan en el mismo PATCH', async () => {
+      const unit = makeUnit();
+      let receivedPatch: Record<string, unknown> | undefined;
+      unitModel.findByIdAndUpdate.mockImplementation(
+        (_id: string, patch: Record<string, unknown>) => {
+          receivedPatch = patch;
+          return chain({ ...unit, ...patch });
+        },
+      );
+
+      const leaderHex = new Types.ObjectId().toString();
+      const otherHex = new Types.ObjectId().toString();
+
+      await service.update(unit._id.toString(), {
+        unitLeaderId: new Types.ObjectId(leaderHex),
+        leaders: [new Types.ObjectId(leaderHex), new Types.ObjectId(otherHex)],
+      });
+
+      const leaderIds = (receivedPatch?.leaders as Types.ObjectId[]).map((id) =>
+        id.toString(),
+      );
+      expect(leaderIds).toEqual([otherHex]);
     });
   });
 
