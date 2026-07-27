@@ -10,6 +10,10 @@ import { AuthService } from './auth.service';
 const hasher = { hash: (c: string) => `H:${c}`, isReady: () => true };
 const jwt = { signAsync: jest.fn(() => Promise.resolve('access.jwt')) };
 const config = { get: jest.fn(() => 30) };
+const redis = {
+  set: jest.fn(() => Promise.resolve()),
+  get: jest.fn(() => Promise.resolve(null)),
+};
 
 const disabledKeys = {
   enabled: false,
@@ -23,6 +27,7 @@ function makeService(
   const userModel = {
     findOne: () => ({ exec: () => Promise.resolve(opts.user ?? null) }),
     findById: () => ({ exec: () => Promise.resolve(opts.user ?? null) }),
+    aggregate: () => Promise.resolve(opts.user ? [opts.user] : []),
   };
   const refreshModel = {
     create: jest.fn((doc: unknown) => Promise.resolve(doc)),
@@ -40,6 +45,7 @@ function makeService(
     config as never,
     permissions as never,
     (opts.psKeys ?? disabledKeys) as never,
+    redis as never,
   );
   return { svc, refreshModel };
 }

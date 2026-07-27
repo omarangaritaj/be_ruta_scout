@@ -8,9 +8,11 @@ import {
   Param,
   Patch,
   Post,
+  Req,
   UseGuards,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import type { AuthUser } from '../auth/strategies/jwt.strategy';
 import { PermissionsGuard } from '../authz/permissions.guard';
 import { RequirePermissions } from '../authz/require-permissions.decorator';
 import { ParseObjectIdPipe, ZodValidationPipe } from '../common';
@@ -40,8 +42,8 @@ export class UnidadesController {
 
   @Get()
   @RequirePermissions('unidad:read')
-  async findAll(): Promise<UnidadDocument[]> {
-    return this.unidadesService.findAll();
+  async findAll(@Req() req: { user: AuthUser }): Promise<UnidadDocument[]> {
+    return this.unidadesService.findAll(req.user);
   }
 
   @Get(':id')

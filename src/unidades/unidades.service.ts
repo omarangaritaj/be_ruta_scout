@@ -1,24 +1,34 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { AppNotFoundException } from '../common';
 import { K } from '../i18n';
+import { RedisService } from '../redis/redis.service';
 import type { CreateUnidadDto } from './dto/create-unidad.dto';
 import type { UpdateUnidadDto } from './dto/update-unidad.dto';
 import { Unidad, UnidadDocument } from './schemas/unidad.schema';
+import type { AuthUser } from '../auth/strategies/jwt.strategy';
 
 @Injectable()
 export class UnidadesService {
+  private readonly logger = new Logger(UnidadesService.name);
+
   constructor(
     @InjectModel(Unidad.name)
     private readonly unidadModel: Model<UnidadDocument>,
+    private readonly redis: RedisService,
   ) {}
 
   async create(dto: CreateUnidadDto): Promise<UnidadDocument> {
     return this.unidadModel.create(dto);
   }
 
-  async findAll(): Promise<UnidadDocument[]> {
+  async findAll(user: AuthUser): Promise<UnidadDocument[]> {
+    const currentUser = await this.redis.getCurrentUser(user.idSiscout!);
+    this.logger.debug(
+      `findAll — current_user → ${JSON.stringify(currentUser)}`,
+    );
+
     return this.unidadModel.find().exec();
   }
 

@@ -27,7 +27,7 @@ import { LocalStrategy } from './strategies/local.strategy';
       useFactory: (config: AppConfigService) => ({
         secret: config.get('JWT_SECRET', { infer: true }),
         signOptions: {
-          expiresIn: config.get('JWT_ACCESS_TTL', { infer: true }),
+          expiresIn: config.get('JWT_ACCESS_TTL_SECONDS', { infer: true }),
         },
       }),
     }),

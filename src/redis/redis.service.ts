@@ -2,6 +2,9 @@ import { Inject, Injectable, Logger, OnModuleDestroy } from '@nestjs/common';
 import { Redis } from 'ioredis';
 import { AppSettingsService } from '../app-settings/app-settings.service';
 import { REDIS_CLIENT } from './redis.constants';
+import type { CurrentUser } from '../users/queries/currentUser.query';
+import { AppNotFoundException } from '../common';
+import { K } from '../i18n';
 
 /**
  * Cache en memoria sobre Redis (ioredis) con serialización JSON tipada.
@@ -44,6 +47,18 @@ export class RedisService implements OnModuleDestroy {
       this.logger.warn(`get(${key}) falló: ${(error as Error).message}`);
       return null;
     }
+  }
+
+  async getCurrentUser(idSiscout: string): Promise<CurrentUser> {
+    const currentUser = await this.get<CurrentUser>(
+      `current_user:${idSiscout}`,
+    );
+
+    if (!currentUser) {
+      throw new AppNotFoundException(K.REQUESTS.AUTHENTICATED_PERSON_NOT_FOUND);
+    }
+
+    return currentUser;
   }
 
   /**

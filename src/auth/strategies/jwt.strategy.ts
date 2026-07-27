@@ -10,12 +10,14 @@ import type {
 
 export interface JwtPayload {
   sub: string;
+  idSiscout?: string;
   accessStatus?: EstadoAcceso;
   accessLevel?: NivelAcceso;
 }
 
 export interface AuthUser {
   userId: string;
+  idSiscout?: string;
   accessStatus?: EstadoAcceso;
   accessLevel?: NivelAcceso;
 }
@@ -39,6 +41,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   validate(payload: JwtPayload): AuthUser {
     return {
       userId: payload.sub,
+      idSiscout: payload.idSiscout,
       accessStatus: payload.accessStatus,
       accessLevel: payload.accessLevel,
     };

@@ -107,7 +107,13 @@ export const envSchema = z.object({
 
   // Firma los access tokens (JWT). Los refresh tokens son opacos y no la usan.
   JWT_SECRET: z.string().min(16),
-  JWT_ACCESS_TTL: z.string().default('15m'),
+  // Vida del access token EN SEGUNDOS. También es el TTL del cache de perfil
+  // (`current_user:*`) en Redis: la sesión y su cache expiran a la vez.
+  JWT_ACCESS_TTL_SECONDS: z.coerce
+    .number({ error: 'debe ser un número' })
+    .int({ error: 'debe ser un número entero' })
+    .positive({ error: 'debe ser mayor que 0' })
+    .default(900),
   JWT_REFRESH_TTL_DAYS: z.coerce.number().int().min(1).default(30),
 
   // Bootstrap del super admin (seed de un solo uso). Opcionales y descartables:

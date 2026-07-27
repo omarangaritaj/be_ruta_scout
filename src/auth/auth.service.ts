@@ -22,11 +22,16 @@ import {
   type NivelAcceso,
   type TipoPersona,
 } from '../users/schemas/user.schema';
+import { RedisService } from '../redis/redis.service';
 import { PowerSyncKeyService, type PowerSyncJwks } from './powersync-keys';
 import {
   RefreshToken,
   RefreshTokenDocument,
 } from './schemas/refresh-token.schema';
+import {
+  currenUserAggregation,
+  type CurrentUser,
+} from '../users/queries/currentUser.query';
 
 export type NextStep = 'app' | 'onboarding' | 'suspended';
 export type AccountStatus = 'registered' | 'new' | 'inactive';
@@ -85,6 +90,7 @@ export class AuthService {
     private readonly config: AppConfigService,
     private readonly permissions: PermissionsService,
     private readonly powerSyncKeys: PowerSyncKeyService,
+    private readonly redis: RedisService,
   ) {}
 
   async check(cedula: string): Promise<CheckResult> {
@@ -122,6 +128,13 @@ export class AuthService {
     if (!(await compare(password, user.passwordHash))) {
       throw new AppUnauthorizedException(K.AUTH.INVALID_CREDENTIALS);
     }
+
+    const currentUser = await this.getCurrentUser(user);
+    await this.redis.set(
+      `current_user:${user.idSiscout}`,
+      currentUser,
+      this.config.get('JWT_ACCESS_TTL_SECONDS', { infer: true }),
+    );
     return user;
   }
 
@@ -207,6 +220,7 @@ export class AuthService {
   private async issueAuthResult(user: UserDocument): Promise<AuthResult> {
     const accessToken = await this.jwt.signAsync({
       sub: String(user._id),
+      idSiscout: user.idSiscout,
       accessStatus: user.estadoAcceso,
       accessLevel: user.nivelAcceso,
     });
@@ -254,5 +268,15 @@ export class AuthService {
     if (accessStatus === 'aprobado') return 'app';
     if (accessStatus === 'suspendido') return 'suspended';
     return 'onboarding';
+  }
+
+  private async getCurrentUser(
+    user: UserDocument,
+  ): Promise<CurrentUser | undefined> {
+    const [currentUser] = await this.userModel.aggregate<CurrentUser>(
+      currenUserAggregation(user.idSiscout),
+    );
+
+    return currentUser;
   }
 }
