@@ -40,7 +40,8 @@ export type NivelAcceso = AccessLevel;
  * - `estado` (bool): ¿activo dentro de NUESTRA plataforma? Lo gestionamos aquí.
  *
  * ⚠️ Este documento NO contiene el payload de SiScout. Ese payload vive aislado
- * y cifrado en `siscout_snapshots`; aquí solo se proyecta lo de la lista blanca.
+ * y cifrado en `siscout_snapshots`; aquí solo se proyecta lo de la lista de
+ * permitidos.
  */
 @Schema({ collection: 'users', timestamps: true })
 export class User {
@@ -78,9 +79,9 @@ export class User {
   nivelAcceso?: NivelAcceso;
 
   // --- Territorio (afiliación organizacional, NO confidencial) ---
-  // El sync lo proyecta desde SiScout (lista blanca `PUBLIC_FIELDS`) y se puede
-  // ajustar al gestionar el acceso. Es filtrable, por eso `districtId` y
-  // `groupId` llevan índice. La PII (cédula, teléfono, correo) NO vive aquí:
+  // El sync lo proyecta desde SiScout (lista de permitidos `PUBLIC_FIELDS`) y
+  // se puede ajustar al gestionar el acceso. Es filtrable, por eso `districtId`
+  // y `groupId` llevan índice. La PII (cédula, teléfono, correo) NO vive aquí:
   // sigue cifrada en `siscout_snapshots`.
   @Prop({ type: Number, index: true })
   districtId?: number;

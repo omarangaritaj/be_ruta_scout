@@ -34,7 +34,7 @@ import {
  * identificador legible con el que se habla de ella en logs y en operación.
  *
  * ⚠️ La contraseña ENTRA en claro y no SALE nunca, ni siquiera cifrada. Las
- * respuestas se construyen con una lista blanca de campos, no quitando el
+ * respuestas se construyen con una lista de campos permitidos, no quitando el
  * password de una copia del documento. Como gobierna el acceso al sistema
  * externo, va tras el permiso dedicado `siscout:credentials`.
  */

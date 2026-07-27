@@ -22,7 +22,7 @@ export interface CurrentUser extends Omit<
  * descarta los campos internos y los secretos.
  *
  * `cargoSiscout` ya vive en el documento público —lo proyecta el sync desde la
- * lista blanca—, así que este pipeline NO toca `siscout_snapshots`. Es
+ * lista de permitidos—, así que este pipeline NO toca `siscout_snapshots`. Es
  * deliberado: es el camino del login y no tiene por qué leer la colección
  * privada por un dato que no es PII. Quien nunca haya venido de una
  * sincronización (el super admin sembrado) simplemente no lo trae.

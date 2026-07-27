@@ -6,8 +6,8 @@ import type { SiscoutMember } from '../normalize';
  *
  * Se cifran los datos personales que identifican a la persona: cédula,
  * teléfono y correo. Deliberadamente NO se cifra `nombre`: ya se proyecta en
- * claro a `users.name` por la lista blanca, así que cifrarlo aquí no aportaría
- * confidencialidad y sí complicaría las lecturas.
+ * claro a `users.name` por la lista de permitidos, así que cifrarlo aquí no
+ * aportaría confidencialidad y sí complicaría las lecturas.
  *
  * `cargo` y `group_id` tampoco se cifran: la detección de cambios de cargo y de
  * grupo los lee del snapshot previo sin descifrar.

@@ -184,7 +184,7 @@ describe('orden de las operaciones: primero hashear, después cifrar', () => {
 });
 
 describe('ENCRYPTED_FIELDS', () => {
-  it('es la lista blanca que consume el cifrado', () => {
+  it('es la lista de permitidos que consume el cifrado', () => {
     // Si alguien añade un campo aquí, el round-trip de arriba lo cubre solo.
     expect(ENCRYPTED_FIELDS).toEqual(['citizenship_card', 'telefono', 'email']);
   });

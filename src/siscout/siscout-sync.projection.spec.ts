@@ -19,10 +19,10 @@ import { SiscoutSyncService } from './siscout-sync.service';
 /**
  * Pruebas de la PROYECCIÓN al documento público (`users`).
  *
- * Lo que se vigila aquí es la lista blanca: que salga lo que debe salir, que
- * NO salga la PII, y que un campo retirado en el origen se limpie en vez de
- * quedarse en pie. Un cargo obsoleto no es un dato viejo cualquiera: de él
- * cuelgan permisos.
+ * Lo que se vigila aquí es la lista de permitidos: que salga lo que debe
+ * salir, que NO salga la PII, y que un campo retirado en el origen se limpie
+ * en vez de quedarse en pie. Un cargo obsoleto no es un dato viejo cualquiera:
+ * de él cuelgan permisos.
  *
  * Se ejercita con `importMembers` porque hace la MISMA escritura que una
  * sincronización real sin necesitar red ni credenciales.

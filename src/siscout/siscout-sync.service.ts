@@ -42,9 +42,9 @@ interface PublicField {
 /**
  * Campos del miembro que se copian al documento público.
  *
- * Lista BLANCA: lo que no esté aquí queda confinado al snapshot privado. Con
- * una lista negra, cualquier campo nuevo del servicio externo quedaría expuesto
- * por omisión y el fallo sería silencioso.
+ * Lista de PERMITIDOS: lo que no esté aquí queda confinado al snapshot
+ * privado. Con una lista de bloqueados, cualquier campo nuevo del servicio
+ * externo quedaría expuesto por omisión y el fallo sería silencioso.
  */
 const PUBLIC_FIELDS: Partial<Record<keyof SiscoutMember, PublicField>> = {
   nombre: { field: 'name' },

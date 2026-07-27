@@ -226,8 +226,8 @@ export class SolicitudesAccesoService {
     }
 
     // Territorio y cargo se leen del documento público: el sync los proyecta
-    // desde la lista blanca, así que descifrar el snapshot para esto sería
-    // pagar una lectura de la colección privada por datos que no son PII.
+    // desde la lista de permitidos, así que descifrar el snapshot para esto
+    // sería pagar una lectura de la colección privada por datos que no son PII.
     return {
       estadoAcceso: persona.estadoAcceso,
       nivelAcceso: persona.nivelAcceso,

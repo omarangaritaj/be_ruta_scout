@@ -265,8 +265,8 @@ export class SiscoutCredentialsService {
 
   /**
    * La vista pública se construye campo a campo, NO quitando la contraseña de
-   * una copia. Con una lista negra, cualquier campo sensible que se añada
-   * mañana al esquema quedaría expuesto por omisión y el fallo sería
+   * una copia. Con una lista de bloqueados, cualquier campo sensible que se
+   * añada mañana al esquema quedaría expuesto por omisión y el fallo sería
    * silencioso.
    */
   private toView(credential: SiscoutCredential): SiscoutCredentialView {
