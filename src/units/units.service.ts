@@ -176,10 +176,10 @@ export class UnitsService {
 
       unit.name = dto.name;
       unit.city = dto.city;
-      unit.unitLeaderId = new Types.ObjectId(dto.unitLeaderId);
-      unit.leaders = dto.leaders
-        .filter((leaderId) => leaderId !== dto.unitLeaderId)
-        .map((leaderId) => new Types.ObjectId(leaderId));
+      unit.unitLeaderId = dto.unitLeaderId;
+      unit.leaders = dto.leaders.filter(
+        (leaderId) => !leaderId.equals(dto.unitLeaderId),
+      );
       unit.configuredAt = new Date();
 
       try {
@@ -257,13 +257,21 @@ export class UnitsService {
 
   async update(id: string, dto: UpdateUnitDto): Promise<UnitDocument> {
     return this.inTransaction(async (session) => {
-      const unit = await this.unitModel
-        .findByIdAndUpdate(id, dto, {
-          returnDocument: 'after',
-          runValidators: true,
-          session,
-        })
-        .exec();
+      let unit: UnitDocument | null;
+      try {
+        unit = await this.unitModel
+          .findByIdAndUpdate(id, dto, {
+            returnDocument: 'after',
+            runValidators: true,
+            session,
+          })
+          .exec();
+      } catch (error) {
+        if (isDuplicateKey(error)) {
+          throw new AppBadRequestException(K.UNITS.NAME_TAKEN);
+        }
+        throw error;
+      }
       if (!unit) throw new AppNotFoundException(K.UNITS.NOT_FOUND, { id });
 
       await this.syncMembership(unit, session);
@@ -273,17 +281,16 @@ export class UnitsService {
 
   async remove(id: string): Promise<void> {
     await this.inTransaction(async (session) => {
-      const deleted = await this.unitModel
-        .findByIdAndDelete(id, { session })
-        .exec();
-      if (!deleted) throw new AppNotFoundException(K.UNITS.NOT_FOUND, { id });
+      const unit = await this.unitModel.findById(id).session(session).exec();
+      if (!unit) throw new AppNotFoundException(K.UNITS.NOT_FOUND, { id });
+      if (unit.members.length > 0) {
+        throw new AppBadRequestException(K.UNITS.CANNOT_DELETE_WITH_MEMBERS);
+      }
 
-      await this.membershipModel.deleteMany(
-        { unitId: deleted._id },
-        { session },
-      );
+      await this.unitModel.findByIdAndDelete(id, { session }).exec();
+      await this.membershipModel.deleteMany({ unitId: unit._id }, { session });
       await this.userModel.updateMany(
-        { unitId: deleted._id },
+        { unitId: unit._id },
         { $unset: { unitId: '' } },
         { session },
       );
