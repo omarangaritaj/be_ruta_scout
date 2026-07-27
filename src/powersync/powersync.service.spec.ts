@@ -11,7 +11,7 @@ import type { WriteOp } from './dto/write-batch.dto';
 import { PowersyncService } from './powersync.service';
 
 const validData = {
-  idUnidad: 'U1',
+  unitId: 'U1',
   idProtagonista: 'P1',
   fecha: '2026-07-26T10:00:00.000Z',
   presente: true,
@@ -103,7 +103,7 @@ describe('PowersyncService', () => {
     expect(asistencia.updateOne).toHaveBeenCalledTimes(1);
     expect(lastUpsert?.filter).toEqual({ _id: 'row-1' });
     expect(lastUpsert?.set).toMatchObject({
-      idUnidad: 'U1',
+      unitId: 'U1',
       idProtagonista: 'P1',
       presente: true,
       registradoPor: 'admin',
@@ -119,7 +119,7 @@ describe('PowersyncService', () => {
   it('un dirigente NO puede escribir asistencia de otra unidad', async () => {
     await make(dirigente);
     await expect(
-      service.applyWrites('d', [put({ ...validData, idUnidad: 'U2' })]),
+      service.applyWrites('d', [put({ ...validData, unitId: 'U2' })]),
     ).rejects.toBeInstanceOf(ForbiddenException);
   });
 
@@ -132,12 +132,12 @@ describe('PowersyncService', () => {
   it('rechaza si faltan campos requeridos', async () => {
     await make(superAdmin);
     await expect(
-      service.applyWrites('a', [put({ idUnidad: 'U1' })]),
+      service.applyWrites('a', [put({ unitId: 'U1' })]),
     ).rejects.toBeInstanceOf(BadRequestException);
   });
 
   it('DELETE borra cuando el scope lo permite', async () => {
-    await make(superAdmin, { idUnidad: 'U1' });
+    await make(superAdmin, { unitId: 'U1' });
     await service.applyWrites('a', [
       { op: 'DELETE', table: 'asistencia', id: 'row-1' },
     ]);

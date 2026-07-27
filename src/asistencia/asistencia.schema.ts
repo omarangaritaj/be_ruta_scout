@@ -15,7 +15,7 @@ export class Asistencia {
   _id: string;
 
   @Prop({ type: String, required: true, index: true })
-  idUnidad: string;
+  unitId: string;
 
   @Prop({ type: String, required: true })
   idProtagonista: string;

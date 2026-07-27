@@ -18,7 +18,7 @@ import type { WriteOp } from './dto/write-batch.dto';
 interface WriteScope {
   actorId: string;
   isSuperAdmin: boolean;
-  actorUnidad: string | null;
+  actorUnitId: string | null;
 }
 
 function text(value: unknown): string {
@@ -50,7 +50,7 @@ export class PowersyncService {
     const scope: WriteScope = {
       actorId,
       isSuperAdmin: actor.nivelAcceso === D.ACCESS_LEVEL.SUPER_ADMIN,
-      actorUnidad: actor.unitId ? String(actor.unitId) : null,
+      actorUnitId: actor.unitId ? String(actor.unitId) : null,
     };
 
     for (const op of ops) {
@@ -63,29 +63,29 @@ export class PowersyncService {
     }
   }
 
-  private canWrite(idUnidad: string, scope: WriteScope): boolean {
+  private canWrite(unitId: string, scope: WriteScope): boolean {
     if (scope.isSuperAdmin) return true;
-    return scope.actorUnidad !== null && idUnidad === scope.actorUnidad;
+    return scope.actorUnitId !== null && unitId === scope.actorUnitId;
   }
 
   private async applyAsistencia(op: WriteOp, scope: WriteScope): Promise<void> {
     if (op.op === 'DELETE') {
       const existing = await this.asistenciaModel.findById(op.id).exec();
-      if (existing && this.canWrite(existing.idUnidad, scope)) {
+      if (existing && this.canWrite(existing.unitId, scope)) {
         await this.asistenciaModel.deleteOne({ _id: op.id }).exec();
       }
       return;
     }
 
     const data = op.data ?? {};
-    const idUnidad = text(data.idUnidad);
+    const unitId = text(data.unitId);
     const idProtagonista = text(data.idProtagonista);
     const fechaRaw = text(data.fecha);
 
-    if (!idUnidad || !idProtagonista || !fechaRaw) {
+    if (!unitId || !idProtagonista || !fechaRaw) {
       throw new AppBadRequestException(K.POWERSYNC.ATTENDANCE_REQUIRED_FIELDS);
     }
-    if (!this.canWrite(idUnidad, scope)) {
+    if (!this.canWrite(unitId, scope)) {
       throw new AppForbiddenException(K.POWERSYNC.ATTENDANCE_OTHER_UNIT);
     }
     const fecha = new Date(fechaRaw);
@@ -98,7 +98,7 @@ export class PowersyncService {
         { _id: op.id },
         {
           $set: {
-            idUnidad,
+            unitId,
             idProtagonista,
             fecha,
             // El cliente (SQLite) manda presente como integer 0/1, no boolean.

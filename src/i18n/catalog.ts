@@ -108,7 +108,7 @@ export const CATALOG = {
     ACCESS_NOT_APPROVED: 'Tu acceso no está aprobado',
     ATTENDANCE_OTHER_UNIT: 'Solo puedes registrar asistencia de tu unidad',
     ATTENDANCE_REQUIRED_FIELDS:
-      'asistencia requiere idUnidad, idProtagonista y fecha',
+      'asistencia requiere unitId, idProtagonista y fecha',
     INVALID_DATE: 'fecha no válida',
     UNSUPPORTED_TABLE: 'Tabla no soportada: {tabla}',
   },
