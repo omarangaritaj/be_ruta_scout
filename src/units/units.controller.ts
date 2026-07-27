@@ -43,9 +43,10 @@ export class UnitsController {
   @Get(':id')
   @RequirePermissions('unit:read')
   async findOne(
+    @Req() req: { user: AuthUser },
     @Param('id', ParseObjectIdPipe) id: string,
   ): Promise<UnitDocument> {
-    return this.unitsService.findOne(id);
+    return this.unitsService.findOne(req.user, id);
   }
 
   @Post('leadership')
@@ -61,19 +62,22 @@ export class UnitsController {
   @Patch(':id/configure')
   @RequirePermissions('unit:update')
   async configure(
+    @Req() req: { user: AuthUser },
     @Param('id', ParseObjectIdPipe) id: string,
     @Body(new ZodValidationPipe(configureUnitSchema)) dto: ConfigureUnitDto,
   ): Promise<UnitDocument> {
-    return this.unitsService.configure(id, dto);
+    return this.unitsService.configure(req.user, id, dto);
   }
 
   @Patch(':id/members')
   @RequirePermissions('unit:update', 'unit:create')
   async setMembers(
+    @Req() req: { user: AuthUser },
     @Param('id', ParseObjectIdPipe) id: string,
     @Body(new ZodValidationPipe(setMembersSchema)) dto: SetMembersDto,
   ): Promise<UnitDocument[]> {
     return this.unitsService.setMembers(
+      req.user,
       id,
       dto.memberIds.map((memberId) => memberId.toString()),
     );
@@ -82,16 +86,20 @@ export class UnitsController {
   @Patch(':id')
   @RequirePermissions('unit:update')
   async update(
+    @Req() req: { user: AuthUser },
     @Param('id', ParseObjectIdPipe) id: string,
     @Body(new ZodValidationPipe(updateUnitSchema)) dto: UpdateUnitDto,
   ): Promise<UnitDocument> {
-    return this.unitsService.update(id, dto);
+    return this.unitsService.update(req.user, id, dto);
   }
 
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   @RequirePermissions('unit:delete')
-  async remove(@Param('id', ParseObjectIdPipe) id: string): Promise<void> {
-    return this.unitsService.remove(id);
+  async remove(
+    @Req() req: { user: AuthUser },
+    @Param('id', ParseObjectIdPipe) id: string,
+  ): Promise<void> {
+    return this.unitsService.remove(req.user, id);
   }
 }

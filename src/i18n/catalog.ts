@@ -154,10 +154,17 @@ export const CATALOG = {
     LEADERSHIP_NOT_A_BRANCH: 'El cargo "{cargo}" no es una jefatura de rama',
     LEADERSHIP_REQUIRED:
       'Tu cargo no determina una rama: indica qué jefatura tienes',
+    LEADER_NOT_ELIGIBLE:
+      'El jefe y los subjefes deben ser adultos activos del mismo grupo de la unidad',
+    MEMBERS_DUPLICATED:
+      'La lista de protagonistas trae identificadores repetidos',
     MEMBERS_NOT_IN_UNIT: 'Algún protagonista no pertenece a esta unidad',
     MISSING_GROUP: 'No perteneces a ningún grupo',
+    NAME_EXHAUSTED:
+      'No hay un nombre libre para otra unidad de {branch} en este grupo',
     NAME_TAKEN: 'Ya existe una unidad con ese nombre en el grupo',
     NOT_FOUND: 'No existe una unidad con id "{id}"',
+    OUT_OF_SCOPE: 'Esta unidad no está dentro de tu alcance',
   },
   USERS: {
     CANNOT_MANAGE_SUPER_ADMIN:

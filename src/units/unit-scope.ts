@@ -61,6 +61,36 @@ function siscoutBranch(profile: ScopeProfile): Rama | undefined {
   );
 }
 
+export interface ScopedUnit {
+  groupId: number;
+  branch: Rama;
+}
+
+/**
+ * ¿El alcance del actor alcanza a ESTA unidad? Es el mismo criterio con el que
+ * `findAll` construye la lista, aplicado a una unidad concreta, para que abrir
+ * una unidad por id no conceda más de lo que concede el listado.
+ *
+ * Devolver `false` no cierra la puerta del todo: quien tenga fila en
+ * `unit_memberships` de esa unidad pasa igual, y eso lo resuelve el servicio.
+ */
+export function scopeReaches(scope: UnitScope, unit: ScopedUnit): boolean {
+  switch (scope.type) {
+    case 'all':
+      return true;
+
+    case 'group':
+      return unit.groupId === scope.groupId;
+
+    case 'branch':
+      return unit.groupId === scope.groupId && unit.branch === scope.branch;
+
+    case 'leadership-required':
+    case 'no-group':
+      return false;
+  }
+}
+
 export function resolveUnitScope(profile: ScopeProfile): UnitScope {
   if (profile.nivelAcceso && UNFILTERED_LEVELS.includes(profile.nivelAcceso)) {
     return { type: 'all' };
