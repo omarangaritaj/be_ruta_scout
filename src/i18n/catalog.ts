@@ -17,9 +17,9 @@ export const CATALOG = {
   AUTH: {
     ACCOUNT_ALREADY_EXISTS: 'Ya existe una cuenta para esta cédula',
     ACCOUNT_GONE: 'La cuenta ya no existe',
-    INVALID_CREDENTIALS: 'Credenciales inválidas',
+    INVALID_CREDENTIALS: 'Credenciales incorrectas',
     PERSON_NOT_IN_SISCOUT: 'No existe una persona con esa cédula en SiScout',
-    REFRESH_TOKEN_INVALID: 'Refresh token inválido o expirado',
+    REFRESH_TOKEN_INVALID: 'Refresh token no válido o expirado',
     SYNC_REQUIRES_APPROVED_ACCESS:
       'Solo un usuario con acceso aprobado puede sincronizar datos de campo',
   },
@@ -109,7 +109,7 @@ export const CATALOG = {
     ATTENDANCE_OTHER_UNIT: 'Solo puedes registrar asistencia de tu unidad',
     ATTENDANCE_REQUIRED_FIELDS:
       'asistencia requiere idUnidad, idProtagonista y fecha',
-    INVALID_DATE: 'fecha inválida',
+    INVALID_DATE: 'fecha no válida',
     UNSUPPORTED_TABLE: 'Tabla no soportada: {tabla}',
   },
   REQUESTS: {
@@ -172,8 +172,8 @@ export const CATALOG = {
     BODY_FIELD: '(cuerpo)',
     INVALID_CRON: 'no es una expresión cron válida',
     INVALID_EMAIL: 'debe ser un correo válido',
-    INVALID_INPUT: 'Datos de entrada inválidos',
-    INVALID_LEVEL: 'nivel inválido: debe ser rama, grupo, region o nacion',
+    INVALID_INPUT: 'Datos de entrada incorrectos',
+    INVALID_LEVEL: 'nivel no válido: debe ser rama, grupo, region o nacion',
     INVALID_OBJECT_ID:
       '"{valor}" no es un ObjectId válido (se esperan 24 caracteres hexadecimales)',
     INVALID_PHONE: 'no es un teléfono válido',

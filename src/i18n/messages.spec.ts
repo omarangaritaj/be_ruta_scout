@@ -4,7 +4,11 @@ import { K, capitalize, t } from './messages';
 
 describe('t', () => {
   it('devuelve el mensaje tal cual cuando no lleva placeholders', () => {
-    expect(t(K.AUTH.INVALID_CREDENTIALS)).toBe('Credenciales inválidas');
+    // Se compara contra el catálogo, no contra un literal repetido aquí: lo que
+    // se prueba es que el motor no altera el mensaje, no cuál es su redacción.
+    expect(t(K.AUTH.INVALID_CREDENTIALS)).toBe(
+      CATALOG.AUTH.INVALID_CREDENTIALS,
+    );
   });
 
   it('interpola parámetros simples', () => {
