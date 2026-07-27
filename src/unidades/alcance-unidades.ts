@@ -11,11 +11,11 @@ import type { NivelAcceso } from '../users/schemas/user.schema';
  * colaborador de grupo, por ejemplo). Hay que preguntárselo.
  */
 export type AlcanceUnidades =
-  | { tipo: 'todas' }
-  | { tipo: 'grupo'; groupId: number }
-  | { tipo: 'rama'; rama: Rama; groupId: number }
-  | { tipo: 'jefatura-requerida'; groupId: number }
-  | { tipo: 'sin-grupo' };
+  | { type: 'all' }
+  | { type: 'grupo'; groupId: number }
+  | { type: 'rama'; rama: Rama; groupId: number }
+  | { type: 'jefatura-requerida'; groupId: number }
+  | { type: 'sin-grupo' };
 
 export interface PerfilParaAlcance {
   nivelAcceso?: NivelAcceso;
@@ -54,21 +54,21 @@ function ramaSegunSiscout(perfil: PerfilParaAlcance): Rama | undefined {
 
 export function resolverAlcance(perfil: PerfilParaAlcance): AlcanceUnidades {
   if (perfil.nivelAcceso && NIVELES_SIN_FILTRO.includes(perfil.nivelAcceso)) {
-    return { tipo: 'todas' };
+    return { type: 'all' };
   }
 
   const { groupId } = perfil;
-  if (!groupId) return { tipo: 'sin-grupo' };
+  if (!groupId) return { type: 'sin-grupo' };
 
   const rama = ramaAsignada(perfil) ?? ramaSegunSiscout(perfil);
-  if (rama) return { tipo: 'rama', rama, groupId };
+  if (rama) return { type: 'rama', rama, groupId };
 
   if (
     perfil.cargoSiscout &&
     CARGOS_DE_TODO_EL_GRUPO.includes(perfil.cargoSiscout)
   ) {
-    return { tipo: 'grupo', groupId };
+    return { type: 'grupo', groupId };
   }
 
-  return { tipo: 'jefatura-requerida', groupId };
+  return { type: 'jefatura-requerida', groupId };
 }

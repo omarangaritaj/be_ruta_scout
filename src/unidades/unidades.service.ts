@@ -52,8 +52,8 @@ export class UnidadesService {
     const perfil = await this.currentUser.get(user.idSiscout!);
     const alcance = resolverAlcance(perfil);
 
-    switch (alcance.tipo) {
-      case 'todas':
+    switch (alcance.type) {
+      case 'all':
         return this.unidadModel.find().exec();
 
       case 'grupo':
