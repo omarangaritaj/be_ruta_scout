@@ -6,6 +6,7 @@ import {
 import { getModelToken } from '@nestjs/mongoose';
 import { Test } from '@nestjs/testing';
 import { Asistencia } from '../asistencia/asistencia.schema';
+import { UnitMembership } from '../units/schemas/unit-membership.schema';
 import { User } from '../users/schemas/user.schema';
 import type { WriteOp } from './dto/write-batch.dto';
 import { PowersyncService } from './powersync.service';
@@ -24,12 +25,15 @@ function put(data: Record<string, unknown>): WriteOp {
 const superAdmin = {
   estadoAcceso: 'aprobado',
   nivelAcceso: 'super_admin',
-  unitId: null,
 };
+/**
+ * Un dirigente NUNCA tiene `users.unitId`: ese puntero solo se escribe para los
+ * protagonistas. Su alcance sale de `unit_memberships`, y por eso el doble lo
+ * deja explícitamente sin unitId.
+ */
 const dirigente = {
   estadoAcceso: 'aprobado',
   nivelAcceso: 'grupo',
-  unitId: 'U1',
 };
 
 describe('PowersyncService', () => {
@@ -44,7 +48,11 @@ describe('PowersyncService', () => {
     set: Record<string, unknown>;
   } | null;
 
-  async function make(actor: unknown, existing: unknown = null) {
+  async function make(
+    actor: unknown,
+    existing: unknown = null,
+    unitIds: string[] = [],
+  ) {
     lastUpsert = null;
     asistencia = {
       updateOne: jest.fn(
@@ -62,12 +70,25 @@ describe('PowersyncService', () => {
     const userModel = {
       findById: jest.fn(() => ({ exec: () => Promise.resolve(actor) })),
     };
+    const membershipModel = {
+      find: jest.fn(() => ({
+        select: () => ({
+          lean: () => ({
+            exec: () => Promise.resolve(unitIds.map((unitId) => ({ unitId }))),
+          }),
+        }),
+      })),
+    };
 
     const ref = await Test.createTestingModule({
       providers: [
         PowersyncService,
         { provide: getModelToken(Asistencia.name), useValue: asistencia },
         { provide: getModelToken(User.name), useValue: userModel },
+        {
+          provide: getModelToken(UnitMembership.name),
+          useValue: membershipModel,
+        },
       ],
     }).compile();
     service = ref.get(PowersyncService);
@@ -117,16 +138,29 @@ describe('PowersyncService', () => {
   });
 
   it('un dirigente NO puede escribir asistencia de otra unidad', async () => {
-    await make(dirigente);
+    await make(dirigente, null, ['U1']);
     await expect(
       service.applyWrites('d', [put({ ...validData, unitId: 'U2' })]),
     ).rejects.toBeInstanceOf(ForbiddenException);
   });
 
-  it('un dirigente sí escribe asistencia de su propia unidad', async () => {
-    await make(dirigente);
+  it('un dirigente sí escribe asistencia de la unidad donde tiene membresía', async () => {
+    await make(dirigente, null, ['U1']);
     await service.applyWrites('d', [put(validData)]);
     expect(asistencia.updateOne).toHaveBeenCalledTimes(1);
+  });
+
+  it('un subjefe de varias unidades escribe en todas ellas', async () => {
+    await make(dirigente, null, ['U1', 'U2']);
+    await service.applyWrites('d', [put({ ...validData, unitId: 'U2' })]);
+    expect(asistencia.updateOne).toHaveBeenCalledTimes(1);
+  });
+
+  it('sin ninguna membresía no se escribe nada', async () => {
+    await make(dirigente, null, []);
+    await expect(
+      service.applyWrites('d', [put(validData)]),
+    ).rejects.toBeInstanceOf(ForbiddenException);
   });
 
   it('rechaza si faltan campos requeridos', async () => {

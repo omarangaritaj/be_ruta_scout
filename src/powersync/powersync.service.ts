@@ -12,13 +12,17 @@ import {
 } from '../common';
 import { D } from '../domain';
 import { K } from '../i18n';
+import {
+  UnitMembership,
+  UnitMembershipDocument,
+} from '../units/schemas/unit-membership.schema';
 import { User, UserDocument } from '../users/schemas/user.schema';
 import type { WriteOp } from './dto/write-batch.dto';
 
 interface WriteScope {
   actorId: string;
   isSuperAdmin: boolean;
-  actorUnitId: string | null;
+  unitIds: Set<string>;
 }
 
 function text(value: unknown): string {
@@ -32,6 +36,8 @@ export class PowersyncService {
     private readonly asistenciaModel: Model<AsistenciaDocument>,
     @InjectModel(User.name)
     private readonly userModel: Model<UserDocument>,
+    @InjectModel(UnitMembership.name)
+    private readonly membershipModel: Model<UnitMembershipDocument>,
   ) {}
 
   /**
@@ -47,10 +53,19 @@ export class PowersyncService {
       throw new AppForbiddenException(K.POWERSYNC.ACCESS_NOT_APPROVED);
     }
 
+    // El alcance sale de `unit_memberships`, no de `users.unitId`: ese puntero
+    // solo lo escribe la siembra para los protagonistas, así que un dirigente
+    // nunca lo tiene y por ahí no podría subir ni una asistencia.
+    const memberships = await this.membershipModel
+      .find({ userId: actorId })
+      .select('unitId')
+      .lean()
+      .exec();
+
     const scope: WriteScope = {
       actorId,
       isSuperAdmin: actor.nivelAcceso === D.ACCESS_LEVEL.SUPER_ADMIN,
-      actorUnitId: actor.unitId ? String(actor.unitId) : null,
+      unitIds: new Set(memberships.map((row) => String(row.unitId))),
     };
 
     for (const op of ops) {
@@ -65,7 +80,7 @@ export class PowersyncService {
 
   private canWrite(unitId: string, scope: WriteScope): boolean {
     if (scope.isSuperAdmin) return true;
-    return scope.actorUnitId !== null && unitId === scope.actorUnitId;
+    return scope.unitIds.has(unitId);
   }
 
   private async applyAsistencia(op: WriteOp, scope: WriteScope): Promise<void> {
