@@ -26,6 +26,18 @@ import {
   SiscoutSnapshotDocument,
 } from './schemas/siscout-snapshot.schema';
 
+interface PublicField {
+  field: keyof User;
+  /**
+   * Si SiScout deja de reportar el campo, ¿se borra del documento público?
+   *
+   * Por defecto NO: un valor ausente se ignora y se conserva el anterior. Solo
+   * los campos de los que cuelgan decisiones de permisos se limpian, porque ahí
+   * un dato obsoleto concede acceso que ya nadie otorgó.
+   */
+  clearWhenAbsent?: boolean;
+}
+
 /**
  * Campos del miembro que se copian al documento público.
  *
@@ -33,15 +45,19 @@ import {
  * una lista negra, cualquier campo nuevo del servicio externo quedaría expuesto
  * por omisión y el fallo sería silencioso.
  */
-const PUBLIC_FIELDS: Partial<Record<keyof SiscoutMember, keyof User>> = {
-  nombre: 'name',
+const PUBLIC_FIELDS: Partial<Record<keyof SiscoutMember, PublicField>> = {
+  nombre: { field: 'name' },
   // Territorio: afiliación organizacional, no PII. Se proyecta al documento
   // público para poder filtrar/gestionar por grupo y región sin descifrar el
   // snapshot. SiScout es la fuente de verdad; el sync reafirma estos campos.
-  group_id: 'groupId',
-  group_name: 'groupName',
-  district_id: 'districtId',
-  district_name: 'districtName',
+  group_id: { field: 'groupId' },
+  group_name: { field: 'groupName' },
+  district_id: { field: 'districtId' },
+  district_name: { field: 'districtName' },
+  // El cargo viaja con el territorio, y por el mismo motivo: tampoco es PII y
+  // así se lee desde `users` sin tocar la colección privada. Se limpia al
+  // desaparecer para no dejar en pie un cargo que SiScout ya retiró.
+  cargo: { field: 'cargoSiscout', clearWhenAbsent: true },
 };
 
 /** Máximo de cambios detallados que se devuelven; los contadores cuentan todo. */
@@ -466,6 +482,8 @@ export class SiscoutSyncService {
         this.recordChanges(previous.payload, member, result);
       }
 
+      const publicFields = this.projectPublicFields(member);
+
       // Todos los vistos se sellan con el syncId, incluso los que no cambiaron:
       // es lo que impide que la consolidación final los marque huérfanos.
       userOps.push({
@@ -473,7 +491,7 @@ export class SiscoutSyncService {
           filter: { idSiscout: member.person_id },
           update: {
             $set: {
-              ...this.projectPublicFields(member),
+              ...publicFields.set,
               // De SiScout vienen protagonistas Y adultos: se clasifica por
               // los datos del miembro, no se asume.
               tipo: classifyTipo(member),
@@ -487,7 +505,7 @@ export class SiscoutSyncService {
                   }
                 : {}),
             },
-            $unset: { fechaBajaSiscout: '' },
+            $unset: { fechaBajaSiscout: '', ...publicFields.unset },
             // `estado` (plataforma) solo se fija al crear: un sync no reactiva a
             // quien un administrador haya desactivado en la aplicación.
             $setOnInsert: { estado: true, roles: [], cargos: [] },
@@ -571,17 +589,24 @@ export class SiscoutSyncService {
     }
   }
 
-  private projectPublicFields(member: SiscoutMember): Record<string, unknown> {
-    const projected: Record<string, unknown> = {};
+  private projectPublicFields(member: SiscoutMember): {
+    set: Record<string, unknown>;
+    unset: Record<string, ''>;
+  } {
+    const set: Record<string, unknown> = {};
+    const unset: Record<string, ''> = {};
 
-    for (const [externalField, userField] of Object.entries(PUBLIC_FIELDS)) {
+    for (const [externalField, target] of Object.entries(PUBLIC_FIELDS)) {
       const value = member[externalField as keyof SiscoutMember];
+
       if (value !== undefined && value !== null) {
-        projected[userField] = value;
+        set[target.field] = value;
+      } else if (target.clearWhenAbsent) {
+        unset[target.field] = '';
       }
     }
 
-    return projected;
+    return { set, unset };
   }
 
   /**

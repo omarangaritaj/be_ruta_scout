@@ -97,6 +97,19 @@ export class User {
   @Prop({ trim: true })
   groupName?: string;
 
+  /**
+   * Cargo tal cual lo reporta SiScout, en MAYÚSCULAS. Es de solo lectura para la
+   * aplicación: lo reafirma el sync en cada corrida y lo limpia si desaparece.
+   *
+   * ⚠️ En un protagonista este campo trae su RAMA (LOBATO, SCOUT, ROVER…), no un
+   * cargo de responsabilidad. Quien derive permisos de aquí debe exigir
+   * `tipo === 'adulto'`.
+   *
+   * No confundir con `cargos`: aquello es decisión NUESTRA y el sync no lo toca.
+   */
+  @Prop({ trim: true })
+  cargoSiscout?: string;
+
   // --- Datos de adulto ---
   @Prop({ type: [MongooseSchema.Types.ObjectId], ref: 'Role', default: [] })
   roles: Types.ObjectId[];
