@@ -39,6 +39,11 @@ export const D = {
     ADULT: 'adulto',
     PROTAGONIST: 'protagonista',
   },
+  UNIT_ROLE: {
+    UNIT_LEADER: 'unit_leader',
+    ASSISTANT: 'assistant',
+    MEMBER: 'member',
+  },
   API_ERROR: {
     UNITS_LEADERSHIP_REQUIRED: 'UNITS.LEADERSHIP_REQUIRED',
     UNITS_MISSING_GROUP: 'UNITS.MISSING_GROUP',

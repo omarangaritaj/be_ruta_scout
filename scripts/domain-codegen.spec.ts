@@ -15,6 +15,7 @@ const MANIFEST = JSON.stringify({
   accessLevels: [{ name: 'SUPER_ADMIN', value: 'super_admin' }],
   roleLevels: [{ name: 'RAMA', value: 'rama' }],
   personTypes: [{ name: 'ADULT', value: 'adulto' }],
+  unitRoles: [{ name: 'UNIT_LEADER', value: 'unit_leader' }],
   permissions: [{ key: 'user:read', side: 'both' }],
   apiErrorCodes: [
     { name: 'UNITS_MISSING_GROUP', value: 'UNITS.MISSING_GROUP' },
@@ -29,6 +30,7 @@ const vacio = {
   accessLevels: [],
   roleLevels: [],
   personTypes: [],
+  unitRoles: [],
   permissions: [],
   apiErrorCodes: [],
 };
@@ -59,6 +61,18 @@ describe('domain codegen', () => {
     const dictionary = archivos.get('src/domain/dictionary.ts');
     expect(dictionary).toContain("MANADA: 'manada'");
     expect(dictionary).toContain("APPROVED: 'aprobado'");
+    expect(dictionary).toContain("UNIT_LEADER: 'unit_leader'");
+  });
+
+  it('emite UNIT_ROLES y el tipo UnitRole', () => {
+    const archivos = generateFiles(readManifest(MANIFEST));
+    const roles = archivos.get('src/domain/roles.ts');
+    expect(roles).toContain(
+      "export const UNIT_ROLES = ['unit_leader'] as const;",
+    );
+    expect(roles).toContain(
+      'export type UnitRole = (typeof UNIT_ROLES)[number];',
+    );
   });
 
   it('emite el vocabulario prohibido sin permisos ni códigos de error', () => {

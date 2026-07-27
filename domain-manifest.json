@@ -68,6 +68,11 @@
     { "name": "ADULT", "value": "adulto" },
     { "name": "PROTAGONIST", "value": "protagonista" }
   ],
+  "unitRoles": [
+    { "name": "UNIT_LEADER", "value": "unit_leader", "order": 1 },
+    { "name": "ASSISTANT", "value": "assistant", "order": 2 },
+    { "name": "MEMBER", "value": "member", "order": 3 }
+  ],
   "permissions": [
     { "key": "role:read", "side": "both" },
     { "key": "role:create", "side": "both" },
@@ -78,10 +83,10 @@
     { "key": "solicitud:read", "side": "both" },
     { "key": "solicitud:approve", "side": "both" },
     { "key": "solicitud:reject", "side": "both" },
-    { "key": "unidad:read", "side": "both" },
-    { "key": "unidad:create", "side": "both" },
-    { "key": "unidad:update", "side": "both" },
-    { "key": "unidad:delete", "side": "both" },
+    { "key": "unit:read", "side": "both" },
+    { "key": "unit:create", "side": "both" },
+    { "key": "unit:update", "side": "both" },
+    { "key": "unit:delete", "side": "both" },
     { "key": "grupo:read", "side": "both" },
     { "key": "grupo:create", "side": "both" },
     { "key": "grupo:update", "side": "both" },

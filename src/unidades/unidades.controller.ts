@@ -37,7 +37,7 @@ export class UnidadesController {
   constructor(private readonly unidadesService: UnidadesService) {}
 
   @Post()
-  @RequirePermissions('unidad:create')
+  @RequirePermissions('unit:create')
   async create(
     @Body(new ZodValidationPipe(createUnidadSchema)) dto: CreateUnidadDto,
   ): Promise<UnidadDocument> {
@@ -45,13 +45,13 @@ export class UnidadesController {
   }
 
   @Get()
-  @RequirePermissions('unidad:read')
+  @RequirePermissions('unit:read')
   async findAll(@Req() req: { user: AuthUser }): Promise<UnidadDocument[]> {
     return this.unidadesService.findAll(req.user);
   }
 
   @Post('jefatura')
-  @RequirePermissions('unidad:read')
+  @RequirePermissions('unit:read')
   async declararJefatura(
     @Req() req: { user: AuthUser },
     @Body(new ZodValidationPipe(declararJefaturaSchema))
@@ -61,7 +61,7 @@ export class UnidadesController {
   }
 
   @Get(':id')
-  @RequirePermissions('unidad:read')
+  @RequirePermissions('unit:read')
   async findOne(
     @Param('id', ParseObjectIdPipe) id: string,
   ): Promise<UnidadDocument> {
@@ -69,7 +69,7 @@ export class UnidadesController {
   }
 
   @Patch(':id')
-  @RequirePermissions('unidad:update')
+  @RequirePermissions('unit:update')
   async update(
     @Param('id', ParseObjectIdPipe) id: string,
     @Body(new ZodValidationPipe(updateUnidadSchema)) dto: UpdateUnidadDto,
@@ -79,7 +79,7 @@ export class UnidadesController {
 
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
-  @RequirePermissions('unidad:delete')
+  @RequirePermissions('unit:delete')
   async remove(@Param('id', ParseObjectIdPipe) id: string): Promise<void> {
     return this.unidadesService.remove(id);
   }

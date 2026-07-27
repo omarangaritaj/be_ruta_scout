@@ -46,10 +46,10 @@ export const PERMISSIONS: PermissionDef[] = [
     lado: 'ambos',
   },
 
-  { key: 'unidad:read', descripcion: 'Ver unidades', lado: 'ambos' },
-  { key: 'unidad:create', descripcion: 'Crear unidades', lado: 'ambos' },
-  { key: 'unidad:update', descripcion: 'Editar unidades', lado: 'ambos' },
-  { key: 'unidad:delete', descripcion: 'Eliminar unidades', lado: 'ambos' },
+  { key: 'unit:read', descripcion: 'Ver unidades', lado: 'ambos' },
+  { key: 'unit:create', descripcion: 'Crear unidades', lado: 'ambos' },
+  { key: 'unit:update', descripcion: 'Editar unidades', lado: 'ambos' },
+  { key: 'unit:delete', descripcion: 'Eliminar unidades', lado: 'ambos' },
 
   { key: 'grupo:read', descripcion: 'Ver grupos', lado: 'ambos' },
   { key: 'grupo:create', descripcion: 'Crear grupos', lado: 'ambos' },

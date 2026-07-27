@@ -2,6 +2,7 @@
   "adulto",
   "aprobada",
   "aprobado",
+  "assistant",
   "cancelada",
   "clan",
   "comunidad",
@@ -9,6 +10,7 @@
   "familia",
   "grupo",
   "manada",
+  "member",
   "nacion",
   "pendiente",
   "protagonista",
@@ -19,5 +21,6 @@
   "sin_solicitud",
   "super_admin",
   "suspendido",
-  "tropa"
+  "tropa",
+  "unit_leader"
 ]

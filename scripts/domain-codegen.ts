@@ -21,6 +21,7 @@ export interface DomainManifest {
   accessLevels: NamedValue[];
   roleLevels: NamedValue[];
   personTypes: NamedValue[];
+  unitRoles: NamedValue[];
   permissions: PermissionEntry[];
   apiErrorCodes: NamedValue[];
 }
@@ -48,6 +49,7 @@ export function readManifest(raw: string): DomainManifest {
   assertUnique(ordenado.accessLevels, 'accessLevels');
   assertUnique(ordenado.roleLevels, 'roleLevels');
   assertUnique(ordenado.personTypes, 'personTypes');
+  assertUnique(ordenado.unitRoles, 'unitRoles');
   assertUnique(ordenado.apiErrorCodes, 'apiErrorCodes');
   return ordenado;
 }
@@ -121,7 +123,9 @@ export function generateFiles(manifest: DomainManifest): Map<string, string> {
     HEADER +
       constAndType('ROLE_LEVELS', 'RoleLevel', manifest.roleLevels) +
       '\n' +
-      constAndType('PERSON_TYPES', 'PersonType', manifest.personTypes),
+      constAndType('PERSON_TYPES', 'PersonType', manifest.personTypes) +
+      '\n' +
+      constAndType('UNIT_ROLES', 'UnitRole', manifest.unitRoles),
   );
 
   archivos.set(
@@ -147,6 +151,7 @@ export function generateFiles(manifest: DomainManifest): Map<string, string> {
       dictionaryGroup('ACCESS_LEVEL', manifest.accessLevels) +
       dictionaryGroup('ROLE_LEVEL', manifest.roleLevels) +
       dictionaryGroup('PERSON_TYPE', manifest.personTypes) +
+      dictionaryGroup('UNIT_ROLE', manifest.unitRoles) +
       dictionaryGroup('API_ERROR', manifest.apiErrorCodes) +
       '} as const;\n',
   );
@@ -169,6 +174,7 @@ export function generateFiles(manifest: DomainManifest): Map<string, string> {
     ...manifest.accessLevels,
     ...manifest.roleLevels,
     ...manifest.personTypes,
+    ...manifest.unitRoles,
   ].map((e) => e.value);
   archivos.set(
     '.domain-vocabulary.json',

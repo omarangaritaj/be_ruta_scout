@@ -5,3 +5,6 @@ export type RoleLevel = (typeof ROLE_LEVELS)[number];
 
 export const PERSON_TYPES = ['adulto', 'protagonista'] as const;
 export type PersonType = (typeof PERSON_TYPES)[number];
+
+export const UNIT_ROLES = ['unit_leader', 'assistant', 'member'] as const;
+export type UnitRole = (typeof UNIT_ROLES)[number];
