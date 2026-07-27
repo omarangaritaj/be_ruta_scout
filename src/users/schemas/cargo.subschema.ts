@@ -1,6 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 
-export const NIVELES_CARGO = ['grupo', 'region', 'nacion'] as const;
+export const NIVELES_CARGO = ['rama', 'grupo', 'region', 'nacion'] as const;
 export type NivelCargo = (typeof NIVELES_CARGO)[number];
 
 /**

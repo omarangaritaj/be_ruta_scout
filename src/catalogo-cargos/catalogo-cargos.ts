@@ -1,3 +1,5 @@
+import type { Rama } from './ramas';
+
 export const NIVELES_SOLICITUD = ['rama', 'grupo', 'region', 'nacion'] as const;
 export type NivelSolicitud = (typeof NIVELES_SOLICITUD)[number];
 
@@ -5,35 +7,72 @@ export interface CargoCatalogo {
   cargo: string;
   etiqueta: string;
   nivel: NivelSolicitud;
+  /** Solo en los cargos de nivel `rama`: sobre qué rama manda quien lo ocupa. */
+  rama?: Rama;
 }
 
-/**
- * `cargo` es el string EXACTO de SiScout (MAYÚSCULAS) para casar con el snapshot.
- * TODO(dominio): faltan los cargos de nivel `rama` — los define el usuario.
- */
+/** `cargo` es el string EXACTO de SiScout (MAYÚSCULAS) para casar con el snapshot. */
 export const CARGOS: CargoCatalogo[] = [
-  { cargo: 'JEFE DE FAMILIA', etiqueta: 'Jefe de Familia', nivel: 'grupo' },
+  {
+    cargo: 'JEFE DE FAMILIA',
+    etiqueta: 'Jefe de Familia',
+    nivel: 'rama',
+    rama: 'familia',
+  },
   {
     cargo: 'SUB-JEFE DE FAMILIA',
     etiqueta: 'Sub-Jefe de Familia',
-    nivel: 'grupo',
+    nivel: 'rama',
+    rama: 'familia',
   },
-  { cargo: 'JEFE DE MANADA', etiqueta: 'Jefe de Manada', nivel: 'grupo' },
+  {
+    cargo: 'JEFE DE MANADA',
+    etiqueta: 'Jefe de Manada',
+    nivel: 'rama',
+    rama: 'manada',
+  },
   {
     cargo: 'SUB-JEFE DE MANADA',
     etiqueta: 'Sub-Jefe de Manada',
-    nivel: 'grupo',
+    nivel: 'rama',
+    rama: 'manada',
   },
-  { cargo: 'JEFE DE TROPA', etiqueta: 'Jefe de Tropa', nivel: 'grupo' },
-  { cargo: 'SUB-JEFE DE TROPA', etiqueta: 'Sub-Jefe de Tropa', nivel: 'grupo' },
-  { cargo: 'JEFE DE COMUNIDAD', etiqueta: 'Jefe de Comunidad', nivel: 'grupo' },
+  {
+    cargo: 'JEFE DE TROPA',
+    etiqueta: 'Jefe de Tropa',
+    nivel: 'rama',
+    rama: 'tropa',
+  },
+  {
+    cargo: 'SUB-JEFE DE TROPA',
+    etiqueta: 'Sub-Jefe de Tropa',
+    nivel: 'rama',
+    rama: 'tropa',
+  },
+  {
+    cargo: 'JEFE DE COMUNIDAD',
+    etiqueta: 'Jefe de Comunidad',
+    nivel: 'rama',
+    rama: 'comunidad',
+  },
   {
     cargo: 'SUB-JEFE DE COMUNIDAD',
     etiqueta: 'Sub-Jefe de Comunidad',
-    nivel: 'grupo',
+    nivel: 'rama',
+    rama: 'comunidad',
   },
-  { cargo: 'JEFE DE CLAN', etiqueta: 'Jefe de Clan', nivel: 'grupo' },
-  { cargo: 'SUB-JEFE DE CLAN', etiqueta: 'Sub-Jefe de Clan', nivel: 'grupo' },
+  {
+    cargo: 'JEFE DE CLAN',
+    etiqueta: 'Jefe de Clan',
+    nivel: 'rama',
+    rama: 'clan',
+  },
+  {
+    cargo: 'SUB-JEFE DE CLAN',
+    etiqueta: 'Sub-Jefe de Clan',
+    nivel: 'rama',
+    rama: 'clan',
+  },
   { cargo: 'JEFE DE GRUPO', etiqueta: 'Jefe de Grupo', nivel: 'grupo' },
   { cargo: 'SUBJEFE DE GRUPO', etiqueta: 'Subjefe de Grupo', nivel: 'grupo' },
 
@@ -153,6 +192,31 @@ export function cargoEsValido(cargo: string, nivel: NivelSolicitud): boolean {
 
 export function etiquetaCargo(cargo: string): string {
   return CARGOS.find((c) => c.cargo === cargo)?.etiqueta ?? cargo;
+}
+
+export function nivelDeCargo(
+  cargo: string | null | undefined,
+): NivelSolicitud | undefined {
+  if (!cargo) return undefined;
+  return CARGOS.find((c) => c.cargo === cargo)?.nivel;
+}
+
+/**
+ * Rama que dirige quien ocupa el cargo. `undefined` cuando el cargo no manda
+ * sobre una rama concreta: `JEFE DE GRUPO` las abarca todas, un comisionado
+ * actúa sobre otro nivel y un colaborador no dirige ninguna. En esos casos la
+ * rama hay que preguntársela a la persona.
+ */
+export function ramaDeCargo(
+  cargo: string | null | undefined,
+): Rama | undefined {
+  if (!cargo) return undefined;
+  return CARGOS.find((c) => c.cargo === cargo)?.rama;
+}
+
+/** Cargos de jefatura de rama, para ofrecerlos cuando el cargo no la determina. */
+export function cargosDeJefaturaDeRama(): CargoCatalogo[] {
+  return CARGOS.filter((c) => c.nivel === 'rama');
 }
 
 /** Etiqueta legible por nivel solicitable, para UI y correos. */

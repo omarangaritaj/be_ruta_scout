@@ -142,6 +142,10 @@ export const CATALOG = {
     SYNC_IN_PROGRESS: 'Ya hay una sincronización en curso',
   },
   UNITS: {
+    LEADERSHIP_NOT_A_BRANCH: 'El cargo "{cargo}" no es una jefatura de rama',
+    LEADERSHIP_REQUIRED:
+      'Tu cargo no determina una rama: indica qué jefatura tienes',
+    MISSING_GROUP: 'No perteneces a ningún grupo',
     NOT_FOUND: 'No existe una unidad con id "{id}"',
   },
   USERS: {

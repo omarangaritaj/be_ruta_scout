@@ -21,6 +21,10 @@ import {
   type CreateUnidadDto,
 } from './dto/create-unidad.dto';
 import {
+  declararJefaturaSchema,
+  type DeclararJefaturaDto,
+} from './dto/declarar-jefatura.dto';
+import {
   updateUnidadSchema,
   type UpdateUnidadDto,
 } from './dto/update-unidad.dto';
@@ -44,6 +48,16 @@ export class UnidadesController {
   @RequirePermissions('unidad:read')
   async findAll(@Req() req: { user: AuthUser }): Promise<UnidadDocument[]> {
     return this.unidadesService.findAll(req.user);
+  }
+
+  @Post('jefatura')
+  @RequirePermissions('unidad:read')
+  async declararJefatura(
+    @Req() req: { user: AuthUser },
+    @Body(new ZodValidationPipe(declararJefaturaSchema))
+    dto: DeclararJefaturaDto,
+  ): Promise<UnidadDocument[]> {
+    return this.unidadesService.declararJefatura(req.user, dto.nombreCargo);
   }
 
   @Get(':id')

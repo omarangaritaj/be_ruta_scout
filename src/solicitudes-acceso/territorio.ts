@@ -1,4 +1,5 @@
 import type { NivelSolicitud } from '../catalogo-cargos/catalogo-cargos';
+import { ramaDeEtiquetaSiscout } from '../catalogo-cargos/ramas';
 import { K, type MessageKey } from '../i18n';
 import type { Rama } from './schemas/solicitud-acceso.schema';
 
@@ -8,19 +9,12 @@ export interface Territorio {
   districtId?: number;
 }
 
-const RAMA_POR_UNIDAD: Record<string, Rama> = {
-  MANADA: 'manada',
-  TROPA: 'tropa',
-  COMUNIDAD: 'comunidad',
-  CLAN: 'clan',
-};
-
 function ramaDeSnapshot(
   snapshot: Record<string, unknown> | null,
 ): Rama | undefined {
-  const unidad =
-    typeof snapshot?.unidad === 'string' ? snapshot.unidad.toUpperCase() : '';
-  return RAMA_POR_UNIDAD[unidad];
+  return typeof snapshot?.unidad === 'string'
+    ? ramaDeEtiquetaSiscout(snapshot.unidad)
+    : undefined;
 }
 
 function entero(valor: unknown): number | undefined {

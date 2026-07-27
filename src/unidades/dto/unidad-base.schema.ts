@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { RAMAS } from '../../catalogo-cargos/ramas';
 import { K, t } from '../../i18n';
 import { objectIdSchema } from '../../common';
 
@@ -15,6 +16,12 @@ export const unidadBaseSchema = z.object({
     .string({ error: t(K.VALIDATION.REQUIRED_MASCULINE) })
     .trim()
     .min(1, { error: t(K.VALIDATION.NOT_EMPTY_MASCULINE) }),
+
+  rama: z.enum(RAMAS, {
+    error: `debe ser una de: ${RAMAS.join(', ')}`,
+  }),
+
+  groupId: z.number().int().positive(),
 
   idJefeUnidad: objectIdSchema,
 

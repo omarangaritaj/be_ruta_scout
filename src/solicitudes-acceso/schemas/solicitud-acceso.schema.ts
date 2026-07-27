@@ -4,6 +4,7 @@ import {
   NIVELES_SOLICITUD,
   type NivelSolicitud,
 } from '../../catalogo-cargos/catalogo-cargos';
+import { RAMAS, type Rama } from '../../catalogo-cargos/ramas';
 
 export type SolicitudAccesoDocument = HydratedDocument<SolicitudAcceso>;
 
@@ -16,8 +17,7 @@ export const ESTADOS_SOLICITUD = [
 ] as const;
 export type EstadoSolicitud = (typeof ESTADOS_SOLICITUD)[number];
 
-export const RAMAS = ['manada', 'tropa', 'comunidad', 'clan'] as const;
-export type Rama = (typeof RAMAS)[number];
+export { RAMAS, type Rama };
 
 @Schema({ collection: 'solicitudes_acceso', timestamps: true })
 export class SolicitudAcceso {
