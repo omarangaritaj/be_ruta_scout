@@ -6,14 +6,11 @@ import {
   cargosDeJefaturaDeRama,
   ramaDeCargo,
 } from '../catalogo-cargos/catalogo-cargos';
-import {
-  ETIQUETA_RAMA,
-  ramaDeEtiquetaSiscout,
-  type Rama,
-} from '../catalogo-cargos/ramas';
+import { ramaDeEtiquetaSiscout, type Rama } from '../catalogo-cargos/ramas';
 import { AppBadRequestException, AppNotFoundException } from '../common';
 import { CurrentUserService } from '../current-user/current-user.service';
-import { K } from '../i18n';
+import { BRANCH_MESSAGE_KEY } from '../domain';
+import { K, t } from '../i18n';
 import type { CurrentUser } from '../users/queries/currentUser.query';
 import { User, UserDocument } from '../users/schemas/user.schema';
 import { resolverAlcance } from './alcance-unidades';
@@ -165,7 +162,7 @@ export class UnidadesService {
 
     try {
       return await this.unidadModel.create({
-        nombre: ETIQUETA_RAMA[rama],
+        nombre: t(BRANCH_MESSAGE_KEY[rama]),
         rama,
         groupId,
         idJefeUnidad: new Types.ObjectId(perfil._id),

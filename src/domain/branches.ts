@@ -27,3 +27,11 @@ export const BRANCH_SISCOUT_ALIASES: Record<string, Branch> = {
   ROVER: 'clan',
   ROVERS: 'clan',
 };
+
+export const BRANCH_MESSAGE_KEY = {
+  familia: 'BRANCH.FAMILIA',
+  manada: 'BRANCH.MANADA',
+  tropa: 'BRANCH.TROPA',
+  comunidad: 'BRANCH.COMUNIDAD',
+  clan: 'BRANCH.CLAN',
+} as const;

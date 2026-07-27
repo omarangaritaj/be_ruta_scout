@@ -1,6 +1,8 @@
 import { createHash } from 'node:crypto';
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { CATALOG } from '../src/i18n/catalog';
+import { readManifest } from './domain-codegen';
 import { MANIFEST_PATH, ROOT, renderAll } from './domain-render';
 
 const SIBLING = join(ROOT, '..', 'fe_ruta', 'domain-manifest.json');
@@ -20,6 +22,16 @@ async function main(): Promise<void> {
     }
     if (readFileSync(destino, 'utf8') !== esperado) {
       fallos.push(`${ruta}: difiere del manifiesto. Corre pnpm domain:gen`);
+    }
+  }
+
+  const manifest = readManifest(readFileSync(MANIFEST_PATH, 'utf8'));
+  const branchLabels: Record<string, string> = CATALOG.BRANCH;
+  for (const branch of manifest.branches) {
+    if (!branchLabels[branch.name]) {
+      fallos.push(
+        `i18n: falta la clave BRANCH.${branch.name} para la rama '${branch.value}'`,
+      );
     }
   }
 

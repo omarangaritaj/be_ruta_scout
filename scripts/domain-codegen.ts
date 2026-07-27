@@ -79,6 +79,17 @@ function aliasMap(branches: BranchEntry[]): string {
   );
 }
 
+function messageKeyMap(
+  constName: string,
+  dominio: string,
+  entries: NamedValue[],
+): string {
+  const filas = entries
+    .map((e) => `  ${e.value}: '${dominio}.${e.name}',`)
+    .join('\n');
+  return `\nexport const ${constName} = {\n${filas}\n} as const;\n`;
+}
+
 function dictionaryGroup(nombre: string, entries: NamedValue[]): string {
   const filas = entries.map((e) => `    ${e.name}: '${e.value}',`).join('\n');
   return `  ${nombre}: {\n${filas}\n  },\n`;
@@ -91,7 +102,8 @@ export function generateFiles(manifest: DomainManifest): Map<string, string> {
     'src/domain/branches.ts',
     HEADER +
       constAndType('BRANCHES', 'Branch', manifest.branches) +
-      aliasMap(manifest.branches),
+      aliasMap(manifest.branches) +
+      messageKeyMap('BRANCH_MESSAGE_KEY', 'BRANCH', manifest.branches),
   );
 
   archivos.set(

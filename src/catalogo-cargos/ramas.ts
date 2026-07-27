@@ -1,44 +1,7 @@
-export const RAMAS = [
-  'familia',
-  'manada',
-  'tropa',
-  'comunidad',
-  'clan',
-] as const;
-export type Rama = (typeof RAMAS)[number];
+import { BRANCHES, BRANCH_SISCOUT_ALIASES, type Branch } from '../domain';
 
-export const ETIQUETA_RAMA: Record<Rama, string> = {
-  familia: 'Familia',
-  manada: 'Manada',
-  tropa: 'Tropa',
-  comunidad: 'Comunidad',
-  clan: 'Clan',
-};
-
-/**
- * SiScout nombra la misma rama de dos formas según el tipo de persona: en un
- * adulto llega el nombre de la UNIDAD (`snapshot.unidad` → MANADA) y en un
- * protagonista llega el nombre de la RAMA en `cargoSiscout` (LOBATO). Ambos
- * alias apuntan a la misma rama, así que conviven en un único mapa.
- */
-const RAMA_POR_ALIAS: Record<string, Rama> = {
-  FAMILIA: 'familia',
-  CACHORRO: 'familia',
-  CACHORROS: 'familia',
-  MANADA: 'manada',
-  LOBATO: 'manada',
-  LOBATOS: 'manada',
-  TROPA: 'tropa',
-  SCOUT: 'tropa',
-  SCOUTS: 'tropa',
-  COMUNIDAD: 'comunidad',
-  NOMADA: 'comunidad',
-  'NOMADA SCOUT': 'comunidad',
-  'NOMADAS SCOUT': 'comunidad',
-  CLAN: 'clan',
-  ROVER: 'clan',
-  ROVERS: 'clan',
-};
+export const RAMAS = BRANCHES;
+export type Rama = Branch;
 
 const DIACRITICOS = /\p{Diacritic}/gu;
 
@@ -65,5 +28,5 @@ export function ramaDeEtiquetaSiscout(
   etiqueta: string | null | undefined,
 ): Rama | undefined {
   if (!etiqueta) return undefined;
-  return RAMA_POR_ALIAS[normalizar(etiqueta)];
+  return BRANCH_SISCOUT_ALIASES[normalizar(etiqueta)];
 }

@@ -27,6 +27,13 @@ export const CATALOG = {
     ACCESS_DENIED:
       'Debes solicitar acceso para realizar esta acción, solicítalo a tu administrador',
   },
+  BRANCH: {
+    CLAN: 'Clan',
+    COMUNIDAD: 'Comunidad',
+    FAMILIA: 'Familia',
+    MANADA: 'Manada',
+    TROPA: 'Tropa',
+  },
   COMMON: {
     BAD_REQUEST: 'La petición no es válida.',
     CONFLICT: 'La operación entra en conflicto con el estado actual.',
