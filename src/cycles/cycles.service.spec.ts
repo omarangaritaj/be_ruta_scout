@@ -81,6 +81,25 @@ describe('CyclesService', () => {
     );
   });
 
+  it('el listado solo pide los ciclos de las unidades que alcanza el perfil', async () => {
+    currentUser.get.mockResolvedValue(BRANCH_PROFILE);
+    unitModel.find.mockReturnValue(
+      chainOf([
+        { _id: 'u1', groupId: 7, branch: 'manada' },
+        { _id: 'u2', groupId: 7, branch: 'tropa' },
+        { _id: 'u3', groupId: 99, branch: 'manada' },
+      ]),
+    );
+    cycleModel.find.mockReturnValue(chainOf([]));
+
+    await service.findAll(actor);
+
+    expect(cycleModel.find).toHaveBeenCalledWith({
+      isActive: true,
+      unitId: { $in: ['u1'] },
+    });
+  });
+
   it('falla con 404 cuando el ciclo no existe', async () => {
     cycleModel.findById.mockReturnValue(chainOf(null));
 
@@ -172,6 +191,75 @@ describe('CyclesService', () => {
       expect(save).toHaveBeenCalled();
     });
 
+    it('conserva las respuestas cuya pregunta ya no está en el catálogo activo', async () => {
+      const save = jest.fn().mockResolvedValue(undefined);
+      const cycle = {
+        _id: 'c1',
+        unitId: 'u1',
+        isActive: true,
+        diagnosticAnswers: [
+          {
+            questionId: 'q1',
+            questionText: 'Desactivada',
+            block: 'rap',
+            score: 2,
+            notes: 'Lo que se dijo entonces',
+          },
+          {
+            questionId: 'q2',
+            questionText: 'Vigente',
+            block: 'gsat',
+            score: 3,
+          },
+        ],
+        save,
+      };
+      cycleModel.findById.mockReturnValue(chainOf(cycle));
+      unitModel.findById.mockReturnValue(
+        chainOf({ _id: 'u1', groupId: 7, branch: 'manada' }),
+      );
+      questionsMock.findActiveByBranch.mockResolvedValue([
+        { _id: 'q2', branch: 'manada', block: 'gsat', text: 'Vigente' },
+      ]);
+
+      await service.saveDiagnostic(actor, 'c1', {
+        answers: [{ questionId: 'q2', score: 5 }],
+      } as never);
+
+      expect(cycle.diagnosticAnswers).toEqual([
+        { questionId: 'q2', questionText: 'Vigente', block: 'gsat', score: 5 },
+        {
+          questionId: 'q1',
+          questionText: 'Desactivada',
+          block: 'rap',
+          score: 2,
+          notes: 'Lo que se dijo entonces',
+        },
+      ]);
+      expect(save).toHaveBeenCalled();
+    });
+
+    it('borra la síntesis cuando llega vacía', async () => {
+      const save = jest.fn().mockResolvedValue(undefined);
+      const cycle = {
+        _id: 'c1',
+        unitId: 'u1',
+        isActive: true,
+        diagnosticAnswers: [],
+        diagnosticSummary: 'Lo que se escribió antes',
+        save,
+      };
+      cycleModel.findById.mockReturnValue(chainOf(cycle));
+      unitModel.findById.mockReturnValue(
+        chainOf({ _id: 'u1', groupId: 7, branch: 'manada' }),
+      );
+      questionsMock.findActiveByBranch.mockResolvedValue([]);
+
+      await service.saveDiagnostic(actor, 'c1', { answers: [], summary: '' });
+
+      expect(cycle.diagnosticSummary).toBe('');
+    });
+
     it('rechaza dos respuestas para la misma pregunta', async () => {
       cycleModel.findById.mockReturnValue(
         chainOf({ _id: 'c1', unitId: 'u1', isActive: true }),
@@ -223,6 +311,25 @@ describe('CyclesService', () => {
       });
       expect(markModified).toHaveBeenCalledWith('focus');
       expect(save).toHaveBeenCalled();
+    });
+
+    it('borra un campo del enfoque cuando llega vacío', async () => {
+      const cycle = {
+        _id: 'c1',
+        unitId: 'u1',
+        isActive: true,
+        focus: { objective: 'Viejo', competencies: [] },
+        markModified: jest.fn(),
+        save: jest.fn().mockResolvedValue(undefined),
+      };
+      cycleModel.findById.mockReturnValue(chainOf(cycle));
+      unitModel.findById.mockReturnValue(
+        chainOf({ _id: 'u1', groupId: 7, branch: 'manada' }),
+      );
+
+      await service.updateFocus(actor, 'c1', { objective: '' });
+
+      expect(cycle.focus).toEqual({ objective: '', competencies: [] });
     });
   });
 });

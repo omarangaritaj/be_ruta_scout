@@ -15,11 +15,14 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../authz/permissions.guard';
 import { RequirePermissions } from '../authz/require-permissions.decorator';
 import { ParseObjectIdPipe, ZodValidationPipe } from '../common';
-import { type Branch } from '../domain';
 import {
   createQuestionSchema,
   type CreateQuestionDto,
 } from './dto/create-question.dto';
+import {
+  listQuestionsSchema,
+  type ListQuestionsDto,
+} from './dto/list-questions.dto';
 import {
   updateQuestionSchema,
   type UpdateQuestionDto,
@@ -35,10 +38,9 @@ export class QuestionsController {
   @Get()
   @RequirePermissions('question:read')
   async findAll(
-    @Query('branch') branch?: Branch,
-    @Query('includeInactive') includeInactive?: string,
+    @Query(new ZodValidationPipe(listQuestionsSchema)) query: ListQuestionsDto,
   ): Promise<QuestionDocument[]> {
-    return this.questionsService.findAll(branch, includeInactive === 'true');
+    return this.questionsService.findAll(query.branch, query.includeInactive);
   }
 
   @Post()

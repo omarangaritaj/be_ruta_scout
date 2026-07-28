@@ -13,7 +13,12 @@ import { QuestionsService } from '../questions/questions.service';
 import { Unit, UnitDocument } from '../units/schemas/unit.schema';
 import { resolveUnitScope, scopeReaches } from '../units/unit-scope';
 import { hasValidRange } from './cycle-dates';
-import { buildAnswers, findDiagnosticProblem } from './diagnostic-validation';
+import {
+  buildAnswers,
+  findDiagnosticProblem,
+  type BuiltAnswer,
+  type QuestionRef,
+} from './diagnostic-validation';
 import { CreateCycleDto } from './dto/create-cycle.dto';
 import { SaveDiagnosticDto } from './dto/save-diagnostic.dto';
 import { UpdateCycleDto } from './dto/update-cycle.dto';
@@ -109,7 +114,13 @@ export class CyclesService {
       throw new AppBadRequestException(K.QUESTIONS.BRANCH_MISMATCH);
     }
 
-    cycle.diagnosticAnswers = buildAnswers(answers, questions) as never;
+    // El diagnóstico es un registro histórico: desactivar una pregunta la saca
+    // del catálogo, no borra lo que la unidad ya respondió. Como esas respuestas
+    // no son editables desde la UI, se conservan aquí y no se piden al cliente.
+    cycle.diagnosticAnswers = [
+      ...buildAnswers(answers, questions),
+      ...this.answersOutsideCatalog(cycle, questions),
+    ] as never;
     if (dto.summary !== undefined) cycle.diagnosticSummary = dto.summary;
     return cycle.save();
   }
@@ -123,6 +134,22 @@ export class CyclesService {
     Object.assign(cycle.focus, dto);
     cycle.markModified('focus');
     return cycle.save();
+  }
+
+  private answersOutsideCatalog(
+    cycle: CycleDocument,
+    questions: QuestionRef[],
+  ): BuiltAnswer[] {
+    const catalogIds = new Set(questions.map((question) => question.id));
+    return cycle.diagnosticAnswers
+      .filter((answer) => !catalogIds.has(String(answer.questionId)))
+      .map((answer) => ({
+        questionId: String(answer.questionId),
+        questionText: answer.questionText,
+        block: answer.block,
+        score: answer.score,
+        ...(answer.notes === undefined ? {} : { notes: answer.notes }),
+      }));
   }
 
   private async reachableUnits(user: AuthUser): Promise<UnitDocument[]> {

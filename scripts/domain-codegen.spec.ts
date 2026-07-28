@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { generateFiles, readManifest } from './domain-codegen';
 
 const MANIFEST = JSON.stringify({
@@ -141,9 +143,6 @@ describe('domain codegen', () => {
     );
   });
 });
-
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
 
 describe('bloques de diagnóstico', () => {
   const manifest = readManifest(

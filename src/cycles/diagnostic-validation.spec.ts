@@ -59,8 +59,8 @@ describe('findDiagnosticProblem', () => {
 
   it('problemas distintos en el mismo array: gana el primero en orden', () => {
     const answers = [
-      { questionId: 'q9', score: 3 }, // desconocida
-      { questionId: 'q1', score: 4 }, // branch-mismatch
+      { questionId: 'q9', score: 3 },
+      { questionId: 'q1', score: 4 },
     ];
 
     expect(findDiagnosticProblem(answers, QUESTIONS, 'tropa')).toBe(
