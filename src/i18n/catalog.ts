@@ -26,6 +26,8 @@ export const CATALOG = {
   AUTHZ: {
     ACCESS_DENIED:
       'Debes solicitar acceso para realizar esta acción, solicítalo a tu administrador',
+    CANNOT_GRANT_UNOWNED:
+      'No puedes conceder lo que tu propio rol no te da: {missing}',
   },
   BRANCH: {
     CLAN: 'Clan',

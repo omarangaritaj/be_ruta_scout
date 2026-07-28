@@ -8,9 +8,11 @@ import {
   Param,
   Patch,
   Post,
+  Req,
   UseGuards,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import type { AuthUser } from '../auth/strategies/jwt.strategy';
 import { PermissionsGuard } from '../authz/permissions.guard';
 import { PERMISSIONS, type PermissionDef } from '../authz/permissions.catalog';
 import { ROUTE_RESOURCES } from '../authz/route-resources.catalog';
@@ -56,18 +58,20 @@ export class RolesController {
   @Post()
   @RequirePermissions('role:create')
   create(
+    @Req() req: { user: AuthUser },
     @Body(new ZodValidationPipe(createRoleSchema)) dto: CreateRoleDto,
   ): Promise<RoleDocument> {
-    return this.service.create(dto);
+    return this.service.create(req.user.userId, dto);
   }
 
   @Patch(':id')
   @RequirePermissions('role:update')
   update(
+    @Req() req: { user: AuthUser },
     @Param('id', ParseObjectIdPipe) id: string,
     @Body(new ZodValidationPipe(updateRoleSchema)) dto: UpdateRoleDto,
   ): Promise<RoleDocument> {
-    return this.service.update(id, dto);
+    return this.service.update(req.user.userId, id, dto);
   }
 
   @Delete(':id')

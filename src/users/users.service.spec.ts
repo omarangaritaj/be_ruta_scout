@@ -1,9 +1,13 @@
 import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import { getModelToken } from '@nestjs/mongoose';
 import { Test } from '@nestjs/testing';
+import { Types } from 'mongoose';
 import type { ListUsersDto } from './dto/list-users.dto';
 import type { UpdateUserDto } from './dto/update-user.dto';
+import { EscalationService } from '../authz/escalation.service';
+import { PermissionsService } from '../authz/permissions.service';
 import { CurrentUserService } from '../current-user/current-user.service';
+import { Role } from '../roles/schemas/role.schema';
 import { User } from './schemas/user.schema';
 import { UsersService } from './users.service';
 
@@ -32,6 +36,7 @@ interface ModelMock {
   find: jest.Mock<FindChain, [Record<string, unknown>]>;
   countDocuments: jest.Mock;
   findById: jest.Mock;
+  create: jest.Mock;
 }
 
 function baseFilters(overrides: Partial<ListUsersDto> = {}): ListUsersDto {
@@ -43,6 +48,12 @@ describe('UsersService', () => {
   let model: ModelMock;
   /** Último filtro con el que se llamó a `find`, capturado por el mock. */
   let lastFilter: Record<string, unknown>;
+  /** Roles que devuelve el modelo `Role` cuando se consulta lo que conceden. */
+  let rolesInDb: { permissions: string[]; resources: string[] }[];
+  let roleModel: { find: jest.Mock };
+  /** Poderes del actor. Se reemplazan por test; por defecto lo puede todo. */
+  let actorPermissions: Set<string>;
+  let actorResources: Set<string>;
 
   beforeEach(async () => {
     lastFilter = {};
@@ -53,15 +64,35 @@ describe('UsersService', () => {
       }),
       countDocuments: jest.fn(() => ({ exec: () => Promise.resolve(0) })),
       findById: jest.fn(() => ({ exec: () => Promise.resolve(null) })),
+      create: jest.fn((dto: unknown) => Promise.resolve(dto)),
+    };
+    rolesInDb = [];
+    actorPermissions = new Set(['*']);
+    actorResources = new Set(['*']);
+    roleModel = {
+      find: jest.fn(() => ({ exec: () => Promise.resolve(rolesInDb) })),
     };
 
     const moduleRef = await Test.createTestingModule({
       providers: [
         UsersService,
+        // El servicio real, no un doble: el test cubre así la comparación con
+        // comodines de verdad, no solo que alguien sea invocado.
+        EscalationService,
         { provide: getModelToken(User.name), useValue: model },
+        { provide: getModelToken(Role.name), useValue: roleModel },
         {
           provide: CurrentUserService,
           useValue: { refresh: jest.fn(), invalidate: jest.fn() },
+        },
+        {
+          provide: PermissionsService,
+          useValue: {
+            effectivePermissions: jest.fn(() =>
+              Promise.resolve(actorPermissions),
+            ),
+            effectiveResources: jest.fn(() => Promise.resolve(actorResources)),
+          },
         },
       ],
     }).compile();
@@ -131,6 +162,7 @@ describe('UsersService', () => {
 
   describe('update', () => {
     const accessChange: UpdateUserDto = { estadoAcceso: 'suspendido' };
+    const OTHER_ROLE_ID = new Types.ObjectId('507f1f77bcf86cd799439011');
 
     function targetDoc(overrides: Record<string, unknown> = {}) {
       const doc = {
@@ -149,6 +181,13 @@ describe('UsersService', () => {
         service.update('user-1', 'user-1', accessChange),
       ).rejects.toBeInstanceOf(ForbiddenException);
       // Ni siquiera llega a leer el documento.
+      expect(model.findById).not.toHaveBeenCalled();
+    });
+
+    it('impide que un actor cambie sus PROPIOS roles', async () => {
+      await expect(
+        service.update('user-1', 'user-1', { roles: [OTHER_ROLE_ID] }),
+      ).rejects.toBeInstanceOf(ForbiddenException);
       expect(model.findById).not.toHaveBeenCalled();
     });
 
@@ -188,6 +227,115 @@ describe('UsersService', () => {
 
       expect(doc.set).toHaveBeenCalledWith(accessChange);
       expect(doc.save).toHaveBeenCalled();
+    });
+
+    describe('no escalada de privilegios', () => {
+      it('un actor sin * no puede asignar un rol que concede *', async () => {
+        actorPermissions = new Set(['user:read', 'user:approve']);
+        rolesInDb = [{ permissions: ['*'], resources: ['*'] }];
+        const doc = targetDoc({ roles: [] });
+        model.findById.mockReturnValue({ exec: () => Promise.resolve(doc) });
+
+        await expect(
+          service.update('admin', 'target', { roles: [OTHER_ROLE_ID] }),
+        ).rejects.toBeInstanceOf(ForbiddenException);
+
+        expect(doc.set).not.toHaveBeenCalled();
+        expect(doc.save).not.toHaveBeenCalled();
+      });
+
+      it('un actor con * puede asignar el rol más poderoso', async () => {
+        rolesInDb = [{ permissions: ['*'], resources: ['*'] }];
+        const doc = targetDoc({ roles: [] });
+        model.findById.mockReturnValue({ exec: () => Promise.resolve(doc) });
+
+        await service.update('admin', 'target', { roles: [OTHER_ROLE_ID] });
+
+        expect(doc.save).toHaveBeenCalled();
+      });
+
+      it('un actor con unit:* puede asignar un rol que solo da unit:read', async () => {
+        actorPermissions = new Set(['unit:*']);
+        actorResources = new Set(['/units']);
+        rolesInDb = [{ permissions: ['unit:read'], resources: ['/units'] }];
+        const doc = targetDoc({ roles: [] });
+        model.findById.mockReturnValue({ exec: () => Promise.resolve(doc) });
+
+        await service.update('admin', 'target', { roles: [OTHER_ROLE_ID] });
+
+        expect(doc.save).toHaveBeenCalled();
+      });
+
+      it('un actor con unit:read no puede asignar un rol que da unit:*', async () => {
+        actorPermissions = new Set(['unit:read']);
+        rolesInDb = [{ permissions: ['unit:*'], resources: [] }];
+        const doc = targetDoc({ roles: [] });
+        model.findById.mockReturnValue({ exec: () => Promise.resolve(doc) });
+
+        await expect(
+          service.update('admin', 'target', { roles: [OTHER_ROLE_ID] }),
+        ).rejects.toBeInstanceOf(ForbiddenException);
+      });
+
+      it('QUITARLE a alguien un rol que el actor no tiene SÍ se permite', async () => {
+        actorPermissions = new Set(['user:approve']);
+        actorResources = new Set(['/admin/usuarios']);
+        const doc = targetDoc({ roles: [OTHER_ROLE_ID] });
+        model.findById.mockReturnValue({ exec: () => Promise.resolve(doc) });
+
+        await service.update('admin', 'target', { roles: [] });
+
+        expect(doc.save).toHaveBeenCalled();
+        // Ni siquiera consulta qué concedía: quitar nunca escala privilegios.
+        expect(roleModel.find).not.toHaveBeenCalled();
+      });
+
+      it('conservar los roles que ya tenía no cuenta como conceder', async () => {
+        actorPermissions = new Set(['user:approve']);
+        rolesInDb = [{ permissions: ['*'], resources: ['*'] }];
+        const doc = targetDoc({ roles: [OTHER_ROLE_ID] });
+        model.findById.mockReturnValue({ exec: () => Promise.resolve(doc) });
+
+        await service.update('admin', 'target', {
+          roles: [OTHER_ROLE_ID],
+          name: 'Ana',
+        });
+
+        expect(doc.save).toHaveBeenCalled();
+      });
+    });
+  });
+
+  describe('create', () => {
+    const ROLE_ID = new Types.ObjectId('507f1f77bcf86cd799439011');
+
+    function adulto(roles: Types.ObjectId[]) {
+      return {
+        tipo: 'adulto' as const,
+        name: 'Ana',
+        idSiscout: '123',
+        roles,
+        cargos: [],
+      };
+    }
+
+    it('un actor sin * no puede crear a alguien con un rol que concede *', async () => {
+      actorPermissions = new Set(['user:approve']);
+      rolesInDb = [{ permissions: ['*'], resources: [] }];
+
+      await expect(
+        service.create('admin', adulto([ROLE_ID])),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+
+      expect(model.create).not.toHaveBeenCalled();
+    });
+
+    it('un actor con * puede crear a alguien con ese mismo rol', async () => {
+      rolesInDb = [{ permissions: ['*'], resources: [] }];
+
+      await service.create('admin', adulto([ROLE_ID]));
+
+      expect(model.create).toHaveBeenCalledTimes(1);
     });
   });
 });

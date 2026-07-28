@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, type QueryFilter } from 'mongoose';
+import { EscalationService } from '../authz/escalation.service';
 import {
   AppConflictException,
   AppForbiddenException,
@@ -34,11 +35,13 @@ function escapeRegex(text: string): string {
 /**
  * ¿El cambio toca la gestión de acceso (no solo datos de perfil)? Determina si
  * aplica la regla anti-auto-modificación: un admin no se edita su propio acceso.
+ * Los roles cuentan: son de dónde salen sus permisos y sus páginas.
  */
 function touchesAccess(dto: UpdateUserDto): boolean {
   return (
     dto.estadoAcceso !== undefined ||
     dto.nivelAcceso !== undefined ||
+    dto.roles !== undefined ||
     dto.districtId !== undefined ||
     dto.groupId !== undefined
   );
@@ -50,9 +53,13 @@ export class UsersService {
     @InjectModel(User.name)
     private readonly userModel: Model<UserDocument>,
     private readonly currentUser: CurrentUserService,
+    private readonly escalation: EscalationService,
   ) {}
 
-  async create(dto: CreateUserDto): Promise<UserDocument> {
+  async create(actorId: string, dto: CreateUserDto): Promise<UserDocument> {
+    const roles = 'roles' in dto ? dto.roles : [];
+    await this.escalation.assertCanGrantRoles(actorId, [], roles);
+
     try {
       return await this.userModel.create(dto);
     } catch (error) {
@@ -143,10 +150,11 @@ export class UsersService {
   }
 
   /**
-   * Edita un usuario. Aquí vive la gestión de acceso (nivel, estado, territorio),
-   * protegida por dos invariantes:
+   * Edita un usuario. Aquí vive la gestión de acceso (nivel, estado, territorio,
+   * roles), protegida por tres invariantes:
    *   1. Nadie modifica su propio acceso (evita que un admin se auto-escale).
    *   2. Al super_admin no se le gestiona desde el panel.
+   *   3. Nadie concede un rol que le dé a otro lo que él mismo no tiene.
    */
   async update(
     actorId: string,
@@ -163,6 +171,13 @@ export class UsersService {
     }
     if (target.nivelAcceso === D.ACCESS_LEVEL.SUPER_ADMIN) {
       throw new AppForbiddenException(K.USERS.CANNOT_MANAGE_SUPER_ADMIN);
+    }
+    if (dto.roles !== undefined) {
+      await this.escalation.assertCanGrantRoles(
+        actorId,
+        target.roles,
+        dto.roles,
+      );
     }
 
     try {

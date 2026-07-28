@@ -35,9 +35,10 @@ export class UsersController {
   @Post()
   @RequirePermissions('user:approve')
   async create(
+    @Req() req: { user: AuthUser },
     @Body(new ZodValidationPipe(createUserSchema)) dto: CreateUserDto,
   ): Promise<UserDocument> {
-    return this.usersService.create(dto);
+    return this.usersService.create(req.user.userId, dto);
   }
 
   @Get()

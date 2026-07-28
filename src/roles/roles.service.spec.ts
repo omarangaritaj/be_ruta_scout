@@ -1,7 +1,9 @@
 import { getModelToken } from '@nestjs/mongoose';
 import { Test } from '@nestjs/testing';
 import { Types } from 'mongoose';
-import { AppBadRequestException } from '../common';
+import { EscalationService } from '../authz/escalation.service';
+import { PermissionsService } from '../authz/permissions.service';
+import { AppBadRequestException, AppForbiddenException } from '../common';
 import { CurrentUserService } from '../current-user/current-user.service';
 import { Role } from './schemas/role.schema';
 import { RolesService } from './roles.service';
@@ -39,26 +41,49 @@ function makeRole(overrides: Record<string, unknown> = {}): RoleDoc {
   return role;
 }
 
+const ACTOR = 'actor-1';
+
 describe('RolesService', () => {
   let service: RolesService;
   let roleModel: {
     findById: jest.Mock;
     findOne: jest.Mock;
+    create: jest.Mock;
+    find: jest.Mock;
   };
   let currentUser: { refreshByRole: jest.Mock };
+  /** Poderes del actor. Se reemplazan por test; por defecto lo puede todo. */
+  let actorPermissions: Set<string>;
+  let actorResources: Set<string>;
 
   beforeEach(async () => {
     roleModel = {
       findById: jest.fn(),
       findOne: jest.fn(() => chain(null)),
+      create: jest.fn((dto: unknown) => Promise.resolve(dto)),
+      find: jest.fn(() => chain([])),
     };
     currentUser = { refreshByRole: jest.fn(() => Promise.resolve()) };
+    actorPermissions = new Set(['*']);
+    actorResources = new Set(['*']);
 
     const module = await Test.createTestingModule({
       providers: [
         RolesService,
+        // El servicio real, no un doble: así el test cubre de verdad la
+        // comparación con comodines y no solo que se llame a alguien.
+        EscalationService,
         { provide: getModelToken(Role.name), useValue: roleModel },
         { provide: CurrentUserService, useValue: currentUser },
+        {
+          provide: PermissionsService,
+          useValue: {
+            effectivePermissions: jest.fn(() =>
+              Promise.resolve(actorPermissions),
+            ),
+            effectiveResources: jest.fn(() => Promise.resolve(actorResources)),
+          },
+        },
       ],
     }).compile();
 
@@ -70,7 +95,9 @@ describe('RolesService', () => {
       const role = makeRole();
       roleModel.findById.mockReturnValue(chain(role));
 
-      await service.update(role._id.toString(), { resources: ['/units'] });
+      await service.update(ACTOR, role._id.toString(), {
+        resources: ['/units'],
+      });
 
       expect(role.resources).toEqual(['/units']);
       expect(role.save).toHaveBeenCalledTimes(1);
@@ -80,7 +107,7 @@ describe('RolesService', () => {
       const role = makeRole();
       roleModel.findById.mockReturnValue(chain(role));
 
-      await service.update(role._id.toString(), {
+      await service.update(ACTOR, role._id.toString(), {
         permissions: ['unit:read'],
       });
 
@@ -93,7 +120,7 @@ describe('RolesService', () => {
       roleModel.findById.mockReturnValue(chain(role));
 
       await expect(
-        service.update(role._id.toString(), { resources: ['/units'] }),
+        service.update(ACTOR, role._id.toString(), { resources: ['/units'] }),
       ).rejects.toBeInstanceOf(AppBadRequestException);
 
       expect(role.resources).toEqual(['*']);
@@ -106,7 +133,9 @@ describe('RolesService', () => {
       roleModel.findById.mockReturnValue(chain(role));
 
       await expect(
-        service.update(role._id.toString(), { permissions: ['unit:read'] }),
+        service.update(ACTOR, role._id.toString(), {
+          permissions: ['unit:read'],
+        }),
       ).rejects.toBeInstanceOf(AppBadRequestException);
 
       expect(role.permissions).toEqual(['*']);
@@ -121,11 +150,143 @@ describe('RolesService', () => {
       });
       roleModel.findById.mockReturnValue(chain(role));
 
-      await service.update(role._id.toString(), { descripcion: 'nueva' });
+      await service.update(ACTOR, role._id.toString(), {
+        descripcion: 'nueva',
+      });
 
       expect(role.permissions).toEqual(['unit:read']);
       expect(role.resources).toEqual(['/units']);
       expect(role.descripcion).toBe('nueva');
+    });
+  });
+
+  describe('no escalada de privilegios', () => {
+    it('un actor sin * no puede crear un rol con *', async () => {
+      actorPermissions = new Set(['unit:read']);
+
+      await expect(
+        service.create(ACTOR, {
+          nombre: 'todopoderoso',
+          permissions: ['*'],
+          resources: [],
+          status: 'activo',
+        }),
+      ).rejects.toBeInstanceOf(AppForbiddenException);
+
+      expect(roleModel.create).not.toHaveBeenCalled();
+    });
+
+    it('un actor sin * no puede crear un rol con todas las páginas', async () => {
+      actorResources = new Set(['/units']);
+
+      await expect(
+        service.create(ACTOR, {
+          nombre: 'todopoderoso',
+          permissions: [],
+          resources: ['*'],
+          status: 'activo',
+        }),
+      ).rejects.toBeInstanceOf(AppForbiddenException);
+
+      expect(roleModel.create).not.toHaveBeenCalled();
+    });
+
+    it('el mensaje dice QUÉ falta, no un genérico', async () => {
+      actorPermissions = new Set(['unit:read']);
+
+      await expect(
+        service.create(ACTOR, {
+          nombre: 'todopoderoso',
+          permissions: ['role:delete', '*'],
+          resources: [],
+          status: 'activo',
+        }),
+      ).rejects.toThrow(/role:delete, \*/);
+    });
+
+    it('un actor con unit:* SÍ puede conceder unit:read', async () => {
+      actorPermissions = new Set(['unit:*']);
+      actorResources = new Set(['/units']);
+
+      await expect(
+        service.create(ACTOR, {
+          nombre: 'jefe de rama',
+          permissions: ['unit:read'],
+          resources: ['/units'],
+          status: 'activo',
+        }),
+      ).resolves.toBeDefined();
+
+      expect(roleModel.create).toHaveBeenCalledTimes(1);
+    });
+
+    it('un actor con unit:read NO puede conceder unit:*', async () => {
+      actorPermissions = new Set(['unit:read']);
+
+      await expect(
+        service.create(ACTOR, {
+          nombre: 'casi jefe',
+          permissions: ['unit:*'],
+          resources: [],
+          status: 'activo',
+        }),
+      ).rejects.toBeInstanceOf(AppForbiddenException);
+    });
+
+    it('un actor con * puede conceder cualquier cosa', async () => {
+      await expect(
+        service.create(ACTOR, {
+          nombre: 'otro admin',
+          permissions: ['*'],
+          resources: ['*'],
+          status: 'activo',
+        }),
+      ).resolves.toBeDefined();
+    });
+
+    it('QUITAR un permiso que el actor no tiene SÍ se permite', async () => {
+      actorPermissions = new Set(['unit:read']);
+      actorResources = new Set(['/units']);
+      const role = makeRole({
+        permissions: ['role:delete', 'unit:read'],
+        resources: ['/admin/roles', '/units'],
+      });
+      roleModel.findById.mockReturnValue(chain(role));
+
+      await service.update(ACTOR, role._id.toString(), {
+        permissions: ['unit:read'],
+        resources: ['/units'],
+      });
+
+      expect(role.permissions).toEqual(['unit:read']);
+      expect(role.save).toHaveBeenCalledTimes(1);
+    });
+
+    it('AÑADIR un permiso que el actor no tiene se rechaza', async () => {
+      actorPermissions = new Set(['unit:read']);
+      const role = makeRole({ permissions: ['unit:read'] });
+      roleModel.findById.mockReturnValue(chain(role));
+
+      await expect(
+        service.update(ACTOR, role._id.toString(), {
+          permissions: ['unit:read', 'role:delete'],
+        }),
+      ).rejects.toBeInstanceOf(AppForbiddenException);
+
+      expect(role.permissions).toEqual(['unit:read']);
+      expect(role.save).not.toHaveBeenCalled();
+    });
+
+    it('REACTIVAR un rol concede todo lo que lleva, no solo el delta', async () => {
+      actorPermissions = new Set(['unit:read']);
+      const role = makeRole({ status: 'inactivo', permissions: ['*'] });
+      roleModel.findById.mockReturnValue(chain(role));
+
+      await expect(
+        service.update(ACTOR, role._id.toString(), { status: 'activo' }),
+      ).rejects.toBeInstanceOf(AppForbiddenException);
+
+      expect(role.save).not.toHaveBeenCalled();
     });
   });
 });
