@@ -26,6 +26,10 @@ export const CATALOG = {
   AUTHZ: {
     ACCESS_DENIED:
       'Debes solicitar acceso para realizar esta acción, solicítalo a tu administrador',
+    CANNOT_GRANT_LEVEL:
+      'No puedes conceder el nivel de acceso "{nivel}": el tuyo es "{propio}"',
+    CANNOT_GRANT_LEVEL_WITHOUT_OWN:
+      'No puedes conceder el nivel de acceso "{nivel}": tú no tienes ningún nivel asignado',
     CANNOT_GRANT_UNOWNED:
       'No puedes conceder lo que tu propio rol no te da: {missing}',
   },

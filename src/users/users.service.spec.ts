@@ -54,6 +54,7 @@ describe('UsersService', () => {
   /** Poderes del actor. Se reemplazan por test; por defecto lo puede todo. */
   let actorPermissions: Set<string>;
   let actorResources: Set<string>;
+  let actorLevel: string | undefined;
 
   beforeEach(async () => {
     lastFilter = {};
@@ -69,6 +70,7 @@ describe('UsersService', () => {
     rolesInDb = [];
     actorPermissions = new Set(['*']);
     actorResources = new Set(['*']);
+    actorLevel = 'super_admin';
     roleModel = {
       find: jest.fn(() => ({ exec: () => Promise.resolve(rolesInDb) })),
     };
@@ -92,6 +94,7 @@ describe('UsersService', () => {
               Promise.resolve(actorPermissions),
             ),
             effectiveResources: jest.fn(() => Promise.resolve(actorResources)),
+            effectiveLevel: jest.fn(() => Promise.resolve(actorLevel)),
           },
         },
       ],
@@ -187,6 +190,15 @@ describe('UsersService', () => {
     it('impide que un actor cambie sus PROPIOS roles', async () => {
       await expect(
         service.update('user-1', 'user-1', { roles: [OTHER_ROLE_ID] }),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+      expect(model.findById).not.toHaveBeenCalled();
+    });
+
+    it('impide que un actor cambie sus PROPIOS cargos', async () => {
+      await expect(
+        service.update('user-1', 'user-1', {
+          cargos: [{ nombreCargo: 'JEFE DE MANADA', nivel: 'rama' }],
+        }),
       ).rejects.toBeInstanceOf(ForbiddenException);
       expect(model.findById).not.toHaveBeenCalled();
     });
@@ -288,6 +300,76 @@ describe('UsersService', () => {
         expect(doc.save).toHaveBeenCalled();
         // Ni siquiera consulta qué concedía: quitar nunca escala privilegios.
         expect(roleModel.find).not.toHaveBeenCalled();
+      });
+
+      it('un actor de nivel grupo NO puede conceder nacion', async () => {
+        actorLevel = 'grupo';
+        const doc = targetDoc({ nivelAcceso: 'rama' });
+        model.findById.mockReturnValue({ exec: () => Promise.resolve(doc) });
+
+        await expect(
+          service.update('admin', 'target', { nivelAcceso: 'nacion' }),
+        ).rejects.toBeInstanceOf(ForbiddenException);
+
+        expect(doc.set).not.toHaveBeenCalled();
+        expect(doc.save).not.toHaveBeenCalled();
+      });
+
+      it('un actor de nivel grupo tampoco puede conceder region', async () => {
+        actorLevel = 'grupo';
+        const doc = targetDoc({ nivelAcceso: 'rama' });
+        model.findById.mockReturnValue({ exec: () => Promise.resolve(doc) });
+
+        await expect(
+          service.update('admin', 'target', { nivelAcceso: 'region' }),
+        ).rejects.toBeInstanceOf(ForbiddenException);
+      });
+
+      it('un actor de nivel nacion SÍ puede conceder region', async () => {
+        actorLevel = 'nacion';
+        const doc = targetDoc({ nivelAcceso: 'rama' });
+        model.findById.mockReturnValue({ exec: () => Promise.resolve(doc) });
+
+        await service.update('admin', 'target', { nivelAcceso: 'region' });
+
+        expect(doc.save).toHaveBeenCalled();
+      });
+
+      it('un actor SIN nivelAcceso no puede conceder ninguno', async () => {
+        actorLevel = undefined;
+
+        for (const nivel of ['rama', 'grupo', 'region', 'nacion'] as const) {
+          const doc = targetDoc({ nivelAcceso: undefined });
+          model.findById.mockReturnValue({ exec: () => Promise.resolve(doc) });
+
+          await expect(
+            service.update('admin', 'target', { nivelAcceso: nivel }),
+          ).rejects.toBeInstanceOf(ForbiddenException);
+          expect(doc.save).not.toHaveBeenCalled();
+        }
+      });
+
+      it('BAJAR el nivel de alguien SÍ se permite', async () => {
+        actorLevel = 'grupo';
+        const doc = targetDoc({ nivelAcceso: 'nacion' });
+        model.findById.mockReturnValue({ exec: () => Promise.resolve(doc) });
+
+        await service.update('admin', 'target', { nivelAcceso: 'rama' });
+
+        expect(doc.save).toHaveBeenCalled();
+      });
+
+      it('dejarle el nivel que ya tenía no cuenta como conceder', async () => {
+        actorLevel = 'grupo';
+        const doc = targetDoc({ nivelAcceso: 'nacion' });
+        model.findById.mockReturnValue({ exec: () => Promise.resolve(doc) });
+
+        await service.update('admin', 'target', {
+          nivelAcceso: 'nacion',
+          name: 'Ana',
+        });
+
+        expect(doc.save).toHaveBeenCalled();
       });
 
       it('conservar los roles que ya tenía no cuenta como conceder', async () => {

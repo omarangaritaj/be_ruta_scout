@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
+import { type AccessLevel } from '../domain';
 import { RoleDocument } from '../roles/schemas/role.schema';
 import { User, UserDocument } from '../users/schemas/user.schema';
 import { granting } from './permissions.catalog';
@@ -34,6 +35,16 @@ export class PermissionsService {
     if (required.length === 0) return true;
     const owned = await this.effectivePermissions(userId);
     return required.every((permiso) => granting(owned, permiso));
+  }
+
+  /**
+   * Nivel de acceso del usuario. `undefined` si no lo tiene (es opcional en el
+   * esquema) o si el usuario ya no existe: quien no tiene nivel no concede
+   * ninguno, así que ambos casos fallan cerrado.
+   */
+  async effectiveLevel(userId: string): Promise<AccessLevel | undefined> {
+    const user = await this.userModel.findById(userId, 'nivelAcceso').exec();
+    return user?.nivelAcceso;
   }
 
   /** Rutas efectivas = unión de las rutas de los roles ACTIVOS del usuario. */

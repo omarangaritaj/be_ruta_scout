@@ -2,8 +2,10 @@ import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { AppForbiddenException } from '../common';
+import { type AccessLevel } from '../domain';
 import { K } from '../i18n';
 import { Role, RoleDocument } from '../roles/schemas/role.schema';
+import { canGrantLevel } from './access-levels';
 import { addedValues, ungrantable } from './escalation';
 import { PermissionsService } from './permissions.service';
 
@@ -60,6 +62,29 @@ export class EscalationService {
     if (missing.length === 0) return;
     throw new AppForbiddenException(K.AUTHZ.CANNOT_GRANT_UNOWNED, {
       missing: missing.join(', '),
+    });
+  }
+
+  /**
+   * Igual, sobre el `nivelAcceso`: es privilegio puro (de `region` para arriba
+   * abre todas las unidades del país) y nadie concede un nivel al que él mismo
+   * no llega. Bajarle el nivel a alguien no pasa por aquí: quitar no escala.
+   */
+  async assertCanGrantLevel(
+    actorId: string,
+    requested: AccessLevel,
+  ): Promise<void> {
+    const own = await this.permissions.effectiveLevel(actorId);
+    if (canGrantLevel(own, requested)) return;
+
+    if (own === undefined) {
+      throw new AppForbiddenException(K.AUTHZ.CANNOT_GRANT_LEVEL_WITHOUT_OWN, {
+        nivel: requested,
+      });
+    }
+    throw new AppForbiddenException(K.AUTHZ.CANNOT_GRANT_LEVEL, {
+      nivel: requested,
+      propio: own,
     });
   }
 

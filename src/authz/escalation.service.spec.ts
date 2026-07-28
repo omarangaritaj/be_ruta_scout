@@ -14,17 +14,21 @@ describe('EscalationService', () => {
   let permissions: {
     effectivePermissions: jest.Mock;
     effectiveResources: jest.Mock;
+    effectiveLevel: jest.Mock;
   };
   let rolesInDb: { permissions: string[]; resources: string[] }[];
+  let actorLevel: string | undefined;
 
   beforeEach(async () => {
     rolesInDb = [];
+    actorLevel = undefined;
     roleModel = {
       find: jest.fn(() => ({ exec: () => Promise.resolve(rolesInDb) })),
     };
     permissions = {
       effectivePermissions: jest.fn(() => Promise.resolve(new Set<string>())),
       effectiveResources: jest.fn(() => Promise.resolve(new Set<string>())),
+      effectiveLevel: jest.fn(() => Promise.resolve(actorLevel)),
     };
 
     const module = await Test.createTestingModule({
@@ -94,6 +98,40 @@ describe('EscalationService', () => {
       await expect(
         service.assertCanGrant('actor', { permissions: ['*'] }),
       ).rejects.toBeInstanceOf(AppForbiddenException);
+    });
+  });
+
+  describe('assertCanGrantLevel', () => {
+    it('deja pasar el nivel del propio actor', async () => {
+      actorLevel = 'region';
+
+      await expect(
+        service.assertCanGrantLevel('actor', 'region'),
+      ).resolves.toBeUndefined();
+    });
+
+    it('el rechazo es un 403', async () => {
+      actorLevel = 'grupo';
+
+      await expect(
+        service.assertCanGrantLevel('actor', 'nacion'),
+      ).rejects.toBeInstanceOf(AppForbiddenException);
+    });
+
+    it('el mensaje dice QUÉ nivel se pidió y cuál tiene el actor', async () => {
+      actorLevel = 'grupo';
+
+      await expect(
+        service.assertCanGrantLevel('actor', 'nacion'),
+      ).rejects.toThrow(/"nacion".+"grupo"/);
+    });
+
+    it('sin nivel propio, el mensaje lo dice en vez de citar uno vacío', async () => {
+      actorLevel = undefined;
+
+      await expect(
+        service.assertCanGrantLevel('actor', 'rama'),
+      ).rejects.toThrow(/no tienes ningún nivel/);
     });
   });
 

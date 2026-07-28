@@ -63,11 +63,12 @@ export class SolicitudesAccesoController {
   @HttpCode(HttpStatus.OK)
   @RequirePermissions('solicitud:approve')
   async aprobar(
+    @Req() req: { user: AuthUser },
     @Param('id', ParseObjectIdPipe) id: string,
     @Body(new ZodValidationPipe(aprobarSolicitudSchema))
     dto: AprobarSolicitudDto,
   ): Promise<SolicitudAccesoDocument> {
-    return this.service.aprobar(id, dto);
+    return this.service.aprobar(req.user.userId, id, dto);
   }
 
   @Post(':id/rechazar')

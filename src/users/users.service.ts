@@ -35,13 +35,17 @@ function escapeRegex(text: string): string {
 /**
  * ¿El cambio toca la gestión de acceso (no solo datos de perfil)? Determina si
  * aplica la regla anti-auto-modificación: un admin no se edita su propio acceso.
- * Los roles cuentan: son de dónde salen sus permisos y sus páginas.
+ * Los roles cuentan: son de dónde salen sus permisos y sus páginas. Los cargos
+ * también: un cargo de nivel `rama` concede alcance sobre esa rama
+ * (`unit-scope.ts`), y declararlo tiene su propia puerta controlada en
+ * `POST /units/leadership`.
  */
 function touchesAccess(dto: UpdateUserDto): boolean {
   return (
     dto.estadoAcceso !== undefined ||
     dto.nivelAcceso !== undefined ||
     dto.roles !== undefined ||
+    dto.cargos !== undefined ||
     dto.districtId !== undefined ||
     dto.groupId !== undefined
   );
@@ -151,10 +155,11 @@ export class UsersService {
 
   /**
    * Edita un usuario. Aquí vive la gestión de acceso (nivel, estado, territorio,
-   * roles), protegida por tres invariantes:
+   * roles, cargos), protegida por cuatro invariantes:
    *   1. Nadie modifica su propio acceso (evita que un admin se auto-escale).
    *   2. Al super_admin no se le gestiona desde el panel.
    *   3. Nadie concede un rol que le dé a otro lo que él mismo no tiene.
+   *   4. Nadie concede un nivel de acceso al que él mismo no llega.
    */
   async update(
     actorId: string,
@@ -172,6 +177,16 @@ export class UsersService {
     if (target.nivelAcceso === D.ACCESS_LEVEL.SUPER_ADMIN) {
       throw new AppForbiddenException(K.USERS.CANNOT_MANAGE_SUPER_ADMIN);
     }
+    // Dejarle el nivel que ya tenía no concede nada, así que no se valida: es
+    // la misma asimetría de los roles, y el panel reenvía el nivel en cada
+    // guardado aunque el cambio sea de región o de cargo.
+    if (
+      dto.nivelAcceso !== undefined &&
+      dto.nivelAcceso !== target.nivelAcceso
+    ) {
+      await this.escalation.assertCanGrantLevel(actorId, dto.nivelAcceso);
+    }
+
     if (dto.roles !== undefined) {
       await this.escalation.assertCanGrantRoles(
         actorId,

@@ -1,6 +1,7 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
+import { EscalationService } from '../authz/escalation.service';
 import {
   cargoEsValido,
   type NivelSolicitud,
@@ -46,6 +47,7 @@ export class SolicitudesAccesoService {
     private readonly snapshots: SiscoutSnapshotService,
     @Inject(EMAIL_NOTIFIER)
     private readonly email: EmailNotifier,
+    private readonly escalation: EscalationService,
   ) {}
 
   private readonly logger = new Logger(SolicitudesAccesoService.name);
@@ -239,13 +241,24 @@ export class SolicitudesAccesoService {
     };
   }
 
+  /**
+   * Aprueba una solicitud. Fija el `nivelAcceso` de la persona, que es
+   * privilegio puro, así que el nivel aprobado se compara contra el de quien
+   * aprueba: `solicitud:approve` dice que puede resolver la cola, no hasta
+   * dónde puede llegar el nivel que concede.
+   */
   async aprobar(
+    actorId: string,
     id: string,
     dto: AprobarSolicitudDto,
   ): Promise<SolicitudAccesoDocument> {
     const solicitud = await this.cargarResoluble(id);
+    // El nivel efectivo, no solo `dto.nivel`: sin él se aprueba tal cual lo
+    // pidió el solicitante, que es exactamente el mismo privilegio.
     const nivel = dto.nivel ?? solicitud.nivelSolicitado;
     const cargo = dto.cargo ?? solicitud.cargoSolicitado;
+
+    await this.escalation.assertCanGrantLevel(actorId, nivel);
 
     if (!cargoEsValido(cargo, nivel)) {
       throw new AppBadRequestException(K.REQUESTS.POSITION_LEVEL_MISMATCH);
