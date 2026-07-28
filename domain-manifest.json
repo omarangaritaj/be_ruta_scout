@@ -73,6 +73,12 @@
     { "name": "ASSISTANT", "value": "assistant", "order": 2 },
     { "name": "MEMBER", "value": "member", "order": 3 }
   ],
+  "diagnosticBlocks": [
+    { "name": "RAP", "value": "rap" },
+    { "name": "GSAT", "value": "gsat" },
+    { "name": "SCOUT_METHOD", "value": "metodo_scout" },
+    { "name": "DURASLID", "value": "duraslid" }
+  ],
   "permissions": [
     { "key": "role:read", "side": "both" },
     { "key": "role:create", "side": "both" },

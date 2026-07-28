@@ -29,6 +29,7 @@ export interface DomainManifest {
   roleLevels: NamedValue[];
   personTypes: NamedValue[];
   unitRoles: NamedValue[];
+  diagnosticBlocks: NamedValue[];
   permissions: PermissionEntry[];
   routeResources: RouteResourceEntry[];
   apiErrorCodes: NamedValue[];
@@ -71,6 +72,7 @@ export function readManifest(raw: string): DomainManifest {
   assertUnique(ordenado.roleLevels, 'roleLevels');
   assertUnique(ordenado.personTypes, 'personTypes');
   assertUnique(ordenado.unitRoles, 'unitRoles');
+  assertUnique(ordenado.diagnosticBlocks, 'diagnosticBlocks');
   assertUnique(ordenado.apiErrorCodes, 'apiErrorCodes');
   assertUniqueRoutePaths(ordenado.routeResources, 'routeResources');
   return ordenado;
@@ -177,6 +179,21 @@ export function generateFiles(manifest: DomainManifest): Map<string, string> {
   );
 
   archivos.set(
+    'src/domain/diagnostic.ts',
+    HEADER +
+      constAndType(
+        'DIAGNOSTIC_BLOCKS',
+        'DiagnosticBlock',
+        manifest.diagnosticBlocks,
+      ) +
+      messageKeyMap(
+        'DIAGNOSTIC_BLOCK_MESSAGE_KEY',
+        'DIAGNOSTIC_BLOCK',
+        manifest.diagnosticBlocks,
+      ),
+  );
+
+  archivos.set(
     'src/domain/permissions.ts',
     HEADER +
       `export const PERMISSION_KEYS = [${quoted(manifest.permissions.map((p) => p.key))}] as const;\n` +
@@ -205,6 +222,7 @@ export function generateFiles(manifest: DomainManifest): Map<string, string> {
       dictionaryGroup('ROLE_LEVEL', manifest.roleLevels) +
       dictionaryGroup('PERSON_TYPE', manifest.personTypes) +
       dictionaryGroup('UNIT_ROLE', manifest.unitRoles) +
+      dictionaryGroup('DIAGNOSTIC_BLOCK', manifest.diagnosticBlocks) +
       dictionaryGroup('API_ERROR', manifest.apiErrorCodes) +
       '} as const;\n',
   );
@@ -215,6 +233,7 @@ export function generateFiles(manifest: DomainManifest): Map<string, string> {
       "export * from './access';\n" +
       "export * from './branches';\n" +
       "export * from './dictionary';\n" +
+      "export * from './diagnostic';\n" +
       "export * from './errors';\n" +
       "export * from './permissions';\n" +
       "export * from './roles';\n" +
@@ -229,6 +248,7 @@ export function generateFiles(manifest: DomainManifest): Map<string, string> {
     ...manifest.roleLevels,
     ...manifest.personTypes,
     ...manifest.unitRoles,
+    ...manifest.diagnosticBlocks,
   ].map((e) => e.value);
   archivos.set(
     '.domain-vocabulary.json',

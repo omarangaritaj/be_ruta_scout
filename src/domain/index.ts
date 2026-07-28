@@ -3,6 +3,7 @@
 export * from './access';
 export * from './branches';
 export * from './dictionary';
+export * from './diagnostic';
 export * from './errors';
 export * from './permissions';
 export * from './roles';

@@ -16,6 +16,7 @@ const MANIFEST = JSON.stringify({
   roleLevels: [{ name: 'RAMA', value: 'rama' }],
   personTypes: [{ name: 'ADULT', value: 'adulto' }],
   unitRoles: [{ name: 'UNIT_LEADER', value: 'unit_leader' }],
+  diagnosticBlocks: [{ name: 'RAP', value: 'rap' }],
   permissions: [{ key: 'user:read', side: 'both' }],
   routeResources: [
     { path: '/tablero', label: 'Tablero', always: true },
@@ -35,6 +36,7 @@ const vacio = {
   roleLevels: [],
   personTypes: [],
   unitRoles: [],
+  diagnosticBlocks: [],
   permissions: [],
   routeResources: [],
   apiErrorCodes: [],
@@ -137,5 +139,36 @@ describe('domain codegen', () => {
     expect(archivos.get('src/domain/branches.ts')).toContain(
       "export const BRANCHES = ['manada', 'clan'] as const;",
     );
+  });
+});
+
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+
+describe('bloques de diagnóstico', () => {
+  const manifest = readManifest(
+    readFileSync(join(__dirname, '..', 'domain-manifest.json'), 'utf8'),
+  );
+
+  it('emite las constantes en src/domain/diagnostic.ts', () => {
+    const archivos = generateFiles(manifest);
+    expect(archivos.get('src/domain/diagnostic.ts')).toContain(
+      "export const DIAGNOSTIC_BLOCKS = ['rap', 'gsat', 'metodo_scout', 'duraslid'] as const;",
+    );
+  });
+
+  it('los expone en el diccionario D', () => {
+    const archivos = generateFiles(manifest);
+    expect(archivos.get('src/domain/dictionary.ts')).toContain(
+      'DIAGNOSTIC_BLOCK: {',
+    );
+  });
+
+  it('los suma al vocabulario que bloquea literales sueltos', () => {
+    const archivos = generateFiles(manifest);
+    const vocabulario = JSON.parse(
+      archivos.get('.domain-vocabulary.json') as string,
+    ) as string[];
+    expect(vocabulario).toContain('duraslid');
   });
 });

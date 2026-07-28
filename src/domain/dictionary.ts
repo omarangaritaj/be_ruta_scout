@@ -44,6 +44,12 @@ export const D = {
     ASSISTANT: 'assistant',
     MEMBER: 'member',
   },
+  DIAGNOSTIC_BLOCK: {
+    RAP: 'rap',
+    GSAT: 'gsat',
+    SCOUT_METHOD: 'metodo_scout',
+    DURASLID: 'duraslid',
+  },
   API_ERROR: {
     UNITS_LEADERSHIP_REQUIRED: 'UNITS.LEADERSHIP_REQUIRED',
     UNITS_MISSING_GROUP: 'UNITS.MISSING_GROUP',
