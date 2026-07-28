@@ -34,6 +34,7 @@ function makeService(
   };
   const permissions = {
     effectivePermissions: jest.fn(() => Promise.resolve(new Set<string>())),
+    effectiveResources: jest.fn(() => Promise.resolve(new Set<string>())),
   };
   const svc = new AuthService(
     userModel as never,

@@ -46,9 +46,10 @@ export interface CheckResult {
   person?: Person;
 }
 
-/** Persona autenticada con sus permisos efectivos (respuesta de /auth/me). */
+/** Persona autenticada con sus permisos y rutas efectivos (respuesta de /auth/me). */
 export interface AuthenticatedUser extends Person {
   permissions: string[];
+  resources: string[];
 }
 
 export interface AuthResult {
@@ -166,8 +167,15 @@ export class AuthService {
     if (!user) {
       throw new AppUnauthorizedException(K.AUTH.ACCOUNT_GONE);
     }
-    const permissions = await this.permissions.effectivePermissions(userId);
-    return { ...this.toPerson(user), permissions: [...permissions] };
+    const [permissions, resources] = await Promise.all([
+      this.permissions.effectivePermissions(userId),
+      this.permissions.effectiveResources(userId),
+    ]);
+    return {
+      ...this.toPerson(user),
+      permissions: [...permissions],
+      resources: [...resources],
+    };
   }
 
   /**

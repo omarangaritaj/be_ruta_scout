@@ -35,4 +35,21 @@ export class PermissionsService {
     const owned = await this.effectivePermissions(userId);
     return required.every((permiso) => granting(owned, permiso));
   }
+
+  /** Rutas efectivas = unión de las rutas de los roles ACTIVOS del usuario. */
+  async effectiveResources(userId: string): Promise<Set<string>> {
+    const user = await this.userModel
+      .findById(userId)
+      .populate<{ roles: RoleDocument[] }>('roles', 'resources status')
+      .exec();
+
+    const recursos = new Set<string>();
+    if (!user) return recursos;
+
+    for (const role of user.roles) {
+      if (role.status !== 'activo') continue;
+      for (const recurso of role.resources) recursos.add(recurso);
+    }
+    return recursos;
+  }
 }
