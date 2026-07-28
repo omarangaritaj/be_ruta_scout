@@ -49,6 +49,13 @@ export const CATALOG = {
     SERVICE_UNAVAILABLE: 'El servicio no está disponible en este momento.',
     UNAUTHORIZED: 'Debes iniciar sesión para realizar esta acción.',
   },
+  CYCLES: {
+    DUPLICATE_ANSWER:
+      'El diagnóstico trae respuestas repetidas para la misma pregunta',
+    INVALID_DATE_RANGE: 'La fecha de fin debe ser posterior a la de inicio',
+    NOT_FOUND: 'No existe un ciclo con id "{id}"',
+    OUT_OF_SCOPE: 'Este ciclo no está dentro de tu alcance',
+  },
   EMAIL: {
     BRAND_RUTA: 'R.U.T.A.',
     CONTACT_PROMPT: 'Si tienes preguntas, escríbenos a ',
