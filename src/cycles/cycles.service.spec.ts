@@ -193,4 +193,36 @@ describe('CyclesService', () => {
       ).rejects.toBeInstanceOf(AppBadRequestException);
     });
   });
+
+  describe('updateFocus', () => {
+    it('mezcla el enfoque nuevo sobre el guardado y marca la ruta como modificada', async () => {
+      const save = jest.fn().mockResolvedValue(undefined);
+      const markModified = jest.fn();
+      const cycle = {
+        _id: 'c1',
+        unitId: 'u1',
+        isActive: true,
+        focus: { objective: 'Viejo', competencies: [] },
+        markModified,
+        save,
+      };
+      cycleModel.findById.mockReturnValue(chainOf(cycle));
+      unitModel.findById.mockReturnValue(
+        chainOf({ _id: 'u1', groupId: 7, branch: 'manada' }),
+      );
+
+      await service.updateFocus(actor, 'c1', {
+        objective: 'Nuevo',
+        educationalFocus: 'Convivencia',
+      });
+
+      expect(cycle.focus).toEqual({
+        objective: 'Nuevo',
+        educationalFocus: 'Convivencia',
+        competencies: [],
+      });
+      expect(markModified).toHaveBeenCalledWith('focus');
+      expect(save).toHaveBeenCalled();
+    });
+  });
 });
