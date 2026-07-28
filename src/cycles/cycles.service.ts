@@ -13,8 +13,11 @@ import { QuestionsService } from '../questions/questions.service';
 import { Unit, UnitDocument } from '../units/schemas/unit.schema';
 import { resolveUnitScope, scopeReaches } from '../units/unit-scope';
 import { hasValidRange } from './cycle-dates';
+import { buildAnswers, findDiagnosticProblem } from './diagnostic-validation';
 import { CreateCycleDto } from './dto/create-cycle.dto';
+import { SaveDiagnosticDto } from './dto/save-diagnostic.dto';
 import { UpdateCycleDto } from './dto/update-cycle.dto';
+import { UpdateFocusDto } from './dto/update-focus.dto';
 import { Cycle, CycleDocument } from './schemas/cycle.schema';
 
 @Injectable()
@@ -73,6 +76,53 @@ export class CyclesService {
     const cycle = await this.findOne(user, id);
     cycle.isActive = false;
     await cycle.save();
+  }
+
+  async saveDiagnostic(
+    user: AuthUser,
+    id: string,
+    dto: SaveDiagnosticDto,
+  ): Promise<CycleDocument> {
+    const cycle = await this.findOne(user, id);
+    const unit = await this.unitInScope(user, String(cycle.unitId));
+    const catalog = await this.questionsService.findActiveByBranch(unit.branch);
+    const questions = catalog.map((question) => ({
+      id: String(question._id),
+      branch: question.branch,
+      block: question.block,
+      text: question.text,
+    }));
+    const answers = dto.answers.map((answer) => ({
+      questionId: String(answer.questionId),
+      score: answer.score,
+      ...(answer.notes === undefined ? {} : { notes: answer.notes }),
+    }));
+
+    const problem = findDiagnosticProblem(answers, questions, unit.branch);
+    if (problem === 'duplicate') {
+      throw new AppBadRequestException(K.CYCLES.DUPLICATE_ANSWER);
+    }
+    if (problem === 'unknown-question') {
+      throw new AppBadRequestException(K.QUESTIONS.INACTIVE);
+    }
+    if (problem === 'branch-mismatch') {
+      throw new AppBadRequestException(K.QUESTIONS.BRANCH_MISMATCH);
+    }
+
+    cycle.diagnosticAnswers = buildAnswers(answers, questions) as never;
+    if (dto.summary !== undefined) cycle.diagnosticSummary = dto.summary;
+    return cycle.save();
+  }
+
+  async updateFocus(
+    user: AuthUser,
+    id: string,
+    dto: UpdateFocusDto,
+  ): Promise<CycleDocument> {
+    const cycle = await this.findOne(user, id);
+    Object.assign(cycle.focus, dto);
+    cycle.markModified('focus');
+    return cycle.save();
   }
 
   private async reachableUnits(user: AuthUser): Promise<UnitDocument[]> {

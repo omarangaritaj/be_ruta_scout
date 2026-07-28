@@ -1,7 +1,11 @@
 import { getModelToken } from '@nestjs/mongoose';
 import { Test } from '@nestjs/testing';
 import type { AuthUser } from '../auth/strategies/jwt.strategy';
-import { AppForbiddenException, AppNotFoundException } from '../common';
+import {
+  AppBadRequestException,
+  AppForbiddenException,
+  AppNotFoundException,
+} from '../common';
 import { CurrentUserService } from '../current-user/current-user.service';
 import { QuestionsService } from '../questions/questions.service';
 import { Unit } from '../units/schemas/unit.schema';
@@ -30,21 +34,20 @@ describe('CyclesService', () => {
   let cycleModel: { find: jest.Mock; findById: jest.Mock; create: jest.Mock };
   let unitModel: { find: jest.Mock; findById: jest.Mock };
   let currentUser: { get: jest.Mock };
+  let questionsMock: { findActiveByBranch: jest.Mock };
 
   beforeEach(async () => {
     cycleModel = { find: jest.fn(), findById: jest.fn(), create: jest.fn() };
     unitModel = { find: jest.fn(), findById: jest.fn() };
     currentUser = { get: jest.fn().mockResolvedValue(NATION_PROFILE) };
+    questionsMock = { findActiveByBranch: jest.fn() };
 
     const moduleRef = await Test.createTestingModule({
       providers: [
         CyclesService,
         { provide: getModelToken(Cycle.name), useValue: cycleModel },
         { provide: getModelToken(Unit.name), useValue: unitModel },
-        {
-          provide: QuestionsService,
-          useValue: { findActiveByBranch: jest.fn() },
-        },
+        { provide: QuestionsService, useValue: questionsMock },
         { provide: CurrentUserService, useValue: currentUser },
       ],
     }).compile();
@@ -120,5 +123,74 @@ describe('CyclesService', () => {
     currentUser.get.mockResolvedValue(BRANCH_PROFILE);
 
     await expect(service.findOne(actor, 'c1')).resolves.toBe(cycle);
+  });
+
+  describe('saveDiagnostic', () => {
+    it('rechaza una respuesta de una pregunta de otra rama', async () => {
+      cycleModel.findById.mockReturnValue(
+        chainOf({ _id: 'c1', unitId: 'u1', isActive: true }),
+      );
+      unitModel.findById.mockReturnValue(
+        chainOf({ _id: 'u1', groupId: 7, branch: 'manada' }),
+      );
+      questionsMock.findActiveByBranch.mockResolvedValue([
+        { _id: 'q1', branch: 'tropa', block: 'rap', text: 'Uno' },
+      ]);
+
+      await expect(
+        service.saveDiagnostic(actor, 'c1', {
+          answers: [{ questionId: 'q1', score: 3 }],
+        } as never),
+      ).rejects.toBeInstanceOf(AppBadRequestException);
+    });
+
+    it('guarda el texto y el bloque desde el catálogo, no desde el cliente', async () => {
+      const save = jest.fn().mockResolvedValue(undefined);
+      const cycle = {
+        _id: 'c1',
+        unitId: 'u1',
+        isActive: true,
+        diagnosticAnswers: [],
+        save,
+      };
+      cycleModel.findById.mockReturnValue(chainOf(cycle));
+      unitModel.findById.mockReturnValue(
+        chainOf({ _id: 'u1', groupId: 7, branch: 'manada' }),
+      );
+      questionsMock.findActiveByBranch.mockResolvedValue([
+        { _id: 'q1', branch: 'manada', block: 'gsat', text: 'Real' },
+      ]);
+
+      await service.saveDiagnostic(actor, 'c1', {
+        answers: [{ questionId: 'q1', score: 4 }],
+        summary: 'La unidad viene floja en participación',
+      } as never);
+
+      expect(cycle.diagnosticAnswers).toEqual([
+        { questionId: 'q1', questionText: 'Real', block: 'gsat', score: 4 },
+      ]);
+      expect(save).toHaveBeenCalled();
+    });
+
+    it('rechaza dos respuestas para la misma pregunta', async () => {
+      cycleModel.findById.mockReturnValue(
+        chainOf({ _id: 'c1', unitId: 'u1', isActive: true }),
+      );
+      unitModel.findById.mockReturnValue(
+        chainOf({ _id: 'u1', groupId: 7, branch: 'manada' }),
+      );
+      questionsMock.findActiveByBranch.mockResolvedValue([
+        { _id: 'q1', branch: 'manada', block: 'rap', text: 'Uno' },
+      ]);
+
+      await expect(
+        service.saveDiagnostic(actor, 'c1', {
+          answers: [
+            { questionId: 'q1', score: 3 },
+            { questionId: 'q1', score: 5 },
+          ],
+        } as never),
+      ).rejects.toBeInstanceOf(AppBadRequestException);
+    });
   });
 });

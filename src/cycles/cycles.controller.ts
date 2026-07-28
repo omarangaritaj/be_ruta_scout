@@ -8,6 +8,7 @@ import {
   Param,
   Patch,
   Post,
+  Put,
   Query,
   Req,
   UseGuards,
@@ -19,7 +20,12 @@ import { RequirePermissions } from '../authz/require-permissions.decorator';
 import { ParseObjectIdPipe, ZodValidationPipe } from '../common';
 import { createCycleSchema, type CreateCycleDto } from './dto/create-cycle.dto';
 import { listCyclesSchema, type ListCyclesDto } from './dto/list-cycles.dto';
+import {
+  saveDiagnosticSchema,
+  type SaveDiagnosticDto,
+} from './dto/save-diagnostic.dto';
 import { updateCycleSchema, type UpdateCycleDto } from './dto/update-cycle.dto';
+import { updateFocusSchema, type UpdateFocusDto } from './dto/update-focus.dto';
 import { CycleDocument } from './schemas/cycle.schema';
 import { CyclesService } from './cycles.service';
 
@@ -56,6 +62,26 @@ export class CyclesController {
     @Body(new ZodValidationPipe(createCycleSchema)) dto: CreateCycleDto,
   ): Promise<CycleDocument> {
     return this.cyclesService.create(req.user, dto);
+  }
+
+  @Put(':id/diagnostic')
+  @RequirePermissions('cycle:update')
+  async saveDiagnostic(
+    @Req() req: { user: AuthUser },
+    @Param('id', ParseObjectIdPipe) id: string,
+    @Body(new ZodValidationPipe(saveDiagnosticSchema)) dto: SaveDiagnosticDto,
+  ): Promise<CycleDocument> {
+    return this.cyclesService.saveDiagnostic(req.user, id, dto);
+  }
+
+  @Patch(':id/focus')
+  @RequirePermissions('cycle:update')
+  async updateFocus(
+    @Req() req: { user: AuthUser },
+    @Param('id', ParseObjectIdPipe) id: string,
+    @Body(new ZodValidationPipe(updateFocusSchema)) dto: UpdateFocusDto,
+  ): Promise<CycleDocument> {
+    return this.cyclesService.updateFocus(req.user, id, dto);
   }
 
   @Patch(':id')
