@@ -13,6 +13,7 @@ import { User, UserDocument } from '../users/schemas/user.schema';
 // eslint-disable-next-line no-restricted-syntax -- nombre del documento en `roles`, no el enum nivelAcceso
 const ROLE_NAME = 'super_admin';
 const PERMISSIONS = ['*'];
+const RESOURCES = ['*'];
 const BCRYPT_ROUNDS = 12;
 
 /**
@@ -56,6 +57,7 @@ async function seed(): Promise<void> {
           $set: {
             descripcion: 'Acceso total al panel de administración',
             permissions: PERMISSIONS,
+            resources: RESOURCES,
             status: 'activo',
             esSistema: true,
           },

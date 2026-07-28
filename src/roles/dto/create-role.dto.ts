@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { K, t } from '../../i18n';
 import { isValidPermission } from '../../authz/permissions.catalog';
+import { isValidRouteResource } from '../../authz/route-resources.catalog';
 import { ESTADOS_ROLE } from '../schemas/role.schema';
 
 export const createRoleSchema = z.object({
@@ -14,6 +15,13 @@ export const createRoleSchema = z.object({
       z.string().refine(isValidPermission, {
         error:
           'permiso desconocido (usa el catálogo o comodines * / recurso:*)',
+      }),
+    )
+    .default([]),
+  resources: z
+    .array(
+      z.string().refine(isValidRouteResource, {
+        error: 'ruta desconocida (usa el catálogo o el comodín *)',
       }),
     )
     .default([]),

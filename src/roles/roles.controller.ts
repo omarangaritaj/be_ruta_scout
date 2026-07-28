@@ -13,7 +13,9 @@ import {
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../authz/permissions.guard';
 import { PERMISSIONS, type PermissionDef } from '../authz/permissions.catalog';
+import { ROUTE_RESOURCES } from '../authz/route-resources.catalog';
 import { RequirePermissions } from '../authz/require-permissions.decorator';
+import type { RouteResource } from '../domain';
 import { ParseObjectIdPipe, ZodValidationPipe } from '../common';
 import { createRoleSchema, type CreateRoleDto } from './dto/create-role.dto';
 import { updateRoleSchema, type UpdateRoleDto } from './dto/update-role.dto';
@@ -30,6 +32,13 @@ export class RolesController {
   @RequirePermissions('role:read')
   permisos(): PermissionDef[] {
     return PERMISSIONS;
+  }
+
+  /** Catálogo de rutas del frontend disponibles (para armar los roles en la UI). */
+  @Get('resources')
+  @RequirePermissions('role:read')
+  recursos(): readonly RouteResource[] {
+    return ROUTE_RESOURCES;
   }
 
   @Get()

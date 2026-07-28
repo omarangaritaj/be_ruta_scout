@@ -39,10 +39,16 @@ export class RolesService {
   async update(id: string, dto: UpdateRoleDto): Promise<RoleDocument> {
     const role = await this.findOne(id);
 
-    // Un rol del sistema no puede cambiar sus permisos ni desactivarse; sí su
-    // descripción. Es la salvaguarda para no dejar al super_admin sin poderes.
+    // Un rol del sistema no puede cambiar sus permisos, sus rutas ni
+    // desactivarse; sí su descripción. Es la salvaguarda para no dejar al
+    // super_admin sin poderes.
     if (role.esSistema) {
-      if (dto.permissions || dto.status === 'inactivo' || dto.nombre) {
+      if (
+        dto.permissions ||
+        dto.resources ||
+        dto.status === 'inactivo' ||
+        dto.nombre
+      ) {
         throw new AppBadRequestException(K.ROLES.SYSTEM_ROLE_LOCKED);
       }
     }
@@ -57,6 +63,7 @@ export class RolesService {
     if (dto.nombre !== undefined) role.nombre = dto.nombre;
     if (dto.descripcion !== undefined) role.descripcion = dto.descripcion;
     if (dto.permissions !== undefined) role.permissions = dto.permissions;
+    if (dto.resources !== undefined) role.resources = dto.resources;
     if (dto.status !== undefined) role.status = dto.status;
     await role.save();
     await this.currentUser.refreshByRole(id);

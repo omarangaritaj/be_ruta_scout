@@ -17,6 +17,9 @@ export class Role {
   @Prop({ type: [String], default: [] })
   permissions: string[];
 
+  @Prop({ type: [String], default: [] })
+  resources: string[];
+
   /** Un rol inactivo NO concede sus permisos. */
   @Prop({ type: String, enum: ESTADOS_ROLE, default: 'activo', index: true })
   status: EstadoRole;
