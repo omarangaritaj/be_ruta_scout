@@ -22,9 +22,7 @@ export interface BuiltAnswer {
 }
 
 export type DiagnosticProblem =
-  | 'duplicate'
-  | 'unknown-question'
-  | 'branch-mismatch';
+  'duplicate' | 'unknown-question' | 'branch-mismatch';
 
 export function findDiagnosticProblem(
   answers: AnswerInput[],
@@ -46,6 +44,9 @@ export function findDiagnosticProblem(
   return null;
 }
 
+// Precondición: findDiagnosticProblem(answers, questions, branch) debe devolver null
+// antes de llamar este. El cast es seguro porque findDiagnosticProblem ya validó
+// que cada questionId existe en el catálogo y pertenece a la rama correcta.
 export function buildAnswers(
   answers: AnswerInput[],
   questions: QuestionRef[],

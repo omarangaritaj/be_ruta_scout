@@ -45,6 +45,28 @@ describe('findDiagnosticProblem', () => {
   it('acepta un envío vacío', () => {
     expect(findDiagnosticProblem([], QUESTIONS, 'manada')).toBeNull();
   });
+
+  it('un duplicado en otra rama devuelve branch-mismatch (se detecta primero en la iteración)', () => {
+    const answers = [
+      { questionId: 'q1', score: 4 },
+      { questionId: 'q1', score: 5 },
+    ];
+
+    expect(findDiagnosticProblem(answers, QUESTIONS, 'tropa')).toBe(
+      'branch-mismatch',
+    );
+  });
+
+  it('problemas distintos en el mismo array: gana el primero en orden', () => {
+    const answers = [
+      { questionId: 'q9', score: 3 }, // desconocida
+      { questionId: 'q1', score: 4 }, // branch-mismatch
+    ];
+
+    expect(findDiagnosticProblem(answers, QUESTIONS, 'tropa')).toBe(
+      'unknown-question',
+    );
+  });
 });
 
 describe('buildAnswers', () => {
