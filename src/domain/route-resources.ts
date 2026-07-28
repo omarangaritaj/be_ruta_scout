@@ -9,8 +9,8 @@ export interface RouteResource {
 
 export const ROUTE_RESOURCES: readonly RouteResource[] = [
   { path: '/tablero', label: 'Tablero', always: true },
-  { path: '/aprobaciones', label: 'Aprobaciones' },
   { path: '/units', label: 'Unidades' },
+  { path: '/aprobaciones', label: 'Aprobaciones', section: 'Administración' },
   { path: '/admin/usuarios', label: 'Usuarios', section: 'Administración' },
   { path: '/admin/roles', label: 'Roles', section: 'Administración' },
 ];

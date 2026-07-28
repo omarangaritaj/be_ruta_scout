@@ -66,14 +66,6 @@ export interface ScopedUnit {
   branch: Rama;
 }
 
-/**
- * ¿El alcance del actor alcanza a ESTA unidad? Es el mismo criterio con el que
- * `findAll` construye la lista, aplicado a una unidad concreta, para que abrir
- * una unidad por id no conceda más de lo que concede el listado.
- *
- * Devolver `false` no cierra la puerta del todo: quien tenga fila en
- * `unit_memberships` de esa unidad pasa igual, y eso lo resuelve el servicio.
- */
 export function scopeReaches(scope: UnitScope, unit: ScopedUnit): boolean {
   switch (scope.type) {
     case 'all':
