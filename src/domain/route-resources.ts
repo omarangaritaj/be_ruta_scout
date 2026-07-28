@@ -10,7 +10,13 @@ export interface RouteResource {
 export const ROUTE_RESOURCES: readonly RouteResource[] = [
   { path: '/tablero', label: 'Tablero', always: true },
   { path: '/units', label: 'Unidades' },
+  { path: '/ciclos', label: 'Ciclos' },
   { path: '/aprobaciones', label: 'Aprobaciones', section: 'Administración' },
   { path: '/admin/usuarios', label: 'Usuarios', section: 'Administración' },
   { path: '/admin/roles', label: 'Roles', section: 'Administración' },
+  {
+    path: '/admin/preguntas',
+    label: 'Preguntas de diagnóstico',
+    section: 'Administración',
+  },
 ];

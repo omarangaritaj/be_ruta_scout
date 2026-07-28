@@ -59,8 +59,8 @@ describe('diccionario de dominio', () => {
     expect(PERSON_TYPES).toEqual(['adulto', 'protagonista']);
   });
 
-  it('tiene los 21 permisos del catálogo', () => {
-    expect(PERMISSION_KEYS).toHaveLength(21);
+  it('tiene los 29 permisos del catálogo', () => {
+    expect(PERMISSION_KEYS).toHaveLength(29);
     expect(PERMISSION_KEYS).toContain('user:read');
   });
 

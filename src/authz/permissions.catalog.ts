@@ -57,6 +57,32 @@ export const PERMISSIONS: PermissionDef[] = [
   { key: 'grupo:delete', descripcion: 'Eliminar grupos', lado: 'ambos' },
 
   {
+    key: 'question:read',
+    descripcion: 'Ver preguntas de diagnóstico',
+    lado: 'ambos',
+  },
+  {
+    key: 'question:create',
+    descripcion: 'Crear preguntas de diagnóstico',
+    lado: 'ambos',
+  },
+  {
+    key: 'question:update',
+    descripcion: 'Editar preguntas de diagnóstico',
+    lado: 'ambos',
+  },
+  {
+    key: 'question:delete',
+    descripcion: 'Eliminar preguntas de diagnóstico',
+    lado: 'ambos',
+  },
+
+  { key: 'cycle:read', descripcion: 'Ver ciclos', lado: 'ambos' },
+  { key: 'cycle:create', descripcion: 'Crear ciclos', lado: 'ambos' },
+  { key: 'cycle:update', descripcion: 'Editar ciclos', lado: 'ambos' },
+  { key: 'cycle:delete', descripcion: 'Eliminar ciclos', lado: 'ambos' },
+
+  {
     key: 'siscout:sync',
     descripcion: 'Ejecutar la sincronización con SiScout',
     lado: 'be',

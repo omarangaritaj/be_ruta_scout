@@ -97,6 +97,14 @@
     { "key": "grupo:create", "side": "both" },
     { "key": "grupo:update", "side": "both" },
     { "key": "grupo:delete", "side": "both" },
+    { "key": "question:read", "side": "both" },
+    { "key": "question:create", "side": "both" },
+    { "key": "question:update", "side": "both" },
+    { "key": "question:delete", "side": "both" },
+    { "key": "cycle:read", "side": "both" },
+    { "key": "cycle:create", "side": "both" },
+    { "key": "cycle:update", "side": "both" },
+    { "key": "cycle:delete", "side": "both" },
     { "key": "siscout:sync", "side": "be" },
     { "key": "siscout:config", "side": "both" },
     { "key": "siscout:credentials", "side": "be" },
@@ -105,9 +113,11 @@
   "routeResources": [
     { "path": "/tablero", "label": "Tablero", "always": true },
     { "path": "/units", "label": "Unidades" },
+    { "path": "/ciclos", "label": "Ciclos" },
     { "path": "/aprobaciones", "label": "Aprobaciones", "section": "Administración" },
     { "path": "/admin/usuarios", "label": "Usuarios", "section": "Administración" },
-    { "path": "/admin/roles", "label": "Roles", "section": "Administración" }
+    { "path": "/admin/roles", "label": "Roles", "section": "Administración" },
+    { "path": "/admin/preguntas", "label": "Preguntas de diagnóstico", "section": "Administración" }
   ],
   "apiErrorCodes": [
     {
