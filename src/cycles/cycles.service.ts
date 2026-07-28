@@ -40,7 +40,9 @@ export class CyclesService {
 
   async findOne(user: AuthUser, id: string): Promise<CycleDocument> {
     const cycle = await this.cycleModel.findById(id).exec();
-    if (!cycle) throw new AppNotFoundException(K.CYCLES.NOT_FOUND, { id });
+    if (!cycle || !cycle.isActive) {
+      throw new AppNotFoundException(K.CYCLES.NOT_FOUND, { id });
+    }
     await this.unitInScope(user, String(cycle.unitId));
     return cycle;
   }

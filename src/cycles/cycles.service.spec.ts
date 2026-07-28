@@ -86,8 +86,21 @@ describe('CyclesService', () => {
     );
   });
 
+  it('falla con 404 cuando el ciclo está desactivado (softdelete)', async () => {
+    cycleModel.findById.mockReturnValue(
+      chainOf({ _id: 'c1', unitId: 'u1', isActive: false }),
+    );
+
+    await expect(service.findOne(actor, 'c1')).rejects.toBeInstanceOf(
+      AppNotFoundException,
+    );
+    expect(unitModel.findById).not.toHaveBeenCalled();
+  });
+
   it('falla con 403 cuando el ciclo está fuera del alcance', async () => {
-    cycleModel.findById.mockReturnValue(chainOf({ _id: 'c1', unitId: 'u2' }));
+    cycleModel.findById.mockReturnValue(
+      chainOf({ _id: 'c1', unitId: 'u2', isActive: true }),
+    );
     unitModel.findById.mockReturnValue(
       chainOf({ _id: 'u2', groupId: 99, branch: 'tropa' }),
     );
@@ -96,5 +109,16 @@ describe('CyclesService', () => {
     await expect(service.findOne(actor, 'c1')).rejects.toBeInstanceOf(
       AppForbiddenException,
     );
+  });
+
+  it('devuelve el ciclo cuando la unidad sí está dentro del alcance de rama', async () => {
+    const cycle = { _id: 'c1', unitId: 'u1', isActive: true };
+    cycleModel.findById.mockReturnValue(chainOf(cycle));
+    unitModel.findById.mockReturnValue(
+      chainOf({ _id: 'u1', groupId: 7, branch: 'manada' }),
+    );
+    currentUser.get.mockResolvedValue(BRANCH_PROFILE);
+
+    await expect(service.findOne(actor, 'c1')).resolves.toBe(cycle);
   });
 });
