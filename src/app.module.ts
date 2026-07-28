@@ -10,6 +10,7 @@ import { CodedExceptionFilter } from './common';
 import { AppConfigModule } from './config';
 import { CryptoModule } from './crypto';
 import { CurrentUserModule } from './current-user/current-user.module';
+import { CyclesModule } from './cycles/cycles.module';
 import { DatabaseModule } from './database/database.module';
 import { EmailModule } from './email/email.module';
 import { GruposModule } from './grupos/grupos.module';
@@ -43,6 +44,7 @@ import { UsersModule } from './users/users.module';
     GruposModule,
     UnitsModule,
     QuestionsModule,
+    CyclesModule,
     SiscoutModule,
     AuthModule,
     PasswordResetModule,
