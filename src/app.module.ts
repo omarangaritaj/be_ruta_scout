@@ -16,6 +16,7 @@ import { GruposModule } from './grupos/grupos.module';
 import { NotificacionesModule } from './notificaciones/notificaciones.module';
 import { PasswordResetModule } from './password-reset/password-reset.module';
 import { PowersyncModule } from './powersync/powersync.module';
+import { QuestionsModule } from './questions/questions.module';
 import { RedisModule } from './redis/redis.module';
 import { RolesModule } from './roles/roles.module';
 import { SolicitudesAccesoModule } from './solicitudes-acceso/solicitudes-acceso.module';
@@ -41,6 +42,7 @@ import { UsersModule } from './users/users.module';
     UsersModule,
     GruposModule,
     UnitsModule,
+    QuestionsModule,
     SiscoutModule,
     AuthModule,
     PasswordResetModule,

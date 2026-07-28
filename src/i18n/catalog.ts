@@ -118,6 +118,12 @@ export const CATALOG = {
     INVALID_DATE: 'fecha no válida',
     UNSUPPORTED_TABLE: 'Tabla no soportada: {tabla}',
   },
+  QUESTIONS: {
+    BRANCH_MISMATCH:
+      'Alguna pregunta no pertenece a la rama de la unidad del ciclo',
+    INACTIVE: 'Alguna pregunta está desactivada y no admite respuesta',
+    NOT_FOUND: 'No existe una pregunta con id "{id}"',
+  },
   REQUESTS: {
     ACCESS_ALREADY_APPROVED: 'El acceso ya está aprobado',
     ACCESS_SUSPENDED: 'El acceso está suspendido',
