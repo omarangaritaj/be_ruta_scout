@@ -96,6 +96,13 @@
     { "key": "siscout:credentials", "side": "be" },
     { "key": "tablero:nacional", "side": "fe" }
   ],
+  "routeResources": [
+    { "path": "/tablero", "label": "Tablero", "always": true },
+    { "path": "/aprobaciones", "label": "Aprobaciones" },
+    { "path": "/units", "label": "Unidades" },
+    { "path": "/admin/usuarios", "label": "Usuarios", "section": "Administración" },
+    { "path": "/admin/roles", "label": "Roles", "section": "Administración" }
+  ],
   "apiErrorCodes": [
     {
       "name": "UNITS_LEADERSHIP_REQUIRED",

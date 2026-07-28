@@ -17,6 +17,10 @@ const MANIFEST = JSON.stringify({
   personTypes: [{ name: 'ADULT', value: 'adulto' }],
   unitRoles: [{ name: 'UNIT_LEADER', value: 'unit_leader' }],
   permissions: [{ key: 'user:read', side: 'both' }],
+  routeResources: [
+    { path: '/tablero', label: 'Tablero', always: true },
+    { path: '/admin/roles', label: 'Roles', section: 'Administración' },
+  ],
   apiErrorCodes: [
     { name: 'UNITS_MISSING_GROUP', value: 'UNITS.MISSING_GROUP' },
   ],
@@ -32,6 +36,7 @@ const vacio = {
   personTypes: [],
   unitRoles: [],
   permissions: [],
+  routeResources: [],
   apiErrorCodes: [],
 };
 
@@ -42,6 +47,17 @@ describe('domain codegen', () => {
       branches: [
         { name: 'A', value: 'manada', order: 1, siscoutAliases: [] },
         { name: 'B', value: 'manada', order: 2, siscoutAliases: [] },
+      ],
+    });
+    expect(() => readManifest(duplicado)).toThrow(/duplicado/i);
+  });
+
+  it('rechaza un manifiesto con rutas duplicadas en routeResources', () => {
+    const duplicado = JSON.stringify({
+      ...vacio,
+      routeResources: [
+        { path: '/units', label: 'Unidades' },
+        { path: '/units', label: 'Unidades otra vez' },
       ],
     });
     expect(() => readManifest(duplicado)).toThrow(/duplicado/i);
@@ -83,6 +99,30 @@ describe('domain codegen', () => {
     expect(vocabulario).toContain('manada');
     expect(vocabulario).toContain('aprobado');
     expect(vocabulario).not.toContain('user:read');
+  });
+
+  it('emite ROUTE_RESOURCES y el tipo RouteResource, fuera del vocabulario prohibido', () => {
+    const archivos = generateFiles(readManifest(MANIFEST));
+    const routeResources = archivos.get('src/domain/route-resources.ts');
+    expect(routeResources).toContain(
+      'export interface RouteResource {\n' +
+        '  path: string;\n' +
+        '  label: string;\n' +
+        '  section?: string;\n' +
+        '  always?: boolean;\n' +
+        '}',
+    );
+    expect(routeResources).toContain(
+      'export const ROUTE_RESOURCES: readonly RouteResource[] = [\n' +
+        "  { path: '/tablero', label: 'Tablero', always: true },\n" +
+        "  { path: '/admin/roles', label: 'Roles', section: 'Administración' },\n" +
+        '];',
+    );
+    const vocabulario = JSON.parse(
+      archivos.get('.domain-vocabulary.json') as string,
+    ) as string[];
+    expect(vocabulario).not.toContain('/tablero');
+    expect(vocabulario).not.toContain('/admin/roles');
   });
 
   it('ordena las ramas por el campo order', () => {

@@ -6,3 +6,4 @@ export * from './dictionary';
 export * from './errors';
 export * from './permissions';
 export * from './roles';
+export * from './route-resources';

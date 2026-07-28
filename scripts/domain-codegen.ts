@@ -13,6 +13,13 @@ export interface PermissionEntry {
   side: 'be' | 'fe' | 'both';
 }
 
+export interface RouteResourceEntry {
+  path: string;
+  label: string;
+  section?: string;
+  always?: boolean;
+}
+
 export interface DomainManifest {
   version: number;
   branches: BranchEntry[];
@@ -23,6 +30,7 @@ export interface DomainManifest {
   personTypes: NamedValue[];
   unitRoles: NamedValue[];
   permissions: PermissionEntry[];
+  routeResources: RouteResourceEntry[];
   apiErrorCodes: NamedValue[];
 }
 
@@ -39,6 +47,19 @@ function assertUnique(entries: NamedValue[], grupo: string): void {
   }
 }
 
+function assertUniqueRoutePaths(
+  entries: RouteResourceEntry[],
+  grupo: string,
+): void {
+  const vistos = new Set<string>();
+  for (const { path } of entries) {
+    if (vistos.has(path)) {
+      throw new Error(`Valor duplicado en ${grupo}: ${path}`);
+    }
+    vistos.add(path);
+  }
+}
+
 export function readManifest(raw: string): DomainManifest {
   const manifest = JSON.parse(raw) as DomainManifest;
   const branches = [...manifest.branches].sort((a, b) => a.order - b.order);
@@ -51,6 +72,7 @@ export function readManifest(raw: string): DomainManifest {
   assertUnique(ordenado.personTypes, 'personTypes');
   assertUnique(ordenado.unitRoles, 'unitRoles');
   assertUnique(ordenado.apiErrorCodes, 'apiErrorCodes');
+  assertUniqueRoutePaths(ordenado.routeResources, 'routeResources');
   return ordenado;
 }
 
@@ -90,6 +112,32 @@ function messageKeyMap(
     .map((e) => `  ${e.value}: '${dominio}.${e.name}',`)
     .join('\n');
   return `\nexport const ${constName} = {\n${filas}\n} as const;\n`;
+}
+
+function routeResourceLiteral(entry: RouteResourceEntry): string {
+  const campos = [`path: '${entry.path}'`, `label: '${entry.label}'`];
+  if (entry.section !== undefined) {
+    campos.push(`section: '${entry.section}'`);
+  }
+  if (entry.always !== undefined) {
+    campos.push(`always: ${entry.always}`);
+  }
+  return `  { ${campos.join(', ')} },`;
+}
+
+function routeResourcesBlock(entries: RouteResourceEntry[]): string {
+  const filas = entries.map(routeResourceLiteral).join('\n');
+  return (
+    'export interface RouteResource {\n' +
+    '  path: string;\n' +
+    '  label: string;\n' +
+    '  section?: string;\n' +
+    '  always?: boolean;\n' +
+    '}\n\n' +
+    'export const ROUTE_RESOURCES: readonly RouteResource[] = [\n' +
+    `${filas}\n` +
+    '];\n'
+  );
 }
 
 function dictionaryGroup(nombre: string, entries: NamedValue[]): string {
@@ -136,6 +184,11 @@ export function generateFiles(manifest: DomainManifest): Map<string, string> {
   );
 
   archivos.set(
+    'src/domain/route-resources.ts',
+    HEADER + routeResourcesBlock(manifest.routeResources),
+  );
+
+  archivos.set(
     'src/domain/errors.ts',
     HEADER +
       constAndType('API_ERROR_CODES', 'ApiErrorCode', manifest.apiErrorCodes),
@@ -164,7 +217,8 @@ export function generateFiles(manifest: DomainManifest): Map<string, string> {
       "export * from './dictionary';\n" +
       "export * from './errors';\n" +
       "export * from './permissions';\n" +
-      "export * from './roles';\n",
+      "export * from './roles';\n" +
+      "export * from './route-resources';\n",
   );
 
   const vocabulario = [
