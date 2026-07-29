@@ -24,22 +24,30 @@ export class CurrentUserService {
     private readonly config: AppConfigService,
   ) {}
 
+  /**
+   * Lee-o-computa. El cache frío es un estado normal y no un error: Redis corre
+   * sin volumen y con `allkeys-lru`, y la entrada vence con su propio TTL
+   * mientras la sesión sigue viva. Tratarlo como "esta persona no existe" dejaba
+   * inservible toda sesión ya abierta, porque `seed` solo corre al validar la
+   * contraseña. El 404 queda para lo que de verdad significa: no está en Mongo.
+   */
   async get(idSiscout: string): Promise<CurrentUser> {
-    const currentUser = await this.redis.get<CurrentUser>(cacheKey(idSiscout));
+    const cached = await this.redis.get<CurrentUser>(cacheKey(idSiscout));
+    if (cached) return cached;
+
+    const currentUser = await this.build(idSiscout);
     if (!currentUser) {
       throw new AppNotFoundException(K.REQUESTS.AUTHENTICATED_PERSON_NOT_FOUND);
     }
+
+    await this.store(idSiscout, currentUser);
     return currentUser;
   }
 
   async seed(idSiscout: string): Promise<void> {
     const currentUser = await this.build(idSiscout);
     if (!currentUser) return;
-    await this.redis.set(
-      cacheKey(idSiscout),
-      currentUser,
-      this.config.get('JWT_ACCESS_TTL_SECONDS', { infer: true }),
-    );
+    await this.store(idSiscout, currentUser);
   }
 
   async refresh(idSiscout: string): Promise<void> {
@@ -60,6 +68,17 @@ export class CurrentUserService {
 
   async invalidate(idSiscout: string): Promise<void> {
     await this.redis.del(cacheKey(idSiscout));
+  }
+
+  private async store(
+    idSiscout: string,
+    currentUser: CurrentUser,
+  ): Promise<void> {
+    await this.redis.set(
+      cacheKey(idSiscout),
+      currentUser,
+      this.config.get('JWT_ACCESS_TTL_SECONDS', { infer: true }),
+    );
   }
 
   private async build(idSiscout: string): Promise<CurrentUser | undefined> {
