@@ -465,6 +465,7 @@ export class UnitsService {
     user: AuthUser,
     id: string,
     memberIds: string[],
+    targetUnitId?: string,
   ): Promise<UnitDocument[]> {
     return this.inTransaction(async (session) => {
       const unit = await this.authorize(user, id, session);
@@ -483,6 +484,22 @@ export class UnitsService {
       await this.syncMembership(unit, session);
 
       if (leaving.length === 0) return [unit];
+
+      if (targetUnitId) {
+        const target = await this.receivingUnit(
+          user,
+          unit,
+          targetUnitId,
+          session,
+        );
+        target.members = [
+          ...target.members,
+          ...leaving.map((memberId) => new Types.ObjectId(memberId)),
+        ];
+        await target.save({ session });
+        await this.syncMembership(target, session);
+        return [unit, target];
+      }
 
       const [clone] = await this.unitModel.create(
         [
@@ -504,6 +521,30 @@ export class UnitsService {
 
       return [unit, clone];
     });
+  }
+
+  /**
+   * Unidad que recibe a los salientes. Pasa por `authorize` como cualquier otra
+   * operación por id, así que nadie puede empujar protagonistas hacia una unidad
+   * fuera de su alcance. La rama y el grupo tienen que coincidir: la rama de un
+   * protagonista la determina su cargo de SiScout o su edad, no el traslado.
+   */
+  private async receivingUnit(
+    user: AuthUser,
+    origin: UnitDocument,
+    targetUnitId: string,
+    session: ClientSession,
+  ): Promise<UnitDocument> {
+    if (targetUnitId === origin._id.toString()) {
+      throw new AppBadRequestException(K.UNITS.TARGET_NOT_COMPATIBLE);
+    }
+
+    const target = await this.authorize(user, targetUnitId, session);
+    if (target.groupId !== origin.groupId || target.branch !== origin.branch) {
+      throw new AppBadRequestException(K.UNITS.TARGET_NOT_COMPATIBLE);
+    }
+
+    return target;
   }
 
   private async freeName(

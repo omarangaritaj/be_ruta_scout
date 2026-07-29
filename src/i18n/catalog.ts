@@ -186,6 +186,8 @@ export const CATALOG = {
     NAME_TAKEN: 'Ya existe una unidad con ese nombre en el grupo',
     NOT_FOUND: 'No existe una unidad con id "{id}"',
     OUT_OF_SCOPE: 'Esta unidad no está dentro de tu alcance',
+    TARGET_NOT_COMPATIBLE:
+      'La unidad de destino debe ser otra unidad de la misma rama y del mismo grupo',
   },
   USERS: {
     CANNOT_MANAGE_SUPER_ADMIN:

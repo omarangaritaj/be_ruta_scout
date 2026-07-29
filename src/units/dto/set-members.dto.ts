@@ -11,6 +11,9 @@ export const setMembersSchema = z.object({
       (ids) => new Set(ids.map((id) => id.toString())).size === ids.length,
       { error: t(K.UNITS.MEMBERS_DUPLICATED) },
     ),
+
+  // Destino de los que salen. Ausente = se crea una unidad clon.
+  targetUnitId: objectIdSchema.optional(),
 });
 
 export type SetMembersDto = z.infer<typeof setMembersSchema>;

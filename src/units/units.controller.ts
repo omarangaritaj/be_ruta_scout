@@ -89,6 +89,7 @@ export class UnitsController {
       req.user,
       id,
       dto.memberIds.map((memberId) => memberId.toString()),
+      dto.targetUnitId?.toString(),
     );
   }
 

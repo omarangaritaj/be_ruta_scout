@@ -445,6 +445,127 @@ describe('UnitsService', () => {
       expect(result).toEqual([unit]);
     });
 
+    describe('con unidad de destino', () => {
+      function withTarget(
+        unit: UnitDoc,
+        overrides: Record<string, unknown> = {},
+      ) {
+        const target = makeUnit({
+          groupId: unit.groupId,
+          branch: unit.branch,
+          members: [],
+          ...overrides,
+        });
+        unitModel.findById.mockImplementation((wanted: Types.ObjectId) =>
+          chain(wanted.toString() === target._id.toString() ? target : unit),
+        );
+        return target;
+      }
+
+      it('anexa los salientes a la unidad elegida en vez de crear una clon', async () => {
+        const staying = new Types.ObjectId();
+        const leaving = new Types.ObjectId();
+        const unit = makeUnit({ members: [staying, leaving] });
+        const target = withTarget(unit);
+
+        const result = await service.setMembers(
+          actor,
+          unit._id.toString(),
+          [staying.toString()],
+          target._id.toString(),
+        );
+
+        expect(unitModel.create).not.toHaveBeenCalled();
+        expect((unit.members as Types.ObjectId[]).map(String)).toEqual([
+          staying.toString(),
+        ]);
+        expect((target.members as Types.ObjectId[]).map(String)).toEqual([
+          leaving.toString(),
+        ]);
+        expect(result).toHaveLength(2);
+      });
+
+      it('conserva a los que ya estaban en el destino', async () => {
+        const leaving = new Types.ObjectId();
+        const resident = new Types.ObjectId();
+        const unit = makeUnit({ members: [leaving] });
+        const target = withTarget(unit, { members: [resident] });
+
+        await service.setMembers(
+          actor,
+          unit._id.toString(),
+          [],
+          target._id.toString(),
+        );
+
+        expect((target.members as Types.ObjectId[]).map(String).sort()).toEqual(
+          [resident.toString(), leaving.toString()].sort(),
+        );
+      });
+
+      it('rechaza un destino de otra rama', async () => {
+        const leaving = new Types.ObjectId();
+        const unit = makeUnit({ branch: 'manada', members: [leaving] });
+        const target = withTarget(unit, { branch: 'tropa' });
+
+        await expect(
+          service.setMembers(
+            actor,
+            unit._id.toString(),
+            [],
+            target._id.toString(),
+          ),
+        ).rejects.toMatchObject({ code: K.UNITS.TARGET_NOT_COMPATIBLE });
+      });
+
+      it('rechaza un destino de otro grupo', async () => {
+        const leaving = new Types.ObjectId();
+        const unit = makeUnit({ groupId: 304, members: [leaving] });
+        const target = withTarget(unit, { groupId: 999 });
+
+        await expect(
+          service.setMembers(
+            actor,
+            unit._id.toString(),
+            [],
+            target._id.toString(),
+          ),
+        ).rejects.toMatchObject({ code: K.UNITS.TARGET_NOT_COMPATIBLE });
+      });
+
+      it('rechaza mandar la unidad a si misma', async () => {
+        const leaving = new Types.ObjectId();
+        const unit = makeUnit({ members: [leaving] });
+        unitModel.findById.mockReturnValue(chain(unit));
+
+        await expect(
+          service.setMembers(
+            actor,
+            unit._id.toString(),
+            [],
+            unit._id.toString(),
+          ),
+        ).rejects.toMatchObject({ code: K.UNITS.TARGET_NOT_COMPATIBLE });
+      });
+
+      /** Sin salientes no hay nada que mover: el destino ni se toca. */
+      it('ignora el destino cuando no sale nadie', async () => {
+        const staying = new Types.ObjectId();
+        const unit = makeUnit({ members: [staying] });
+        const target = withTarget(unit);
+
+        const result = await service.setMembers(
+          actor,
+          unit._id.toString(),
+          [staying.toString()],
+          target._id.toString(),
+        );
+
+        expect(result).toEqual([unit]);
+        expect(target.save).not.toHaveBeenCalled();
+      });
+    });
+
     it('rechaza un id ajeno a la unidad con MEMBERS_NOT_IN_UNIT', async () => {
       const unit = makeUnit({ members: [new Types.ObjectId()] });
       const outsider = new Types.ObjectId();
