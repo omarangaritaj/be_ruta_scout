@@ -69,7 +69,7 @@ const BCRYPT_ROUNDS = 12;
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
 // Audiencia que debe llevar el token PowerSync; DEBE coincidir con
-// `client_auth.audience` en powersync/service.yaml (PS_JWT_AUDIENCE).
+// `client_auth.audience` en infra_ruta/powersync/service.yaml (PS_JWT_AUDIENCE).
 const POWERSYNC_AUDIENCE = 'powersync';
 // Vida corta (segundos): el cliente lo renueva vía fetchCredentials al reconectar.
 const POWERSYNC_TOKEN_TTL_SECONDS = 300;
