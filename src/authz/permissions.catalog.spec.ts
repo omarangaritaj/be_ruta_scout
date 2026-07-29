@@ -25,6 +25,18 @@ describe('catálogo de permisos', () => {
     expect(isValidPermission('growth-item:read')).toBe(true);
   });
 
+  it('rechaza comodines de recurso con guiones inválidos o mayúsculas', () => {
+    // El regex admite guion final y guiones dobles; lo que realmente
+    // descarta estos casos es que ningún permiso del catálogo empieza con
+    // ese prefijo. Se fija el comportamiento para no perderlo si alguien
+    // simplifica isValidPermission confiando solo en el regex.
+    expect(isValidPermission('abc-:*')).toBe(false);
+    expect(isValidPermission('ab--cd:*')).toBe(false);
+    expect(isValidPermission('-abc:*')).toBe(false);
+    expect(isValidPermission('GROWTH-ITEM:*')).toBe(false);
+    expect(isValidPermission(':*')).toBe(false);
+  });
+
   it('concede por comodín total y por recurso', () => {
     expect(granting(new Set(['*']), 'user:read')).toBe(true);
     expect(granting(new Set(['user:*']), 'user:read')).toBe(true);
