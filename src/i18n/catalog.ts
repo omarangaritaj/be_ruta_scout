@@ -111,6 +111,11 @@ export const CATALOG = {
   GROUPS: {
     NOT_FOUND: 'No existe un grupo con id "{id}"',
   },
+  GROWTH_ITEMS: {
+    AREA_NOT_IN_BRANCH: 'El área "{area}" no corresponde a la rama "{rama}"',
+    NOT_FOUND: 'No existe una dimensión con id "{id}"',
+    ORDER_TAKEN: 'Ya hay una dimensión con el orden {order} en esa rama y área',
+  },
   PASSWORD_RESET: {
     INVALID_TOKEN:
       'El enlace para restablecer la contraseña no es válido o ya venció. Pide uno nuevo.',

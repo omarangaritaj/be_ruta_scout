@@ -13,6 +13,7 @@ import { CurrentUserModule } from './current-user/current-user.module';
 import { CyclesModule } from './cycles/cycles.module';
 import { DatabaseModule } from './database/database.module';
 import { EmailModule } from './email/email.module';
+import { GrowthItemsModule } from './growth-items/growth-items.module';
 import { GruposModule } from './grupos/grupos.module';
 import { NotificacionesModule } from './notificaciones/notificaciones.module';
 import { PasswordResetModule } from './password-reset/password-reset.module';
@@ -44,6 +45,7 @@ import { UsersModule } from './users/users.module';
     GruposModule,
     UnitsModule,
     QuestionsModule,
+    GrowthItemsModule,
     CyclesModule,
     SiscoutModule,
     AuthModule,
