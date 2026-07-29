@@ -50,12 +50,16 @@ export const CATALOG = {
     UNAUTHORIZED: 'Debes iniciar sesión para realizar esta acción.',
   },
   CYCLES: {
+    COMPETENCIES_REQUIRED:
+      'El foco educativo necesita al menos una competencia',
     DIAGNOSTIC_INCOMPLETE:
       'El diagnóstico debe responder todas las preguntas de la rama',
     DIAGNOSTIC_LOCKED: 'El diagnóstico de este ciclo ya fue registrado',
     DUPLICATE_ANSWER:
       'El diagnóstico trae respuestas repetidas para la misma pregunta',
     DUPLICATE_COMPETENCY: 'El enfoque trae la misma competencia repetida',
+    EDUCATIONAL_FOCUS_REQUIRED:
+      'La descripción del foco educativo es obligatoria',
     ENVIRONMENT_REQUIRED:
       'El nombre del ambiente y su conexión con el objetivo son obligatorios',
     INVALID_DATE_RANGE: 'La fecha de fin debe ser posterior a la de inicio',
