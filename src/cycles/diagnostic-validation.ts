@@ -22,7 +22,7 @@ export interface BuiltAnswer {
 }
 
 export type DiagnosticProblem =
-  'duplicate' | 'unknown-question' | 'branch-mismatch';
+  'duplicate' | 'unknown-question' | 'branch-mismatch' | 'incomplete';
 
 export function findDiagnosticProblem(
   answers: AnswerInput[],
@@ -40,6 +40,9 @@ export function findDiagnosticProblem(
     if (!question) return 'unknown-question';
     if (question.branch !== unitBranch) return 'branch-mismatch';
   }
+
+  if (questions.length === 0) return 'incomplete';
+  if (questions.some((question) => !seen.has(question.id))) return 'incomplete';
 
   return null;
 }

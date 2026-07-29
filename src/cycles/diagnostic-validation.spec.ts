@@ -1,8 +1,19 @@
+import { D } from '../domain';
 import { buildAnswers, findDiagnosticProblem } from './diagnostic-validation';
 
 const QUESTIONS = [
-  { id: 'q1', branch: 'manada' as const, block: 'rap' as const, text: 'Uno' },
-  { id: 'q2', branch: 'manada' as const, block: 'gsat' as const, text: 'Dos' },
+  {
+    id: 'q1',
+    branch: D.BRANCH.MANADA,
+    block: D.DIAGNOSTIC_BLOCK.RAP,
+    text: 'Uno',
+  },
+  {
+    id: 'q2',
+    branch: D.BRANCH.MANADA,
+    block: D.DIAGNOSTIC_BLOCK.GSAT,
+    text: 'Dos',
+  },
 ];
 
 describe('findDiagnosticProblem', () => {
@@ -12,7 +23,9 @@ describe('findDiagnosticProblem', () => {
       { questionId: 'q2', score: 2, notes: 'Flojo' },
     ];
 
-    expect(findDiagnosticProblem(answers, QUESTIONS, 'manada')).toBeNull();
+    expect(
+      findDiagnosticProblem(answers, QUESTIONS, D.BRANCH.MANADA),
+    ).toBeNull();
   });
 
   it('detecta preguntas repetidas', () => {
@@ -21,7 +34,7 @@ describe('findDiagnosticProblem', () => {
       { questionId: 'q1', score: 5 },
     ];
 
-    expect(findDiagnosticProblem(answers, QUESTIONS, 'manada')).toBe(
+    expect(findDiagnosticProblem(answers, QUESTIONS, D.BRANCH.MANADA)).toBe(
       'duplicate',
     );
   });
@@ -29,7 +42,7 @@ describe('findDiagnosticProblem', () => {
   it('detecta una pregunta que no está en el catálogo activo', () => {
     const answers = [{ questionId: 'q9', score: 3 }];
 
-    expect(findDiagnosticProblem(answers, QUESTIONS, 'manada')).toBe(
+    expect(findDiagnosticProblem(answers, QUESTIONS, D.BRANCH.MANADA)).toBe(
       'unknown-question',
     );
   });
@@ -37,13 +50,9 @@ describe('findDiagnosticProblem', () => {
   it('detecta una pregunta de otra rama', () => {
     const answers = [{ questionId: 'q1', score: 3 }];
 
-    expect(findDiagnosticProblem(answers, QUESTIONS, 'tropa')).toBe(
+    expect(findDiagnosticProblem(answers, QUESTIONS, D.BRANCH.TROPA)).toBe(
       'branch-mismatch',
     );
-  });
-
-  it('acepta un envío vacío', () => {
-    expect(findDiagnosticProblem([], QUESTIONS, 'manada')).toBeNull();
   });
 
   it('un duplicado en otra rama devuelve branch-mismatch (se detecta primero en la iteración)', () => {
@@ -52,7 +61,7 @@ describe('findDiagnosticProblem', () => {
       { questionId: 'q1', score: 5 },
     ];
 
-    expect(findDiagnosticProblem(answers, QUESTIONS, 'tropa')).toBe(
+    expect(findDiagnosticProblem(answers, QUESTIONS, D.BRANCH.TROPA)).toBe(
       'branch-mismatch',
     );
   });
@@ -63,9 +72,27 @@ describe('findDiagnosticProblem', () => {
       { questionId: 'q1', score: 4 },
     ];
 
-    expect(findDiagnosticProblem(answers, QUESTIONS, 'tropa')).toBe(
+    expect(findDiagnosticProblem(answers, QUESTIONS, D.BRANCH.TROPA)).toBe(
       'unknown-question',
     );
+  });
+
+  it('detecta que falta responder alguna pregunta del catálogo', () => {
+    const answers = [{ questionId: 'q1', score: 4 }];
+
+    expect(findDiagnosticProblem(answers, QUESTIONS, D.BRANCH.MANADA)).toBe(
+      'incomplete',
+    );
+  });
+
+  it('detecta un envío vacío como incompleto', () => {
+    expect(findDiagnosticProblem([], QUESTIONS, D.BRANCH.MANADA)).toBe(
+      'incomplete',
+    );
+  });
+
+  it('trata un catálogo sin preguntas como incompleto', () => {
+    expect(findDiagnosticProblem([], [], D.BRANCH.MANADA)).toBe('incomplete');
   });
 });
 
@@ -77,7 +104,7 @@ describe('buildAnswers', () => {
       {
         questionId: 'q2',
         questionText: 'Dos',
-        block: 'gsat',
+        block: D.DIAGNOSTIC_BLOCK.GSAT,
         score: 5,
         notes: 'Bien',
       },
@@ -86,12 +113,17 @@ describe('buildAnswers', () => {
 
   it('ignora lo que el cliente mande como texto o bloque', () => {
     const answers = [
-      { questionId: 'q1', score: 1, questionText: 'Falso', block: 'duraslid' },
+      {
+        questionId: 'q1',
+        score: 1,
+        questionText: 'Falso',
+        block: D.DIAGNOSTIC_BLOCK.DURASLID,
+      },
     ] as unknown as { questionId: string; score: number }[];
 
     expect(buildAnswers(answers, QUESTIONS)[0]).toMatchObject({
       questionText: 'Uno',
-      block: 'rap',
+      block: D.DIAGNOSTIC_BLOCK.RAP,
     });
   });
 });
