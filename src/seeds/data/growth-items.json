@@ -1,0 +1,560 @@
+[
+  {
+    "branch": "familia",
+    "growthArea": "corporalidad",
+    "order": 1,
+    "text": "Fortalece sus habilidades motoras finas y gruesas a través de juegos, actividades creativas y ejercicios físicos, reconociendo las partes de su cuerpo, sus capacidades y la importancia de cuidarlo para su bienestar."
+  },
+  {
+    "branch": "familia",
+    "growthArea": "creatividad",
+    "order": 1,
+    "text": "Explora y comprende su entorno inmediato a través de la observación, comparación y clasificación de objetos, estableciendo relaciones básicas de manera significativa y comunicando sus descubrimientos y aprendizajes."
+  },
+  {
+    "branch": "familia",
+    "growthArea": "caracter",
+    "order": 1,
+    "text": "Participa respetuosa y solidariamente en las actividades cotidianas, reconociendo y siguiendo normas básicas de convivencia, comprendiendo su propósito a través de la reflexión y el diálogo."
+  },
+  {
+    "branch": "familia",
+    "growthArea": "socioafectividad",
+    "order": 1,
+    "text": "Construye vínculos positivos con sus compañeros y adultos mediante interacciones afectuosas, mostrando empatía, respeto y capacidad para compartir, mientras reconoce y gestiona sus emociones."
+  },
+  {
+    "branch": "familia",
+    "growthArea": "espiritualidad",
+    "order": 1,
+    "text": "Demuestra actitudes de cuidado, respeto y gratitud hacia los seres vivos, la naturaleza y las experiencias cotidianas al expresarlas de manera creativa."
+  },
+  {
+    "branch": "manada",
+    "growthArea": "corporalidad",
+    "order": 1,
+    "text": "Actividad física y hábitos de movimiento consciente."
+  },
+  {
+    "branch": "manada",
+    "growthArea": "corporalidad",
+    "order": 2,
+    "text": "Higiene, alimentación, sueño, descanso y bienestar."
+  },
+  {
+    "branch": "manada",
+    "growthArea": "corporalidad",
+    "order": 3,
+    "text": "Cuidado del cuerpo, emociones, seguridad y búsqueda de ayuda."
+  },
+  {
+    "branch": "manada",
+    "growthArea": "corporalidad",
+    "order": 4,
+    "text": "Respeto por el cuerpo propio y de los demás, límites personales y autocuidado."
+  },
+  {
+    "branch": "manada",
+    "growthArea": "creatividad",
+    "order": 1,
+    "text": "Pensamiento creativo para proponer soluciones."
+  },
+  {
+    "branch": "manada",
+    "growthArea": "creatividad",
+    "order": 2,
+    "text": "Uso responsable y seguro de herramientas tecnológicas."
+  },
+  {
+    "branch": "manada",
+    "growthArea": "creatividad",
+    "order": 3,
+    "text": "Análisis de información, ideas y argumentos."
+  },
+  {
+    "branch": "manada",
+    "growthArea": "caracter",
+    "order": 1,
+    "text": "Convivencia pacífica, respeto, cooperación y comunicación eficaz."
+  },
+  {
+    "branch": "manada",
+    "growthArea": "caracter",
+    "order": 2,
+    "text": "Reconocimiento de identidad, emociones, talentos, preferencias y motivaciones."
+  },
+  {
+    "branch": "manada",
+    "growthArea": "caracter",
+    "order": 3,
+    "text": "Afrontamiento de retos, cambios y dificultades con actitud constructiva."
+  },
+  {
+    "branch": "manada",
+    "growthArea": "caracter",
+    "order": 4,
+    "text": "Solución creativa y justa de problemas y conflictos."
+  },
+  {
+    "branch": "manada",
+    "growthArea": "afectividad",
+    "order": 1,
+    "text": "Igualdad de género y convivencia equitativa."
+  },
+  {
+    "branch": "manada",
+    "growthArea": "afectividad",
+    "order": 2,
+    "text": "Relaciones afectivas, respetuosas y responsables."
+  },
+  {
+    "branch": "manada",
+    "growthArea": "afectividad",
+    "order": 3,
+    "text": "Empatía, escucha activa y comprensión de necesidades de otros."
+  },
+  {
+    "branch": "manada",
+    "growthArea": "afectividad",
+    "order": 4,
+    "text": "Autoestima, límites, respeto propio y relaciones basadas en confianza."
+  },
+  {
+    "branch": "manada",
+    "growthArea": "sociabilidad",
+    "order": 1,
+    "text": "Cuidado del entorno y prácticas de sostenibilidad climática."
+  },
+  {
+    "branch": "manada",
+    "growthArea": "sociabilidad",
+    "order": 2,
+    "text": "Iniciativas sociales, ciudadanía y mejora del entorno."
+  },
+  {
+    "branch": "manada",
+    "growthArea": "sociabilidad",
+    "order": 3,
+    "text": "Trabajo colaborativo y valoración de diferencias."
+  },
+  {
+    "branch": "manada",
+    "growthArea": "sociabilidad",
+    "order": 4,
+    "text": "Reconocimiento y respeto de la diversidad cultural."
+  },
+  {
+    "branch": "manada",
+    "growthArea": "espiritualidad",
+    "order": 1,
+    "text": "Cuidado y protección de seres vivos."
+  },
+  {
+    "branch": "manada",
+    "growthArea": "espiritualidad",
+    "order": 2,
+    "text": "Conexión emocional, trascendencia y apertura a distintas experiencias."
+  },
+  {
+    "branch": "manada",
+    "growthArea": "espiritualidad",
+    "order": 3,
+    "text": "Gratitud, sentido de pertenencia, valores y propósito."
+  },
+  {
+    "branch": "tropa",
+    "growthArea": "corporalidad",
+    "order": 1,
+    "text": "Actividad física y hábitos de movimiento consciente."
+  },
+  {
+    "branch": "tropa",
+    "growthArea": "corporalidad",
+    "order": 2,
+    "text": "Higiene, alimentación, sueño, descanso y bienestar."
+  },
+  {
+    "branch": "tropa",
+    "growthArea": "corporalidad",
+    "order": 3,
+    "text": "Cuidado del cuerpo, emociones, seguridad y búsqueda de ayuda."
+  },
+  {
+    "branch": "tropa",
+    "growthArea": "corporalidad",
+    "order": 4,
+    "text": "Respeto por el cuerpo propio y de los demás, límites personales y autocuidado."
+  },
+  {
+    "branch": "tropa",
+    "growthArea": "creatividad",
+    "order": 1,
+    "text": "Pensamiento creativo para proponer soluciones."
+  },
+  {
+    "branch": "tropa",
+    "growthArea": "creatividad",
+    "order": 2,
+    "text": "Uso responsable y seguro de herramientas tecnológicas."
+  },
+  {
+    "branch": "tropa",
+    "growthArea": "creatividad",
+    "order": 3,
+    "text": "Análisis de información, ideas y argumentos."
+  },
+  {
+    "branch": "tropa",
+    "growthArea": "caracter",
+    "order": 1,
+    "text": "Convivencia pacífica, respeto, cooperación y comunicación eficaz."
+  },
+  {
+    "branch": "tropa",
+    "growthArea": "caracter",
+    "order": 2,
+    "text": "Reconocimiento de identidad, emociones, talentos, preferencias y motivaciones."
+  },
+  {
+    "branch": "tropa",
+    "growthArea": "caracter",
+    "order": 3,
+    "text": "Afrontamiento de retos, cambios y dificultades con actitud constructiva."
+  },
+  {
+    "branch": "tropa",
+    "growthArea": "caracter",
+    "order": 4,
+    "text": "Solución creativa y justa de problemas y conflictos."
+  },
+  {
+    "branch": "tropa",
+    "growthArea": "afectividad",
+    "order": 1,
+    "text": "Igualdad de género y convivencia equitativa."
+  },
+  {
+    "branch": "tropa",
+    "growthArea": "afectividad",
+    "order": 2,
+    "text": "Relaciones afectivas, respetuosas y responsables."
+  },
+  {
+    "branch": "tropa",
+    "growthArea": "afectividad",
+    "order": 3,
+    "text": "Empatía, escucha activa y comprensión de necesidades de otros."
+  },
+  {
+    "branch": "tropa",
+    "growthArea": "afectividad",
+    "order": 4,
+    "text": "Autoestima, límites, respeto propio y relaciones basadas en confianza."
+  },
+  {
+    "branch": "tropa",
+    "growthArea": "sociabilidad",
+    "order": 1,
+    "text": "Cuidado del entorno y prácticas de sostenibilidad climática."
+  },
+  {
+    "branch": "tropa",
+    "growthArea": "sociabilidad",
+    "order": 2,
+    "text": "Iniciativas sociales, ciudadanía y mejora del entorno."
+  },
+  {
+    "branch": "tropa",
+    "growthArea": "sociabilidad",
+    "order": 3,
+    "text": "Trabajo colaborativo y valoración de diferencias."
+  },
+  {
+    "branch": "tropa",
+    "growthArea": "sociabilidad",
+    "order": 4,
+    "text": "Reconocimiento y respeto de la diversidad cultural."
+  },
+  {
+    "branch": "tropa",
+    "growthArea": "espiritualidad",
+    "order": 1,
+    "text": "Cuidado y protección de seres vivos."
+  },
+  {
+    "branch": "tropa",
+    "growthArea": "espiritualidad",
+    "order": 2,
+    "text": "Conexión emocional, trascendencia y apertura a distintas experiencias."
+  },
+  {
+    "branch": "tropa",
+    "growthArea": "espiritualidad",
+    "order": 3,
+    "text": "Gratitud, sentido de pertenencia, valores y propósito."
+  },
+  {
+    "branch": "comunidad",
+    "growthArea": "corporalidad",
+    "order": 1,
+    "text": "Actividad física y hábitos de movimiento consciente."
+  },
+  {
+    "branch": "comunidad",
+    "growthArea": "corporalidad",
+    "order": 2,
+    "text": "Higiene, alimentación, sueño, descanso y bienestar."
+  },
+  {
+    "branch": "comunidad",
+    "growthArea": "corporalidad",
+    "order": 3,
+    "text": "Cuidado del cuerpo, emociones, seguridad y búsqueda de ayuda."
+  },
+  {
+    "branch": "comunidad",
+    "growthArea": "corporalidad",
+    "order": 4,
+    "text": "Respeto por el cuerpo propio y de los demás, límites personales y autocuidado."
+  },
+  {
+    "branch": "comunidad",
+    "growthArea": "creatividad",
+    "order": 1,
+    "text": "Pensamiento creativo para proponer soluciones."
+  },
+  {
+    "branch": "comunidad",
+    "growthArea": "creatividad",
+    "order": 2,
+    "text": "Uso responsable y seguro de herramientas tecnológicas."
+  },
+  {
+    "branch": "comunidad",
+    "growthArea": "creatividad",
+    "order": 3,
+    "text": "Análisis de información, ideas y argumentos."
+  },
+  {
+    "branch": "comunidad",
+    "growthArea": "caracter",
+    "order": 1,
+    "text": "Convivencia pacífica, respeto, cooperación y comunicación eficaz."
+  },
+  {
+    "branch": "comunidad",
+    "growthArea": "caracter",
+    "order": 2,
+    "text": "Reconocimiento de identidad, emociones, talentos, preferencias y motivaciones."
+  },
+  {
+    "branch": "comunidad",
+    "growthArea": "caracter",
+    "order": 3,
+    "text": "Afrontamiento de retos, cambios y dificultades con actitud constructiva."
+  },
+  {
+    "branch": "comunidad",
+    "growthArea": "caracter",
+    "order": 4,
+    "text": "Solución creativa y justa de problemas y conflictos."
+  },
+  {
+    "branch": "comunidad",
+    "growthArea": "afectividad",
+    "order": 1,
+    "text": "Igualdad de género y convivencia equitativa."
+  },
+  {
+    "branch": "comunidad",
+    "growthArea": "afectividad",
+    "order": 2,
+    "text": "Relaciones afectivas, respetuosas y responsables."
+  },
+  {
+    "branch": "comunidad",
+    "growthArea": "afectividad",
+    "order": 3,
+    "text": "Empatía, escucha activa y comprensión de necesidades de otros."
+  },
+  {
+    "branch": "comunidad",
+    "growthArea": "afectividad",
+    "order": 4,
+    "text": "Autoestima, límites, respeto propio y relaciones basadas en confianza."
+  },
+  {
+    "branch": "comunidad",
+    "growthArea": "sociabilidad",
+    "order": 1,
+    "text": "Cuidado del entorno y prácticas de sostenibilidad climática."
+  },
+  {
+    "branch": "comunidad",
+    "growthArea": "sociabilidad",
+    "order": 2,
+    "text": "Iniciativas sociales, ciudadanía y mejora del entorno."
+  },
+  {
+    "branch": "comunidad",
+    "growthArea": "sociabilidad",
+    "order": 3,
+    "text": "Trabajo colaborativo y valoración de diferencias."
+  },
+  {
+    "branch": "comunidad",
+    "growthArea": "sociabilidad",
+    "order": 4,
+    "text": "Reconocimiento y respeto de la diversidad cultural."
+  },
+  {
+    "branch": "comunidad",
+    "growthArea": "espiritualidad",
+    "order": 1,
+    "text": "Cuidado y protección de seres vivos."
+  },
+  {
+    "branch": "comunidad",
+    "growthArea": "espiritualidad",
+    "order": 2,
+    "text": "Conexión emocional, trascendencia y apertura a distintas experiencias."
+  },
+  {
+    "branch": "comunidad",
+    "growthArea": "espiritualidad",
+    "order": 3,
+    "text": "Gratitud, sentido de pertenencia, valores y propósito."
+  },
+  {
+    "branch": "clan",
+    "growthArea": "corporalidad",
+    "order": 1,
+    "text": "Actividad física y hábitos de movimiento consciente."
+  },
+  {
+    "branch": "clan",
+    "growthArea": "corporalidad",
+    "order": 2,
+    "text": "Higiene, alimentación, sueño, descanso y bienestar."
+  },
+  {
+    "branch": "clan",
+    "growthArea": "corporalidad",
+    "order": 3,
+    "text": "Cuidado del cuerpo, emociones, seguridad y búsqueda de ayuda."
+  },
+  {
+    "branch": "clan",
+    "growthArea": "corporalidad",
+    "order": 4,
+    "text": "Respeto por el cuerpo propio y de los demás, límites personales y autocuidado."
+  },
+  {
+    "branch": "clan",
+    "growthArea": "creatividad",
+    "order": 1,
+    "text": "Pensamiento creativo para proponer soluciones."
+  },
+  {
+    "branch": "clan",
+    "growthArea": "creatividad",
+    "order": 2,
+    "text": "Uso responsable y seguro de herramientas tecnológicas."
+  },
+  {
+    "branch": "clan",
+    "growthArea": "creatividad",
+    "order": 3,
+    "text": "Análisis de información, ideas y argumentos."
+  },
+  {
+    "branch": "clan",
+    "growthArea": "caracter",
+    "order": 1,
+    "text": "Convivencia pacífica, respeto, cooperación y comunicación eficaz."
+  },
+  {
+    "branch": "clan",
+    "growthArea": "caracter",
+    "order": 2,
+    "text": "Reconocimiento de identidad, emociones, talentos, preferencias y motivaciones."
+  },
+  {
+    "branch": "clan",
+    "growthArea": "caracter",
+    "order": 3,
+    "text": "Afrontamiento de retos, cambios y dificultades con actitud constructiva."
+  },
+  {
+    "branch": "clan",
+    "growthArea": "caracter",
+    "order": 4,
+    "text": "Solución creativa y justa de problemas y conflictos."
+  },
+  {
+    "branch": "clan",
+    "growthArea": "afectividad",
+    "order": 1,
+    "text": "Igualdad de género y convivencia equitativa."
+  },
+  {
+    "branch": "clan",
+    "growthArea": "afectividad",
+    "order": 2,
+    "text": "Relaciones afectivas, respetuosas y responsables."
+  },
+  {
+    "branch": "clan",
+    "growthArea": "afectividad",
+    "order": 3,
+    "text": "Empatía, escucha activa y comprensión de necesidades de otros."
+  },
+  {
+    "branch": "clan",
+    "growthArea": "afectividad",
+    "order": 4,
+    "text": "Autoestima, límites, respeto propio y relaciones basadas en confianza."
+  },
+  {
+    "branch": "clan",
+    "growthArea": "sociabilidad",
+    "order": 1,
+    "text": "Cuidado del entorno y prácticas de sostenibilidad climática."
+  },
+  {
+    "branch": "clan",
+    "growthArea": "sociabilidad",
+    "order": 2,
+    "text": "Iniciativas sociales, ciudadanía y mejora del entorno."
+  },
+  {
+    "branch": "clan",
+    "growthArea": "sociabilidad",
+    "order": 3,
+    "text": "Trabajo colaborativo y valoración de diferencias."
+  },
+  {
+    "branch": "clan",
+    "growthArea": "sociabilidad",
+    "order": 4,
+    "text": "Reconocimiento y respeto de la diversidad cultural."
+  },
+  {
+    "branch": "clan",
+    "growthArea": "espiritualidad",
+    "order": 1,
+    "text": "Cuidado y protección de seres vivos."
+  },
+  {
+    "branch": "clan",
+    "growthArea": "espiritualidad",
+    "order": 2,
+    "text": "Conexión emocional, trascendencia y apertura a distintas experiencias."
+  },
+  {
+    "branch": "clan",
+    "growthArea": "espiritualidad",
+    "order": 3,
+    "text": "Gratitud, sentido de pertenencia, valores y propósito."
+  }
+]

@@ -17,6 +17,7 @@
     "i18n:check": "ts-node -P tsconfig.json scripts/i18n-check.ts",
     "domain:gen": "ts-node -P tsconfig.json scripts/domain-gen.ts",
     "domain:check": "ts-node -P tsconfig.json scripts/domain-check.ts",
+    "growth-items:extract": "ts-node -P tsconfig.json scripts/extract-growth-items.ts",
     "typecheck": "tsc --noEmit",
     "verify": "pnpm typecheck && pnpm lint:check && pnpm test && pnpm i18n:check && pnpm domain:check",
     "test": "jest",
