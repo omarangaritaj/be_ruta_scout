@@ -1253,7 +1253,9 @@ writeFileSync(OUTPUT, `${JSON.stringify(items, null, 2)}\n`, 'utf8');
 console.log(`✔ ${items.length} items escritos en ${OUTPUT}`);
 ```
 
-El legado repite cada bloque de rama tres veces en el HTML; `seen` se queda con la primera aparición de cada una.
+**Cuidado con la deduplicación.** El legado repite el bloque de cada rama tres veces y **las copias NO son idénticas**: declara un catálogo corto y más abajo, tras el marcador `/* ===== Catálogo textual completo v0.6 ===== */`, lo sobrescribe en tiempo de ejecución con la versión completa, que además tiene texto propio por rama. Quedarse con la primera aparición captura la copia que el propio legado descarta. La regla correcta es **la última aparición gana**, que replica la semántica de ejecución: acumula en un `Map<Branch, LegacyArea[]>` sobrescribiendo en cada aparición y construye los items al final. No ancles la lógica al comentario marcador: si aparece una cuarta copia, "la última gana" sigue siendo correcto.
+
+Los conteos coinciden en ambas copias (22 items por rama), así que **contar items no detecta este error**. Solo comparar textos lo detecta.
 
 - [ ] **Step 4: Registrar el script y correrlo**
 

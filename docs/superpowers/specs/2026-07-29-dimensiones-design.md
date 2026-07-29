@@ -308,6 +308,12 @@ La extracción se hace una vez y su resultado se commitea. Un seed que scrapea u
 documento de referencia en cada corrida se rompe el día que alguien toque ese
 archivo; un JSON versionado es auditable, revisable en el PR y diffeable.
 
+- **Qué copia extraer**: el legado repite el bloque de cada rama tres veces y las
+  copias NO son iguales. Declara un catálogo corto y luego lo sobrescribe en
+  tiempo de ejecución, tras el marcador `Catálogo textual completo v0.6`, con la
+  versión vigente, que tiene texto propio de cada rama. Gana **la última
+  aparición**. Los conteos son idénticos en ambas copias (22 por rama), así que
+  contar items no distingue una de otra: hay que comparar textos.
 - **Mapeo de áreas**: minúsculas sin tildes. `Carácter` → `caracter`,
   `Socioafectividad` → `socioafectividad`.
 - **`order`**: 1..n dentro de cada `(rama, área)`, respetando la secuencia legada.
