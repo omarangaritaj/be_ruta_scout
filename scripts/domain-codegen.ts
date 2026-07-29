@@ -8,6 +8,7 @@ export interface BranchEntry extends NamedValue {
   siscoutAliases: string[];
   /** `[min, max]` de edad, ambos inclusive. Ver `assertAgeRanges`. */
   ageRange: [number, number];
+  growthAreas: string[];
 }
 
 export interface PermissionEntry {
@@ -32,6 +33,7 @@ export interface DomainManifest {
   personTypes: NamedValue[];
   unitRoles: NamedValue[];
   diagnosticBlocks: NamedValue[];
+  growthAreas: NamedValue[];
   permissions: PermissionEntry[];
   routeResources: RouteResourceEntry[];
   apiErrorCodes: NamedValue[];
@@ -89,6 +91,28 @@ function assertAgeRanges(branches: BranchEntry[]): void {
   }
 }
 
+function assertBranchGrowthAreas(
+  branches: BranchEntry[],
+  growthAreas: NamedValue[],
+): void {
+  const validas = new Set(growthAreas.map((a) => a.value));
+  for (const { value, growthAreas: areas } of branches) {
+    if (!areas || areas.length === 0) {
+      throw new Error(`Rama sin áreas de crecimiento: ${value}`);
+    }
+    const vistas = new Set<string>();
+    for (const area of areas) {
+      if (!validas.has(area)) {
+        throw new Error(`Área de crecimiento inexistente en ${value}: ${area}`);
+      }
+      if (vistas.has(area)) {
+        throw new Error(`Área de crecimiento repetida en ${value}: ${area}`);
+      }
+      vistas.add(area);
+    }
+  }
+}
+
 export function readManifest(raw: string): DomainManifest {
   const manifest = JSON.parse(raw) as DomainManifest;
   const branches = [...manifest.branches].sort((a, b) => a.order - b.order);
@@ -102,6 +126,8 @@ export function readManifest(raw: string): DomainManifest {
   assertUnique(ordenado.personTypes, 'personTypes');
   assertUnique(ordenado.unitRoles, 'unitRoles');
   assertUnique(ordenado.diagnosticBlocks, 'diagnosticBlocks');
+  assertUnique(ordenado.growthAreas, 'growthAreas');
+  assertBranchGrowthAreas(ordenado.branches, ordenado.growthAreas);
   assertUnique(ordenado.apiErrorCodes, 'apiErrorCodes');
   assertUniqueRoutePaths(ordenado.routeResources, 'routeResources');
   return ordenado;
@@ -214,6 +240,23 @@ function dictionaryGroup(nombre: string, entries: NamedValue[]): string {
   return `  ${nombre}: {\n${filas}\n  },\n`;
 }
 
+function branchGrowthAreasBlock(branches: BranchEntry[]): string {
+  const filas = branches
+    .map(
+      (b) =>
+        `  ${b.value}: [${b.growthAreas.map((a) => `'${a}'`).join(', ')}],`,
+    )
+    .join('\n');
+  return (
+    '\nexport const BRANCH_GROWTH_AREAS: Record<Branch, readonly GrowthArea[]> = {\n' +
+    `${filas}\n} as const;\n` +
+    '\n/** Áreas que aplican a una rama. Familia usa socioafectividad; el resto, las seis clásicas. */\n' +
+    'export function growthAreasOf(branch: Branch): readonly GrowthArea[] {\n' +
+    '  return BRANCH_GROWTH_AREAS[branch];\n' +
+    '}\n'
+  );
+}
+
 export function generateFiles(manifest: DomainManifest): Map<string, string> {
   const archivos = new Map<string, string>();
 
@@ -262,6 +305,19 @@ export function generateFiles(manifest: DomainManifest): Map<string, string> {
   );
 
   archivos.set(
+    'src/domain/growth-areas.ts',
+    HEADER +
+      "import type { Branch } from './branches';\n\n" +
+      constAndType('GROWTH_AREAS', 'GrowthArea', manifest.growthAreas) +
+      messageKeyMap(
+        'GROWTH_AREA_MESSAGE_KEY',
+        'GROWTH_AREA',
+        manifest.growthAreas,
+      ) +
+      branchGrowthAreasBlock(manifest.branches),
+  );
+
+  archivos.set(
     'src/domain/permissions.ts',
     HEADER +
       `export const PERMISSION_KEYS = [${quoted(manifest.permissions.map((p) => p.key))}] as const;\n` +
@@ -291,6 +347,7 @@ export function generateFiles(manifest: DomainManifest): Map<string, string> {
       dictionaryGroup('PERSON_TYPE', manifest.personTypes) +
       dictionaryGroup('UNIT_ROLE', manifest.unitRoles) +
       dictionaryGroup('DIAGNOSTIC_BLOCK', manifest.diagnosticBlocks) +
+      dictionaryGroup('GROWTH_AREA', manifest.growthAreas) +
       dictionaryGroup('API_ERROR', manifest.apiErrorCodes) +
       '} as const;\n',
   );
@@ -303,6 +360,7 @@ export function generateFiles(manifest: DomainManifest): Map<string, string> {
       "export * from './dictionary';\n" +
       "export * from './diagnostic';\n" +
       "export * from './errors';\n" +
+      "export * from './growth-areas';\n" +
       "export * from './permissions';\n" +
       "export * from './roles';\n" +
       "export * from './route-resources';\n",
@@ -317,6 +375,7 @@ export function generateFiles(manifest: DomainManifest): Map<string, string> {
     ...manifest.personTypes,
     ...manifest.unitRoles,
     ...manifest.diagnosticBlocks,
+    ...manifest.growthAreas,
   ].map((e) => e.value);
   archivos.set(
     '.domain-vocabulary.json',

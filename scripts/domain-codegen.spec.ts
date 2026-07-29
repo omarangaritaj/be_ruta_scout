@@ -11,6 +11,7 @@ const MANIFEST = JSON.stringify({
       order: 2,
       siscoutAliases: ['MANADA', 'LOBATO'],
       ageRange: [0, 9],
+      growthAreas: ['corporalidad'],
     },
   ],
   accessStates: [{ name: 'APPROVED', value: 'aprobado' }],
@@ -20,6 +21,7 @@ const MANIFEST = JSON.stringify({
   personTypes: [{ name: 'ADULT', value: 'adulto' }],
   unitRoles: [{ name: 'UNIT_LEADER', value: 'unit_leader' }],
   diagnosticBlocks: [{ name: 'RAP', value: 'rap' }],
+  growthAreas: [{ name: 'CORPORALIDAD', value: 'corporalidad' }],
   permissions: [{ key: 'user:read', side: 'both' }],
   routeResources: [
     { path: '/tablero', label: 'Tablero', always: true },
@@ -40,10 +42,13 @@ const vacio = {
   personTypes: [],
   unitRoles: [],
   diagnosticBlocks: [],
+  growthAreas: [],
   permissions: [],
   routeResources: [],
   apiErrorCodes: [],
 };
+
+const vacioSerializado = JSON.stringify(vacio);
 
 describe('domain codegen', () => {
   it('rechaza un manifiesto con valores duplicados', () => {
@@ -133,6 +138,7 @@ describe('domain codegen', () => {
   it('ordena las ramas por el campo order', () => {
     const desordenado = JSON.stringify({
       ...vacio,
+      growthAreas: [{ name: 'CORPORALIDAD', value: 'corporalidad' }],
       branches: [
         {
           name: 'CLAN',
@@ -140,6 +146,7 @@ describe('domain codegen', () => {
           order: 5,
           siscoutAliases: [],
           ageRange: [10, 21],
+          growthAreas: ['corporalidad'],
         },
         {
           name: 'MANADA',
@@ -147,6 +154,7 @@ describe('domain codegen', () => {
           order: 2,
           siscoutAliases: [],
           ageRange: [0, 9],
+          growthAreas: ['corporalidad'],
         },
       ],
     });
@@ -256,5 +264,51 @@ describe('bloques de diagnóstico', () => {
       archivos.get('.domain-vocabulary.json') as string,
     ) as string[];
     expect(vocabulario).toContain('duraslid');
+  });
+});
+
+describe('áreas de crecimiento', () => {
+  function manifestCon(branchAreas: string[], growthAreas = ['corporalidad']) {
+    return JSON.stringify({
+      ...JSON.parse(vacioSerializado),
+      growthAreas: growthAreas.map((value) => ({
+        name: value.toUpperCase(),
+        value,
+      })),
+      branches: [
+        {
+          name: 'MANADA',
+          value: 'manada',
+          order: 2,
+          siscoutAliases: ['MANADA'],
+          ageRange: [0, 9],
+          growthAreas: branchAreas,
+        },
+      ],
+    });
+  }
+
+  it('rechaza un área que no existe en el catálogo', () => {
+    expect(() => readManifest(manifestCon(['inventada']))).toThrow(
+      /inexistente/,
+    );
+  });
+
+  it('rechaza un área repetida en la misma rama', () => {
+    expect(() =>
+      readManifest(manifestCon(['corporalidad', 'corporalidad'])),
+    ).toThrow(/repetida/);
+  });
+
+  it('rechaza una rama sin áreas', () => {
+    expect(() => readManifest(manifestCon([]))).toThrow(/sin áreas/);
+  });
+
+  it('genera el mapa de rama a áreas', () => {
+    const manifest = readManifest(manifestCon(['corporalidad']));
+    const archivo = generateFiles(manifest).get('src/domain/growth-areas.ts');
+
+    expect(archivo).toContain("manada: ['corporalidad'],");
+    expect(archivo).toContain('export function growthAreasOf(');
   });
 });

@@ -6,21 +6,44 @@
       "value": "familia",
       "order": 1,
       "siscoutAliases": ["FAMILIA", "CACHORRO", "CACHORROS"],
-      "ageRange": [0, 6]
+      "ageRange": [0, 6],
+      "growthAreas": [
+        "corporalidad",
+        "creatividad",
+        "caracter",
+        "socioafectividad",
+        "espiritualidad"
+      ]
     },
     {
       "name": "MANADA",
       "value": "manada",
       "order": 2,
       "siscoutAliases": ["MANADA", "LOBATO", "LOBATOS"],
-      "ageRange": [7, 9]
+      "ageRange": [7, 9],
+      "growthAreas": [
+        "corporalidad",
+        "creatividad",
+        "caracter",
+        "afectividad",
+        "sociabilidad",
+        "espiritualidad"
+      ]
     },
     {
       "name": "TROPA",
       "value": "tropa",
       "order": 3,
       "siscoutAliases": ["TROPA", "SCOUT", "SCOUTS"],
-      "ageRange": [10, 14]
+      "ageRange": [10, 14],
+      "growthAreas": [
+        "corporalidad",
+        "creatividad",
+        "caracter",
+        "afectividad",
+        "sociabilidad",
+        "espiritualidad"
+      ]
     },
     {
       "name": "COMUNIDAD",
@@ -32,14 +55,30 @@
         "NOMADA SCOUT",
         "NOMADAS SCOUT"
       ],
-      "ageRange": [15, 17]
+      "ageRange": [15, 17],
+      "growthAreas": [
+        "corporalidad",
+        "creatividad",
+        "caracter",
+        "afectividad",
+        "sociabilidad",
+        "espiritualidad"
+      ]
     },
     {
       "name": "CLAN",
       "value": "clan",
       "order": 5,
       "siscoutAliases": ["CLAN", "ROVER", "ROVERS"],
-      "ageRange": [18, 21]
+      "ageRange": [18, 21],
+      "growthAreas": [
+        "corporalidad",
+        "creatividad",
+        "caracter",
+        "afectividad",
+        "sociabilidad",
+        "espiritualidad"
+      ]
     }
   ],
   "accessStates": [
@@ -83,6 +122,15 @@
     { "name": "GSAT", "value": "gsat" },
     { "name": "SCOUT_METHOD", "value": "metodo_scout" },
     { "name": "DURASLID", "value": "duraslid" }
+  ],
+  "growthAreas": [
+    { "name": "CORPORALIDAD", "value": "corporalidad" },
+    { "name": "CREATIVIDAD", "value": "creatividad" },
+    { "name": "CARACTER", "value": "caracter" },
+    { "name": "AFECTIVIDAD", "value": "afectividad" },
+    { "name": "SOCIABILIDAD", "value": "sociabilidad" },
+    { "name": "ESPIRITUALIDAD", "value": "espiritualidad" },
+    { "name": "SOCIOAFECTIVIDAD", "value": "socioafectividad" }
   ],
   "permissions": [
     { "key": "role:read", "side": "both" },

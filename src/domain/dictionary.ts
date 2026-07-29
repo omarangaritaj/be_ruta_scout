@@ -50,6 +50,15 @@ export const D = {
     SCOUT_METHOD: 'metodo_scout',
     DURASLID: 'duraslid',
   },
+  GROWTH_AREA: {
+    CORPORALIDAD: 'corporalidad',
+    CREATIVIDAD: 'creatividad',
+    CARACTER: 'caracter',
+    AFECTIVIDAD: 'afectividad',
+    SOCIABILIDAD: 'sociabilidad',
+    ESPIRITUALIDAD: 'espiritualidad',
+    SOCIOAFECTIVIDAD: 'socioafectividad',
+  },
   API_ERROR: {
     UNITS_LEADERSHIP_REQUIRED: 'UNITS.LEADERSHIP_REQUIRED',
     UNITS_MISSING_GROUP: 'UNITS.MISSING_GROUP',

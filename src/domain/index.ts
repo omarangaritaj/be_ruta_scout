@@ -5,6 +5,7 @@ export * from './branches';
 export * from './dictionary';
 export * from './diagnostic';
 export * from './errors';
+export * from './growth-areas';
 export * from './permissions';
 export * from './roles';
 export * from './route-resources';
