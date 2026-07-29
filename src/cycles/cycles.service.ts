@@ -22,7 +22,7 @@ import { CreateCycleDto } from './dto/create-cycle.dto';
 import { SaveDiagnosticDto } from './dto/save-diagnostic.dto';
 import { UpdateCycleDto } from './dto/update-cycle.dto';
 import { UpdateFocusDto } from './dto/update-focus.dto';
-import { Cycle, CycleDocument } from './schemas/cycle.schema';
+import { Cycle, CycleCompetency, CycleDocument } from './schemas/cycle.schema';
 
 @Injectable()
 export class CyclesService {
@@ -143,6 +143,7 @@ export class CyclesService {
     const competencies = await this.buildCompetencies(
       dto.competencies.map(String),
       unit.branch,
+      cycle.focus.competencies,
     );
 
     Object.assign(cycle.focus, { ...dto, competencies });
@@ -153,6 +154,7 @@ export class CyclesService {
   private async buildCompetencies(
     ids: string[],
     branch: Branch,
+    storedCompetencies: CycleCompetency[],
   ): Promise<{ growthItemId: string; text: string; growthArea: GrowthArea }[]> {
     if (new Set(ids).size !== ids.length) {
       throw new AppBadRequestException(K.CYCLES.DUPLICATE_COMPETENCY);
@@ -160,17 +162,36 @@ export class CyclesService {
 
     const catalog = await this.growthItemsService.findAll(branch);
     const byId = new Map(catalog.map((item) => [String(item._id), item]));
+    const storedById = new Map(
+      storedCompetencies.map((competency) => [
+        String(competency.growthItemId),
+        competency,
+      ]),
+    );
 
     return ids.map((growthItemId) => {
       const item = byId.get(growthItemId);
-      if (!item) {
-        throw new AppBadRequestException(K.CYCLES.UNKNOWN_COMPETENCY);
+      if (item) {
+        return {
+          growthItemId,
+          text: item.text,
+          growthArea: item.growthArea,
+        };
       }
-      return {
-        growthItemId,
-        text: item.text,
-        growthArea: item.growthArea,
-      };
+
+      // Un ítem borrado del catálogo sigue siendo válido si ya estaba
+      // guardado en el enfoque: un documento firmado sigue diciendo lo que
+      // dijo (decisiones 2.3 y 3.2), así que se conserva su snapshot tal cual.
+      const stored = storedById.get(growthItemId);
+      if (stored) {
+        return {
+          growthItemId,
+          text: stored.text,
+          growthArea: stored.growthArea,
+        };
+      }
+
+      throw new AppBadRequestException(K.CYCLES.UNKNOWN_COMPETENCY);
     });
   }
 

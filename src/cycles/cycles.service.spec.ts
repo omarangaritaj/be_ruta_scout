@@ -534,6 +534,124 @@ describe('CyclesService', () => {
       expect(cycle.focus.competencies).toHaveLength(4);
     });
 
+    it('conserva la competencia ya guardada cuando el ítem se desactivó del catálogo', async () => {
+      const save = jest.fn().mockResolvedValue(undefined);
+      const cycle = {
+        _id: 'c1',
+        unitId: 'u1',
+        isActive: true,
+        focus: {
+          competencies: [
+            {
+              growthItemId: 'g1',
+              text: 'Toma decisiones propias',
+              growthArea: D.GROWTH_AREA.CARACTER,
+            },
+          ],
+        },
+        markModified: jest.fn(),
+        save,
+      };
+      cycleModel.findById.mockReturnValue(chainOf(cycle));
+      unitModel.findById.mockReturnValue(
+        chainOf({ _id: 'u1', groupId: 7, branch: D.BRANCH.MANADA }),
+      );
+      growthItemsMock.findAll.mockResolvedValue([]);
+
+      await service.updateFocus(actor, 'c1', {
+        competencies: ['g1'],
+      } as never);
+
+      expect(cycle.focus).toEqual({
+        competencies: [
+          {
+            growthItemId: 'g1',
+            text: 'Toma decisiones propias',
+            growthArea: D.GROWTH_AREA.CARACTER,
+          },
+        ],
+      });
+      expect(save).toHaveBeenCalled();
+    });
+
+    it('rechaza una competencia desactivada que no estaba guardada en el enfoque', async () => {
+      cycleModel.findById.mockReturnValue(
+        chainOf({
+          _id: 'c1',
+          unitId: 'u1',
+          isActive: true,
+          focus: {
+            competencies: [
+              {
+                growthItemId: 'g1',
+                text: 'Toma decisiones propias',
+                growthArea: D.GROWTH_AREA.CARACTER,
+              },
+            ],
+          },
+          markModified: jest.fn(),
+          save: jest.fn(),
+        }),
+      );
+      unitModel.findById.mockReturnValue(
+        chainOf({ _id: 'u1', groupId: 7, branch: D.BRANCH.MANADA }),
+      );
+      growthItemsMock.findAll.mockResolvedValue([]);
+
+      await expect(
+        service.updateFocus(actor, 'c1', {
+          competencies: ['g9'],
+        } as never),
+      ).rejects.toBeInstanceOf(AppBadRequestException);
+    });
+
+    it('toma el texto y el área frescos del catálogo aunque el snapshot guardado sea otro', async () => {
+      const save = jest.fn().mockResolvedValue(undefined);
+      const cycle = {
+        _id: 'c1',
+        unitId: 'u1',
+        isActive: true,
+        focus: {
+          competencies: [
+            {
+              growthItemId: 'g1',
+              text: 'Texto viejo',
+              growthArea: D.GROWTH_AREA.CARACTER,
+            },
+          ],
+        },
+        markModified: jest.fn(),
+        save,
+      };
+      cycleModel.findById.mockReturnValue(chainOf(cycle));
+      unitModel.findById.mockReturnValue(
+        chainOf({ _id: 'u1', groupId: 7, branch: D.BRANCH.MANADA }),
+      );
+      growthItemsMock.findAll.mockResolvedValue([
+        {
+          _id: 'g1',
+          branch: D.BRANCH.MANADA,
+          growthArea: D.GROWTH_AREA.AFECTIVIDAD,
+          text: 'Texto nuevo',
+        },
+      ]);
+
+      await service.updateFocus(actor, 'c1', {
+        competencies: ['g1'],
+      } as never);
+
+      expect(cycle.focus).toEqual({
+        competencies: [
+          {
+            growthItemId: 'g1',
+            text: 'Texto nuevo',
+            growthArea: D.GROWTH_AREA.AFECTIVIDAD,
+          },
+        ],
+      });
+      expect(save).toHaveBeenCalled();
+    });
+
     it('no consulta el catálogo cuando el enfoque no trae competencias', async () => {
       cycleModel.findById.mockReturnValue(
         chainOf({
