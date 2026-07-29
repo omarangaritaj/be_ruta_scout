@@ -54,9 +54,19 @@ function asGrowthArea(area: string): GrowthArea {
 
 function readAreas(source: string, from: number): LegacyArea[] {
   let depth = 0;
+  let insideString = false;
+  let escaped = false;
   for (let i = from; i < source.length; i += 1) {
-    if (source[i] === '[') depth += 1;
-    else if (source[i] === ']') {
+    const char = source[i];
+    if (insideString) {
+      if (escaped) escaped = false;
+      else if (char === '\\') escaped = true;
+      else if (char === '"') insideString = false;
+      continue;
+    }
+    if (char === '"') insideString = true;
+    else if (char === '[') depth += 1;
+    else if (char === ']') {
       depth -= 1;
       if (depth === 0) {
         return JSON.parse(source.slice(from, i + 1)) as LegacyArea[];
@@ -68,15 +78,26 @@ function readAreas(source: string, from: number): LegacyArea[] {
 
 function extract(source: string): SeedItem[] {
   const pattern = /"unit":\s*"(\w+)"[^{]*?"mode":\s*"\w+",\s*"areas":\s*\[/g;
-  const seen = new Set<Branch>();
-  const items: SeedItem[] = [];
+  const areasByBranch = new Map<Branch, LegacyArea[]>();
 
   for (const match of source.matchAll(pattern)) {
     const branch = asBranch(match[1]);
-    if (seen.has(branch)) continue;
-    seen.add(branch);
+    const areas = readAreas(source, match.index + match[0].length - 1);
+    areasByBranch.set(branch, areas);
+  }
 
-    for (const area of readAreas(source, match.index + match[0].length - 1)) {
+  if (areasByBranch.size !== BRANCHES.length) {
+    throw new Error(
+      `Faltan ramas: se extrajeron ${areasByBranch.size} de ${BRANCHES.length}`,
+    );
+  }
+
+  const items: SeedItem[] = [];
+  for (const branch of BRANCHES) {
+    const areas = areasByBranch.get(branch);
+    if (!areas) throw new Error(`Falta la rama ${branch} en el legado`);
+
+    for (const area of areas) {
       const growthArea = asGrowthArea(area.area);
       if (!growthAreasOf(branch).includes(growthArea)) {
         throw new Error(`${growthArea} no corresponde a la rama ${branch}`);
@@ -85,12 +106,6 @@ function extract(source: string): SeedItem[] {
         items.push({ branch, growthArea, order: index + 1, text: text.trim() });
       });
     }
-  }
-
-  if (seen.size !== BRANCHES.length) {
-    throw new Error(
-      `Faltan ramas: se extrajeron ${seen.size} de ${BRANCHES.length}`,
-    );
   }
   return items;
 }

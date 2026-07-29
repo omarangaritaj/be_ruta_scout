@@ -25,16 +25,28 @@ describe('catálogo semilla de dimensiones', () => {
       grupos.set(clave, [...(grupos.get(clave) ?? []), item.order]);
     }
 
-    for (const [clave, ordenes] of grupos) {
+    for (const ordenes of grupos.values()) {
       const esperado = ordenes.map((_, index) => index + 1);
       expect([...ordenes].sort((a, b) => a - b)).toEqual(esperado);
-      expect(clave).toBeTruthy();
     }
   });
 
   it('no trae textos vacíos', () => {
     for (const item of catalog) {
       expect(item.text.trim().length).toBeGreaterThan(0);
+    }
+  });
+
+  it('no repite el mismo texto en ramas distintas', () => {
+    const branchesByText = new Map<string, Set<string>>();
+    for (const item of catalog) {
+      const branches = branchesByText.get(item.text) ?? new Set<string>();
+      branches.add(item.branch);
+      branchesByText.set(item.text, branches);
+    }
+
+    for (const branches of branchesByText.values()) {
+      expect(branches.size).toBe(1);
     }
   });
 });
