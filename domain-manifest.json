@@ -154,6 +154,10 @@
     { "key": "question:create", "side": "both" },
     { "key": "question:update", "side": "both" },
     { "key": "question:delete", "side": "both" },
+    { "key": "growth-item:read", "side": "both" },
+    { "key": "growth-item:create", "side": "both" },
+    { "key": "growth-item:update", "side": "both" },
+    { "key": "growth-item:delete", "side": "both" },
     { "key": "cycle:read", "side": "both" },
     { "key": "cycle:create", "side": "both" },
     { "key": "cycle:update", "side": "both" },
@@ -170,7 +174,8 @@
     { "path": "/aprobaciones", "label": "Aprobaciones", "section": "Administración" },
     { "path": "/admin/usuarios", "label": "Usuarios", "section": "Administración" },
     { "path": "/admin/roles", "label": "Roles", "section": "Administración" },
-    { "path": "/admin/preguntas", "label": "Preguntas de diagnóstico", "section": "Administración" }
+    { "path": "/admin/preguntas", "label": "Preguntas de diagnóstico", "section": "Administración" },
+    { "path": "/admin/dimensiones", "label": "Dimensiones", "section": "Administración" }
   ],
   "apiErrorCodes": [
     {

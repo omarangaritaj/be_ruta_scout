@@ -19,4 +19,9 @@ export const ROUTE_RESOURCES: readonly RouteResource[] = [
     label: 'Preguntas de diagnóstico',
     section: 'Administración',
   },
+  {
+    path: '/admin/dimensiones',
+    label: 'Dimensiones',
+    section: 'Administración',
+  },
 ];

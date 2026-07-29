@@ -21,6 +21,8 @@ describe('catálogo de permisos', () => {
   it('acepta el comodín de recurso', () => {
     expect(isValidPermission('user:*')).toBe(true);
     expect(isValidPermission('inventado:*')).toBe(false);
+    expect(isValidPermission('growth-item:*')).toBe(true);
+    expect(isValidPermission('growth-item:read')).toBe(true);
   });
 
   it('concede por comodín total y por recurso', () => {

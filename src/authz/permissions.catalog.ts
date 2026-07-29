@@ -77,6 +77,27 @@ export const PERMISSIONS: PermissionDef[] = [
     lado: 'ambos',
   },
 
+  {
+    key: 'growth-item:read',
+    descripcion: 'Ver dimensiones y competencias',
+    lado: 'ambos',
+  },
+  {
+    key: 'growth-item:create',
+    descripcion: 'Crear dimensiones y competencias',
+    lado: 'ambos',
+  },
+  {
+    key: 'growth-item:update',
+    descripcion: 'Editar dimensiones y competencias',
+    lado: 'ambos',
+  },
+  {
+    key: 'growth-item:delete',
+    descripcion: 'Eliminar dimensiones y competencias',
+    lado: 'ambos',
+  },
+
   { key: 'cycle:read', descripcion: 'Ver ciclos', lado: 'ambos' },
   { key: 'cycle:create', descripcion: 'Crear ciclos', lado: 'ambos' },
   { key: 'cycle:update', descripcion: 'Editar ciclos', lado: 'ambos' },
@@ -112,7 +133,7 @@ const PERMISSION_SET = new Set<string>(PERMISSION_KEYS);
 export function isValidPermission(value: string): boolean {
   if (value === ALL_PERMISSION) return true;
   if (PERMISSION_SET.has(value)) return true;
-  const recursoWildcard = /^([a-z]+):\*$/.exec(value);
+  const recursoWildcard = /^([a-z][a-z-]*):\*$/.exec(value);
   if (recursoWildcard) {
     return PERMISSION_KEYS.some((k) => k.startsWith(`${recursoWildcard[1]}:`));
   }
