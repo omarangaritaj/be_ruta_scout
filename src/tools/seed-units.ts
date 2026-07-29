@@ -17,6 +17,7 @@ interface DiscardedRow {
   _id: string;
   name: string;
   cargoSiscout?: string;
+  age?: number;
 }
 
 async function seedUnits(): Promise<void> {
@@ -72,12 +73,12 @@ async function seedUnits(): Promise<void> {
     console.log(`  Protagonistas descartados: ${discarded.length}`);
     if (discarded.length > 0) {
       console.log(
-        '    (su cargoSiscout no está en el catálogo de alias de rama: se quedan sin unidad)',
+        '    (ni su cargoSiscout está en el catálogo de alias de rama ni su edad cae en un tramo: se quedan sin unidad)',
       );
     }
     for (const person of discarded) {
       console.log(
-        `    - grupo ${person.groupId}: ${person._id} ${person.name} — cargoSiscout: ${JSON.stringify(person.cargoSiscout ?? null)}`,
+        `    - grupo ${person.groupId}: ${person._id} ${person.name} — cargoSiscout: ${JSON.stringify(person.cargoSiscout ?? null)}, edad: ${person.age ?? 'sin dato'}`,
       );
     }
   } finally {

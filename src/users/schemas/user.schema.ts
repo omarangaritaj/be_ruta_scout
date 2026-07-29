@@ -108,6 +108,19 @@ export class User {
   @Prop({ trim: true })
   cargoSiscout?: string;
 
+  /**
+   * Edad en años tal cual la reporta SiScout. Se proyecta al documento público
+   * —igual que territorio y cargo— porque de ella sale la rama del protagonista
+   * cuando `cargoSiscout` no es legible; ver `branchFromAge`. Un entero suelto
+   * no identifica a nadie, así que no es PII: la fecha de nacimiento sí lo
+   * sería, y esa se queda en el snapshot cifrado.
+   *
+   * ⚠️ Caduca: es una foto del día del sync, no un dato derivado de una fecha.
+   * Sirve para clasificar en la siembra, no para calcular cumpleaños.
+   */
+  @Prop({ type: Number })
+  age?: number;
+
   // --- Datos de adulto ---
   @Prop({ type: [MongooseSchema.Types.ObjectId], ref: 'Role', default: [] })
   roles: Types.ObjectId[];

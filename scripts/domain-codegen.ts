@@ -6,6 +6,8 @@ export interface NamedValue {
 export interface BranchEntry extends NamedValue {
   order: number;
   siscoutAliases: string[];
+  /** `[min, max]` de edad, ambos inclusive. Ver `assertAgeRanges`. */
+  ageRange: [number, number];
 }
 
 export interface PermissionEntry {
@@ -61,11 +63,38 @@ function assertUniqueRoutePaths(
   }
 }
 
+/**
+ * Los tramos de edad tienen que cubrir la progresión SIN huecos ni solapes: de
+ * ellos sale la rama de un protagonista cuyo cargo de SiScout no es legible, y
+ * un hueco lo dejaría fuera de toda unidad justo como si no hubiera respaldo.
+ * Se validan aquí, en el manifiesto, porque es la única fuente de la verdad.
+ */
+function assertAgeRanges(branches: BranchEntry[]): void {
+  let previo: number | undefined;
+  for (const { value, ageRange } of branches) {
+    const [min, max] = ageRange ?? [];
+    if (!Number.isInteger(min) || !Number.isInteger(max)) {
+      throw new Error(`Rango de edad no entero en branches: ${value}`);
+    }
+    if (min > max) {
+      throw new Error(`Rango de edad invertido en branches: ${value}`);
+    }
+    if (previo !== undefined && min !== previo + 1) {
+      throw new Error(
+        `Rango de edad discontinuo en branches: ${value} empieza en ${min}, ` +
+          `se esperaba ${previo + 1}`,
+      );
+    }
+    previo = max;
+  }
+}
+
 export function readManifest(raw: string): DomainManifest {
   const manifest = JSON.parse(raw) as DomainManifest;
   const branches = [...manifest.branches].sort((a, b) => a.order - b.order);
   const ordenado = { ...manifest, branches };
   assertUnique(ordenado.branches, 'branches');
+  assertAgeRanges(ordenado.branches);
   assertUnique(ordenado.accessStates, 'accessStates');
   assertUnique(ordenado.requestStates, 'requestStates');
   assertUnique(ordenado.accessLevels, 'accessLevels');
@@ -102,6 +131,44 @@ function aliasMap(branches: BranchEntry[]): string {
   return (
     '\nexport const BRANCH_SISCOUT_ALIASES: Record<string, Branch> = {\n' +
     `${filas}\n};\n`
+  );
+}
+
+function ageRangeMap(branches: BranchEntry[]): string {
+  const filas = branches
+    .map(
+      (b) =>
+        `  { branch: '${b.value}', min: ${b.ageRange[0]}, max: ${b.ageRange[1]} },`,
+    )
+    .join('\n');
+  const ultima = branches[branches.length - 1];
+  return (
+    '\nexport interface BranchAgeRange {\n' +
+    '  branch: Branch;\n' +
+    '  min: number;\n' +
+    '  max: number;\n' +
+    '}\n' +
+    '\n/** Tramos de edad de la progresión, contiguos y ambos extremos inclusive. */\n' +
+    'export const BRANCH_AGE_RANGES: readonly BranchAgeRange[] = [\n' +
+    `${filas}\n] as const;\n` +
+    '\n/**\n' +
+    ' * Rama que corresponde a una edad. Es el RESPALDO de\n' +
+    ' * `ramaDeEtiquetaSiscout`: SiScout guarda la rama en el campo `cargo` del\n' +
+    ' * protagonista, pero se la pisa con el cargo de responsabilidad juvenil\n' +
+    ' * (GUIA DE PATRULLA, PRESIDENTE DE CLAN…) en cuanto tiene uno. Sin este\n' +
+    ' * respaldo, justo los protagonistas con más responsabilidad de su unidad son\n' +
+    ' * los que se quedan sin ella.\n' +
+    ' *\n' +
+    ` * Fuera de rango devuelve \`undefined\`: por encima de ${ultima.ageRange[1]} ya no hay\n` +
+    ' * progresión que ofrecer, y adivinar una rama sería peor que reportarlo.\n' +
+    ' */\n' +
+    'export function branchFromAge(\n' +
+    '  age: number | null | undefined,\n' +
+    '): Branch | undefined {\n' +
+    '  if (age == null || !Number.isInteger(age)) return undefined;\n' +
+    '  return BRANCH_AGE_RANGES.find((r) => age >= r.min && age <= r.max)\n' +
+    '    ?.branch;\n' +
+    '}\n'
   );
 }
 
@@ -155,6 +222,7 @@ export function generateFiles(manifest: DomainManifest): Map<string, string> {
     HEADER +
       constAndType('BRANCHES', 'Branch', manifest.branches) +
       aliasMap(manifest.branches) +
+      ageRangeMap(manifest.branches) +
       messageKeyMap('BRANCH_MESSAGE_KEY', 'BRANCH', manifest.branches),
   );
 

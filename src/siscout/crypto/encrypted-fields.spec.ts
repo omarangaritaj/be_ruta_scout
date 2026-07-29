@@ -23,6 +23,7 @@ function miembro(overrides: Partial<SiscoutMember> = {}): SiscoutMember {
     person_id: '176035',
     citizenship_card: '1013599123',
     nombre: 'Andrés Muñoz',
+    edad: 34,
     sex: 'M',
     telefono: '3001234567',
     email: 'andres@ejemplo.org',

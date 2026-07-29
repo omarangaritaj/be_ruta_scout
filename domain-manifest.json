@@ -5,19 +5,22 @@
       "name": "FAMILIA",
       "value": "familia",
       "order": 1,
-      "siscoutAliases": ["FAMILIA", "CACHORRO", "CACHORROS"]
+      "siscoutAliases": ["FAMILIA", "CACHORRO", "CACHORROS"],
+      "ageRange": [0, 6]
     },
     {
       "name": "MANADA",
       "value": "manada",
       "order": 2,
-      "siscoutAliases": ["MANADA", "LOBATO", "LOBATOS"]
+      "siscoutAliases": ["MANADA", "LOBATO", "LOBATOS"],
+      "ageRange": [7, 9]
     },
     {
       "name": "TROPA",
       "value": "tropa",
       "order": 3,
-      "siscoutAliases": ["TROPA", "SCOUT", "SCOUTS"]
+      "siscoutAliases": ["TROPA", "SCOUT", "SCOUTS"],
+      "ageRange": [10, 14]
     },
     {
       "name": "COMUNIDAD",
@@ -28,13 +31,15 @@
         "NOMADA",
         "NOMADA SCOUT",
         "NOMADAS SCOUT"
-      ]
+      ],
+      "ageRange": [15, 17]
     },
     {
       "name": "CLAN",
       "value": "clan",
       "order": 5,
-      "siscoutAliases": ["CLAN", "ROVER", "ROVERS"]
+      "siscoutAliases": ["CLAN", "ROVER", "ROVERS"],
+      "ageRange": [18, 21]
     }
   ],
   "accessStates": [

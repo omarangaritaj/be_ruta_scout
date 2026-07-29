@@ -146,6 +146,21 @@ describe('SiscoutSyncService — proyección al documento público', () => {
     expect(proyectado).not.toHaveProperty('email');
   });
 
+  it('proyecta la edad a `age`', async () => {
+    // De ella sale la rama del protagonista cuando el cargo no es legible.
+    await service.importMembers([miembro({ edad: 13 })]);
+
+    expect(userUpdate().$set).toMatchObject({ age: 13 });
+  });
+
+  it('no inventa una edad cuando SiScout no la reporta', async () => {
+    await service.importMembers([miembro({ edad: null })]);
+
+    // Sin `clearWhenAbsent`: se conserva la última conocida en vez de dejar al
+    // protagonista sin el único respaldo que tiene para deducir su rama.
+    expect(userUpdate().$set).not.toHaveProperty('age');
+  });
+
   it('no toca los `cargos` que gestiona la aplicación', async () => {
     await service.importMembers([miembro()]);
 

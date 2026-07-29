@@ -10,6 +10,7 @@ const MANIFEST = JSON.stringify({
       value: 'manada',
       order: 2,
       siscoutAliases: ['MANADA', 'LOBATO'],
+      ageRange: [0, 9],
     },
   ],
   accessStates: [{ name: 'APPROVED', value: 'aprobado' }],
@@ -133,14 +134,100 @@ describe('domain codegen', () => {
     const desordenado = JSON.stringify({
       ...vacio,
       branches: [
-        { name: 'CLAN', value: 'clan', order: 5, siscoutAliases: [] },
-        { name: 'MANADA', value: 'manada', order: 2, siscoutAliases: [] },
+        {
+          name: 'CLAN',
+          value: 'clan',
+          order: 5,
+          siscoutAliases: [],
+          ageRange: [10, 21],
+        },
+        {
+          name: 'MANADA',
+          value: 'manada',
+          order: 2,
+          siscoutAliases: [],
+          ageRange: [0, 9],
+        },
       ],
     });
     const archivos = generateFiles(readManifest(desordenado));
     expect(archivos.get('src/domain/branches.ts')).toContain(
       "export const BRANCHES = ['manada', 'clan'] as const;",
     );
+  });
+
+  describe('tramos de edad', () => {
+    const conRamas = (ramas: Array<Record<string, unknown>>): string =>
+      JSON.stringify({ ...vacio, branches: ramas });
+
+    it('emite el mapa de tramos y el resolvedor por edad', () => {
+      const archivos = generateFiles(readManifest(MANIFEST));
+      const branches = archivos.get('src/domain/branches.ts');
+      expect(branches).toContain("{ branch: 'manada', min: 0, max: 9 },");
+      expect(branches).toContain('export function branchFromAge(');
+    });
+
+    it('rechaza un hueco entre tramos', () => {
+      // Un hueco deja al protagonista de esa edad sin rama y sin unidad: es
+      // exactamente el fallo que este respaldo viene a cerrar.
+      const conHueco = conRamas([
+        {
+          name: 'A',
+          value: 'manada',
+          order: 1,
+          siscoutAliases: [],
+          ageRange: [0, 9],
+        },
+        {
+          name: 'B',
+          value: 'tropa',
+          order: 2,
+          siscoutAliases: [],
+          ageRange: [11, 14],
+        },
+      ]);
+      expect(() => readManifest(conHueco)).toThrow(/discontinuo/i);
+    });
+
+    it('rechaza un solape entre tramos', () => {
+      const conSolape = conRamas([
+        {
+          name: 'A',
+          value: 'manada',
+          order: 1,
+          siscoutAliases: [],
+          ageRange: [0, 9],
+        },
+        {
+          name: 'B',
+          value: 'tropa',
+          order: 2,
+          siscoutAliases: [],
+          ageRange: [9, 14],
+        },
+      ]);
+      expect(() => readManifest(conSolape)).toThrow(/discontinuo/i);
+    });
+
+    it('rechaza un tramo invertido', () => {
+      const invertido = conRamas([
+        {
+          name: 'A',
+          value: 'manada',
+          order: 1,
+          siscoutAliases: [],
+          ageRange: [9, 0],
+        },
+      ]);
+      expect(() => readManifest(invertido)).toThrow(/invertido/i);
+    });
+
+    it('rechaza un tramo que no es entero o falta', () => {
+      const sinRango = conRamas([
+        { name: 'A', value: 'manada', order: 1, siscoutAliases: [] },
+      ]);
+      expect(() => readManifest(sinRango)).toThrow(/no entero/i);
+    });
   });
 });
 

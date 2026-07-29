@@ -59,6 +59,10 @@ const PUBLIC_FIELDS: Partial<Record<keyof SiscoutMember, PublicField>> = {
   // así se lee desde `users` sin tocar la colección privada. Se limpia al
   // desaparecer para no dejar en pie un cargo que SiScout ya retiró.
   cargo: { field: 'cargoSiscout', clearWhenAbsent: true },
+  // La edad decide la rama del protagonista cuando `cargo` no es legible (ver
+  // `branchFromAge`). Un entero suelto no identifica a nadie; la fecha de
+  // nacimiento sí, y por eso esa se queda en el snapshot cifrado.
+  edad: { field: 'age' },
 };
 
 /** Máximo de cambios detallados que se devuelven; los contadores cuentan todo. */

@@ -2,8 +2,10 @@ import {
   ACCESS_LEVELS,
   ACCESS_STATES,
   BRANCHES,
+  BRANCH_AGE_RANGES,
   BRANCH_SISCOUT_ALIASES,
   D,
+  branchFromAge,
   PERMISSION_KEYS,
   PERSON_TYPES,
   REQUEST_STATES,
@@ -25,6 +27,46 @@ describe('diccionario de dominio', () => {
     expect(BRANCH_SISCOUT_ALIASES.LOBATOS).toBe('manada');
     expect(BRANCH_SISCOUT_ALIASES.MANADA).toBe('manada');
     expect(BRANCH_SISCOUT_ALIASES['NOMADAS SCOUT']).toBe('comunidad');
+  });
+
+  describe('branchFromAge', () => {
+    it('resuelve la rama de cada tramo de la progresión', () => {
+      expect(branchFromAge(3)).toBe('familia');
+      expect(branchFromAge(8)).toBe('manada');
+      expect(branchFromAge(12)).toBe('tropa');
+      expect(branchFromAge(16)).toBe('comunidad');
+      expect(branchFromAge(20)).toBe('clan');
+    });
+
+    it('incluye ambos extremos de cada tramo', () => {
+      for (const { branch, min, max } of BRANCH_AGE_RANGES) {
+        expect(branchFromAge(min)).toBe(branch);
+        expect(branchFromAge(max)).toBe(branch);
+      }
+    });
+
+    it('cubre sin huecos desde 0 hasta el tope de la progresión', () => {
+      const tope = BRANCH_AGE_RANGES[BRANCH_AGE_RANGES.length - 1].max;
+      for (let edad = 0; edad <= tope; edad += 1) {
+        expect(branchFromAge(edad)).toBeDefined();
+      }
+    });
+
+    it('no adivina fuera de la progresión ni sin dato', () => {
+      const tope = BRANCH_AGE_RANGES[BRANCH_AGE_RANGES.length - 1].max;
+      expect(branchFromAge(tope + 1)).toBeUndefined();
+      expect(branchFromAge(-1)).toBeUndefined();
+      expect(branchFromAge(null)).toBeUndefined();
+      expect(branchFromAge(undefined)).toBeUndefined();
+      // Una edad fraccionaria significa que el contrato cambió: mejor
+      // reportarla como descartada que redondear a una rama vecina.
+      expect(branchFromAge(9.5)).toBeUndefined();
+      expect(branchFromAge(NaN)).toBeUndefined();
+    });
+
+    it('respeta el orden de la progresión en los tramos', () => {
+      expect(BRANCH_AGE_RANGES.map((r) => r.branch)).toEqual([...BRANCHES]);
+    });
   });
 
   it('tiene los cinco estados de acceso', () => {

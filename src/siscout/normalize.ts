@@ -12,6 +12,7 @@ export interface SiscoutMember {
   person_id: string;
   citizenship_card: string | null;
   nombre: string | null;
+  edad: number | null;
   sex: string | null;
   telefono: string | null;
   email: string | null;
@@ -57,6 +58,7 @@ export function normalizeMember(raw: unknown): SiscoutMember {
     person_id: toText(source.person_id) ?? '',
     citizenship_card: toText(source.citizenship_card),
     nombre: collapseSpaces(toText(source.nombre)),
+    edad: toInteger(source.edad),
     sex: toText(source.sex),
     telefono: toText(source.telefono),
     email: toText(source.email),

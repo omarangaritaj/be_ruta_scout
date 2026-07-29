@@ -16,6 +16,7 @@ const MOCK: SiscoutMember = {
   person_id: '00123',
   citizenship_card: '1099999999',
   nombre: 'Nación Mock Prueba',
+  edad: 40,
   sex: 'M',
   telefono: '3000000000',
   email: '00123@test.com',
