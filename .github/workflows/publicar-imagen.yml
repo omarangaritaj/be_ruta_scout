@@ -1,0 +1,71 @@
+# Construye y publica la imagen de be_ruta en GHCR.
+#
+# El registry es GHCR y no Docker Hub porque el login sale del GITHUB_TOKEN que
+# Actions ya inyecta: no hay cuenta, ni secrets, ni límites de pull que
+# administrar, y quien puede leer el repo puede bajar la imagen.
+#
+# El Dockerfile corre `pnpm verify` (tipos, lint, tests, i18n, dominio) dentro
+# de la etapa de build, así que este workflow no repite la verificación: si algo
+# falla, la imagen no llega a construirse.
+name: Publicar imagen
+
+on:
+  push:
+    branches: [master]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  publicar:
+    name: Publicar en GHCR
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v5
+
+      # GHCR exige el namespace en minúsculas y los nombres de organización de
+      # GitHub no lo están necesariamente.
+      - name: Normalizar el namespace
+        id: ns
+        run: echo "valor=${GITHUB_REPOSITORY_OWNER,,}" >> "$GITHUB_OUTPUT"
+
+      - uses: docker/setup-buildx-action@v3
+
+      # En los PR se construye pero no se publica: valida que el Dockerfile
+      # sigue compilando sin ensuciar el registry con imágenes de cada rama.
+      - if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Calcular tags
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ steps.ns.outputs.valor }}/ruta-be
+          tags: |
+            type=ref,event=branch
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=sha,format=long
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Construir y publicar
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          # Solo amd64: construir arm64 aquí exigiría emulación por QEMU, y con
+          # los tests corriendo dentro del Dockerfile el build se dispara a
+          # decenas de minutos. Si algún día se despliega en arm, añádelo con un
+          # runner nativo, no con QEMU.
+          platforms: linux/amd64
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

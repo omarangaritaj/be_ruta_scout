@@ -1,9 +1,58 @@
+# Qué NO viaja al daemon ni entra en el `COPY . .` del Dockerfile.
+#
+# Esto no es solo tamaño: cualquier archivo que llegue al contexto invalida la
+# capa `COPY . .` al cambiar, así que dejar entrar documentación o config de
+# editor obliga a recompilar por editar un README.
+#
+# Ojo con lo que se queda: `pnpm verify` corre DENTRO del build (typecheck, lint,
+# tests, i18n y dominio), así que necesita más que el código de producción.
+# Deben entrar: `scripts/` (jest los incluye en sus roots y de ahí salen
+# i18n:check y domain:check), `domain-manifest.json` y `.domain-vocabulary.json`
+# (los leen el codegen y eslint) y `.prettierrc` (eslint carga
+# eslint-plugin-prettier: sin ese archivo prettier usa sus valores por defecto y
+# el lint falla en todo el código).
+
+# ── Dependencias y artefactos: se reconstruyen dentro de la imagen ───────────
 node_modules
 dist
 coverage
-src/tools
+**/*.tsbuildinfo
+
+# ── Git y CI ─────────────────────────────────────────────────────────────────
+# La historia pesa y puede conservar secretos en commits antiguos aunque el
+# archivo ya no exista en el árbol de trabajo.
 .git
+.gitignore
+.github
+
+# ── Secretos ─────────────────────────────────────────────────────────────────
+# En una imagen que se publica en un registry esto no es opcional. `.env.example`
+# tampoco entra: no tiene secretos, pero no le sirve de nada a la aplicación.
 .env
 .env.*
-!.env.example
-*.log
+
+# ── Herramientas de mantenimiento ────────────────────────────────────────────
+# Fuera de la imagen a propósito, no por tamaño: `decrypt-snapshot` descifra
+# datos de menores y `seed-*` escribe en la base. Nada de eso tiene por qué
+# estar disponible dentro del contenedor que da la cara a internet; se corren
+# desde un checkout local. Ningún módulo de `src/` las importa, así que el
+# build no las echa de menos.
+src/tools
+
+# ── Documentación y utillaje de editor/agentes ───────────────────────────────
+# No influyen en el build y cambian a menudo: dejarlos entrar rompería el cache
+# de capas sin ganar nada.
+docs
+**/*.md
+.claude
+.superpowers
+.idea
+.vscode
+.dropboxignore
+**/*.log
+
+# NOTA: `test/` SÍ entra, aunque `pnpm test` no lo use (jest tiene rootDir `src`
+# con roots `src` y `scripts`). Lo necesita el lint, cuyo glob es
+# `{src,apps,libs,scripts,test}/**/*.ts`: dejarlo fuera haría que `pnpm verify`
+# dentro de la imagen no linteara lo mismo que en local, y "pasa en CI" dejaría
+# de significar "pasa en tu máquina". Son 12 KB.
