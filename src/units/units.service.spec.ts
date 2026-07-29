@@ -181,6 +181,7 @@ describe('UnitsService', () => {
   describe('alcance de las operaciones por id', () => {
     const operations: [string, (id: string) => Promise<unknown>][] = [
       ['findOne', (id) => service.findOne(actor, id)],
+      ['people', (id) => service.people(actor, id)],
       ['configure', (id) => service.configure(actor, id, configureDto())],
       ['setMembers', (id) => service.setMembers(actor, id, [])],
       ['update', (id) => service.update(actor, id, { name: 'Otra' })],
@@ -263,6 +264,78 @@ describe('UnitsService', () => {
       await expect(
         service.findOne(actor, new Types.ObjectId().toString()),
       ).rejects.toMatchObject({ code: K.UNITS.NOT_FOUND });
+    });
+  });
+
+  describe('people', () => {
+    const protagonist = {
+      _id: new Types.ObjectId(),
+      name: 'Ana Ruiz',
+      tipo: 'protagonista',
+      groupId: 304,
+    };
+    const adult = {
+      _id: new Types.ObjectId(),
+      name: 'Zulema Ruiz',
+      tipo: 'adulto',
+      groupId: 304,
+    };
+
+    function withPeople(unit: UnitDoc) {
+      unitModel.findById.mockReturnValue(chain(unit));
+      currentUser.get.mockResolvedValue(superAdmin);
+      userModel.find.mockImplementation((filter: { tipo: string }) =>
+        chain(filter.tipo === 'protagonista' ? [protagonist] : [adult]),
+      );
+    }
+
+    it('separa los protagonistas de la unidad de los adultos del grupo', async () => {
+      const unit = makeUnit({ groupId: 304 });
+      withPeople(unit);
+
+      const people = await service.people(actor, unit._id.toString());
+
+      expect(people.members.map((p) => p.name)).toEqual(['Ana Ruiz']);
+      expect(people.adults.map((p) => p.name)).toEqual(['Zulema Ruiz']);
+    });
+
+    it('busca los protagonistas por unidad y los adultos por grupo', async () => {
+      const unit = makeUnit({ groupId: 304 });
+      withPeople(unit);
+
+      await service.people(actor, unit._id.toString());
+
+      expect(userModel.find).toHaveBeenCalledWith(
+        expect.objectContaining({ unitId: unit._id, tipo: 'protagonista' }),
+      );
+      expect(userModel.find).toHaveBeenCalledWith(
+        expect.objectContaining({ groupId: 304, tipo: 'adulto' }),
+      );
+    });
+
+    /**
+     * El desplegable de jefe solo debe ofrecer a quien `assertEligibleLeaders`
+     * aceptaría después: ofrecer a un adulto inactivo lleva a un 400 al guardar.
+     */
+    it('descarta a los adultos inactivos, que no pueden ser jefes', async () => {
+      const unit = makeUnit({ groupId: 304 });
+      withPeople(unit);
+
+      await service.people(actor, unit._id.toString());
+
+      expect(userModel.find).toHaveBeenCalledWith(
+        expect.objectContaining({ tipo: 'adulto', estado: true }),
+      );
+    });
+
+    it('devuelve los ids como texto, listos para viajar en JSON', async () => {
+      const unit = makeUnit({ groupId: 304 });
+      withPeople(unit);
+
+      const people = await service.people(actor, unit._id.toString());
+
+      expect(people.members[0]._id).toBe(protagonist._id.toString());
+      expect(people.adults[0]._id).toBe(adult._id.toString());
     });
   });
 

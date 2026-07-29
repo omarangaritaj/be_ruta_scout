@@ -51,6 +51,19 @@ function isDuplicateKey(error: unknown): boolean {
   );
 }
 
+export interface UnitPerson {
+  _id: string;
+  name: string;
+  tipo: string;
+  groupId?: number;
+  unitId?: string;
+}
+
+export interface UnitPeople {
+  members: UnitPerson[];
+  adults: UnitPerson[];
+}
+
 export type SeedGroupOutcome =
   | {
       status: 'seeded';
@@ -111,6 +124,48 @@ export class UnitsService {
   }
 
   /**
+   * Las dos listas que pinta el detalle. Se sirven por HTTP y no por PowerSync:
+   * la unidad se administra en línea, así que replicar personas al dispositivo
+   * solo añadía una copia que mantener y un dato de menores que custodiar.
+   *
+   * La proyección es explícita, no `*`: de `users` solo sale lo que la pantalla
+   * muestra, y nunca el documento completo de un protagonista menor de edad.
+   */
+  async people(user: AuthUser, id: string): Promise<UnitPeople> {
+    const unit = await this.authorize(user, id);
+
+    const [members, adults] = await Promise.all([
+      this.peopleBy({ unitId: unit._id, tipo: D.PERSON_TYPE.PROTAGONIST }),
+      this.peopleBy({
+        groupId: unit.groupId,
+        tipo: D.PERSON_TYPE.ADULT,
+        estado: true,
+      }),
+    ]);
+
+    return { members, adults };
+  }
+
+  private async peopleBy(
+    filter: Record<string, unknown>,
+  ): Promise<UnitPerson[]> {
+    const people = await this.userModel
+      .find(filter)
+      .select('_id name tipo groupId unitId')
+      .sort({ name: 1 })
+      .lean()
+      .exec();
+
+    return people.map((person) => ({
+      _id: person._id.toString(),
+      name: person.name,
+      tipo: person.tipo,
+      groupId: person.groupId,
+      unitId: person.unitId?.toString(),
+    }));
+  }
+
+  /**
    * Puerta única de las operaciones por id: carga la unidad y comprueba que el
    * actor la alcance. Los cinco endpoints con `:id` entran por aquí, así que no
    * hay forma de añadir uno nuevo que se salte la comprobación sin notarlo.
@@ -165,7 +220,7 @@ export class UnitsService {
     const people = await this.userModel
       .find({ groupId, estado: true })
       .select(
-        '_id name tipo cargoSiscout cargos districtId districtName unitId',
+        '_id name tipo cargoSiscout cargos age districtId districtName unitId',
       )
       .lean()
       .exec();

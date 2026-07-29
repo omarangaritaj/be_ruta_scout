@@ -27,7 +27,7 @@ import {
 import { setMembersSchema, type SetMembersDto } from './dto/set-members.dto';
 import { updateUnitSchema, type UpdateUnitDto } from './dto/update-unit.dto';
 import { UnitDocument } from './schemas/unit.schema';
-import { UnitsService } from './units.service';
+import { UnitsService, type UnitPeople } from './units.service';
 
 @UseGuards(JwtAuthGuard, PermissionsGuard)
 @Controller('units')
@@ -47,6 +47,15 @@ export class UnitsController {
     @Param('id', ParseObjectIdPipe) id: string,
   ): Promise<UnitDocument> {
     return this.unitsService.findOne(req.user, id);
+  }
+
+  @Get(':id/people')
+  @RequirePermissions('unit:read')
+  async people(
+    @Req() req: { user: AuthUser },
+    @Param('id', ParseObjectIdPipe) id: string,
+  ): Promise<UnitPeople> {
+    return this.unitsService.people(req.user, id);
   }
 
   @Post('leadership')

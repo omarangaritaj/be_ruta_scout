@@ -244,10 +244,18 @@ Pasos por grupo:
      tenga.
    - `city`: se deja vacío. Lo aporta la persona en el modal.
    - `configuredAt`: ausente, para que la unidad dispare el modal.
-   - `leaders`: vacío.
+   - `leaders`: las demás jefaturas de esa rama (los subjefes, y un segundo
+     titular si lo hubiera), sin repetir al jefe ya elegido. Solo cuentan las de
+     la rama propia: si el jefe salió del escalón de grupo, la unidad nace sin
+     subjefes.
 4. Escribir `unitId` en cada protagonista y crear sus filas en `unit_memberships`
-   (`member` por cada protagonista, `unit_leader` por el jefe resuelto), todo en la
-   misma transacción.
+   (`member` por cada protagonista, `unit_leader` por el jefe resuelto,
+   `assistant` por cada subjefe), todo en la misma transacción.
+
+> **Por qué los subjefes entran desde la siembra**: el bucket
+> `units_of_the_member` de PowerSync se parametriza por `unit_memberships`. Un
+> subjefe sin fila propia no recibe en su dispositivo ni un solo protagonista, y
+> el detalle de su unidad le sale vacío aunque tenga miembros en Mongo.
 
 ### Resolución del jefe de unidad
 
@@ -374,12 +382,18 @@ esa sección de `AGENTS.md` al implementar.
 
 Se abre solo, sin poder descartarse, cuando `configuredAt` está ausente. Campos:
 
-| Campo | Control | Destino |
-|---|---|---|
-| Nombre de la unidad | `input` | `name` |
-| Jefe de unidad | desplegable de adultos del grupo | `unitLeaderId` |
-| Subjefes | lista con checkbox de adultos del grupo | `leaders` |
-| Ciudad o municipio | `input` | `city` |
+| Campo | Control | Destino | Al abrir |
+|---|---|---|---|
+| Nombre de la unidad | `input` | `name` | vacío |
+| Jefe de unidad | desplegable de adultos del grupo | `unitLeaderId` | el jefe sembrado |
+| Subjefes | lista con checkbox de adultos del grupo | `leaders` | los subjefes sembrados |
+| Ciudad o municipio | `input` | `city` | lo que traiga la unidad |
+
+El modal llega **prellenado con la jefatura que resolvió la siembra**: quien entra
+no vuelve a elegir gente que el sistema ya dedujo de SiScout, solo confirma. El
+nombre es la excepción y nace vacío a propósito: el placeholder
+`"cambiar nombre unidad <rama>"` no debe poder guardarse de un clic, porque este
+modal es hoy el único camino para ponerle nombre real a la unidad.
 
 Validación antes de guardar: nombre no vacío y único dentro del grupo, y jefe
 seleccionado. El conflicto de nombre se resuelve en el servidor por el índice único
