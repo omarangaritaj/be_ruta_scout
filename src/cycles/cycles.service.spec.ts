@@ -9,6 +9,7 @@ import {
 } from '../common';
 import { CurrentUserService } from '../current-user/current-user.service';
 import { D } from '../domain';
+import { GrowthItemsService } from '../growth-items/growth-items.service';
 import { QuestionsService } from '../questions/questions.service';
 import { Unit } from '../units/schemas/unit.schema';
 import { Cycle } from './schemas/cycle.schema';
@@ -37,12 +38,14 @@ describe('CyclesService', () => {
   let unitModel: { find: jest.Mock; findById: jest.Mock };
   let currentUser: { get: jest.Mock };
   let questionsMock: { findActiveByBranch: jest.Mock };
+  let growthItemsMock: { findAll: jest.Mock };
 
   beforeEach(async () => {
     cycleModel = { find: jest.fn(), findById: jest.fn(), create: jest.fn() };
     unitModel = { find: jest.fn(), findById: jest.fn() };
     currentUser = { get: jest.fn().mockResolvedValue(NATION_PROFILE) };
     questionsMock = { findActiveByBranch: jest.fn() };
+    growthItemsMock = { findAll: jest.fn().mockResolvedValue([]) };
 
     const moduleRef = await Test.createTestingModule({
       providers: [
@@ -50,6 +53,7 @@ describe('CyclesService', () => {
         { provide: getModelToken(Cycle.name), useValue: cycleModel },
         { provide: getModelToken(Unit.name), useValue: unitModel },
         { provide: QuestionsService, useValue: questionsMock },
+        { provide: GrowthItemsService, useValue: growthItemsMock },
         { provide: CurrentUserService, useValue: currentUser },
       ],
     }).compile();
@@ -408,6 +412,146 @@ describe('CyclesService', () => {
       await service.updateFocus(actor, 'c1', { objective: '' });
 
       expect(cycle.focus).toEqual({ objective: '', competencies: [] });
+    });
+
+    it('guarda el texto y el área desde el catálogo, no desde el cliente', async () => {
+      const save = jest.fn().mockResolvedValue(undefined);
+      const cycle = {
+        _id: 'c1',
+        unitId: 'u1',
+        isActive: true,
+        focus: { competencies: [] },
+        markModified: jest.fn(),
+        save,
+      };
+      cycleModel.findById.mockReturnValue(chainOf(cycle));
+      unitModel.findById.mockReturnValue(
+        chainOf({ _id: 'u1', groupId: 7, branch: D.BRANCH.MANADA }),
+      );
+      growthItemsMock.findAll.mockResolvedValue([
+        {
+          _id: 'g1',
+          branch: D.BRANCH.MANADA,
+          growthArea: D.GROWTH_AREA.CARACTER,
+          text: 'Toma decisiones propias',
+        },
+      ]);
+
+      await service.updateFocus(actor, 'c1', {
+        competencies: ['g1'],
+      } as never);
+
+      expect(cycle.focus).toEqual({
+        competencies: [
+          {
+            growthItemId: 'g1',
+            text: 'Toma decisiones propias',
+            growthArea: D.GROWTH_AREA.CARACTER,
+          },
+        ],
+      });
+      expect(save).toHaveBeenCalled();
+    });
+
+    it('rechaza una competencia que no está en el catálogo de la rama', async () => {
+      cycleModel.findById.mockReturnValue(
+        chainOf({
+          _id: 'c1',
+          unitId: 'u1',
+          isActive: true,
+          focus: { competencies: [] },
+          markModified: jest.fn(),
+          save: jest.fn(),
+        }),
+      );
+      unitModel.findById.mockReturnValue(
+        chainOf({ _id: 'u1', groupId: 7, branch: D.BRANCH.MANADA }),
+      );
+      growthItemsMock.findAll.mockResolvedValue([]);
+
+      await expect(
+        service.updateFocus(actor, 'c1', { competencies: ['g9'] } as never),
+      ).rejects.toBeInstanceOf(AppBadRequestException);
+    });
+
+    it('rechaza la misma competencia repetida', async () => {
+      cycleModel.findById.mockReturnValue(
+        chainOf({
+          _id: 'c1',
+          unitId: 'u1',
+          isActive: true,
+          focus: { competencies: [] },
+          markModified: jest.fn(),
+          save: jest.fn(),
+        }),
+      );
+      unitModel.findById.mockReturnValue(
+        chainOf({ _id: 'u1', groupId: 7, branch: D.BRANCH.MANADA }),
+      );
+      growthItemsMock.findAll.mockResolvedValue([
+        {
+          _id: 'g1',
+          branch: D.BRANCH.MANADA,
+          growthArea: D.GROWTH_AREA.CARACTER,
+          text: 'Toma decisiones propias',
+        },
+      ]);
+
+      await expect(
+        service.updateFocus(actor, 'c1', {
+          competencies: ['g1', 'g1'],
+        } as never),
+      ).rejects.toBeInstanceOf(AppBadRequestException);
+    });
+
+    it('acepta más de tres competencias', async () => {
+      const save = jest.fn().mockResolvedValue(undefined);
+      const cycle = {
+        _id: 'c1',
+        unitId: 'u1',
+        isActive: true,
+        focus: { competencies: [] },
+        markModified: jest.fn(),
+        save,
+      };
+      cycleModel.findById.mockReturnValue(chainOf(cycle));
+      unitModel.findById.mockReturnValue(
+        chainOf({ _id: 'u1', groupId: 7, branch: D.BRANCH.MANADA }),
+      );
+      growthItemsMock.findAll.mockResolvedValue(
+        ['g1', 'g2', 'g3', 'g4'].map((id) => ({
+          _id: id,
+          branch: D.BRANCH.MANADA,
+          growthArea: D.GROWTH_AREA.CARACTER,
+          text: `Competencia ${id}`,
+        })),
+      );
+
+      await service.updateFocus(actor, 'c1', {
+        competencies: ['g1', 'g2', 'g3', 'g4'],
+      } as never);
+
+      expect(cycle.focus.competencies).toHaveLength(4);
+    });
+
+    it('no consulta el catálogo cuando el enfoque no trae competencias', async () => {
+      cycleModel.findById.mockReturnValue(
+        chainOf({
+          _id: 'c1',
+          unitId: 'u1',
+          isActive: true,
+          focus: { competencies: [] },
+          markModified: jest.fn(),
+          save: jest.fn().mockResolvedValue(undefined),
+        }),
+      );
+      unitModel.findById.mockReturnValue(
+        chainOf({ _id: 'u1', groupId: 7, branch: D.BRANCH.MANADA }),
+      );
+
+      await service.updateFocus(actor, 'c1', { objective: 'Nuevo' });
+
+      expect(growthItemsMock.findAll).not.toHaveBeenCalled();
     });
   });
 });

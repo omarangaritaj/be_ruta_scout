@@ -9,6 +9,8 @@ import {
   AppNotFoundException,
 } from '../common';
 import { CurrentUserService } from '../current-user/current-user.service';
+import type { Branch, GrowthArea } from '../domain';
+import { GrowthItemsService } from '../growth-items/growth-items.service';
 import { K } from '../i18n';
 import { QuestionsService } from '../questions/questions.service';
 import { Unit, UnitDocument } from '../units/schemas/unit.schema';
@@ -30,6 +32,7 @@ export class CyclesService {
     @InjectModel(Unit.name)
     private readonly unitModel: Model<UnitDocument>,
     private readonly questionsService: QuestionsService,
+    private readonly growthItemsService: GrowthItemsService,
     private readonly currentUser: CurrentUserService,
   ) {}
 
@@ -129,9 +132,46 @@ export class CyclesService {
     dto: UpdateFocusDto,
   ): Promise<CycleDocument> {
     const cycle = await this.findOne(user, id);
-    Object.assign(cycle.focus, dto);
+
+    if (dto.competencies === undefined) {
+      Object.assign(cycle.focus, dto);
+      cycle.markModified('focus');
+      return cycle.save();
+    }
+
+    const unit = await this.unitInScope(user, String(cycle.unitId));
+    const competencies = await this.buildCompetencies(
+      dto.competencies.map(String),
+      unit.branch,
+    );
+
+    Object.assign(cycle.focus, { ...dto, competencies });
     cycle.markModified('focus');
     return cycle.save();
+  }
+
+  private async buildCompetencies(
+    ids: string[],
+    branch: Branch,
+  ): Promise<{ growthItemId: string; text: string; growthArea: GrowthArea }[]> {
+    if (new Set(ids).size !== ids.length) {
+      throw new AppBadRequestException(K.CYCLES.DUPLICATE_COMPETENCY);
+    }
+
+    const catalog = await this.growthItemsService.findAll(branch);
+    const byId = new Map(catalog.map((item) => [String(item._id), item]));
+
+    return ids.map((growthItemId) => {
+      const item = byId.get(growthItemId);
+      if (!item) {
+        throw new AppBadRequestException(K.CYCLES.UNKNOWN_COMPETENCY);
+      }
+      return {
+        growthItemId,
+        text: item.text,
+        growthArea: item.growthArea,
+      };
+    });
   }
 
   private async reachableUnits(user: AuthUser): Promise<UnitDocument[]> {

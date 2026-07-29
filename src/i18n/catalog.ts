@@ -50,15 +50,21 @@ export const CATALOG = {
     UNAUTHORIZED: 'Debes iniciar sesión para realizar esta acción.',
   },
   CYCLES: {
+    COMPETENCY_BRANCH_MISMATCH:
+      'Alguna competencia no pertenece a la rama de la unidad del ciclo',
     DIAGNOSTIC_INCOMPLETE:
       'El diagnóstico debe responder todas las preguntas de la rama',
     DIAGNOSTIC_LOCKED: 'El diagnóstico de este ciclo ya fue registrado',
     DUPLICATE_ANSWER:
       'El diagnóstico trae respuestas repetidas para la misma pregunta',
+    DUPLICATE_COMPETENCY: 'El enfoque trae la misma competencia repetida',
+    ENVIRONMENT_REQUIRED:
+      'El nombre del ambiente y su conexión con el objetivo son obligatorios',
     INVALID_DATE_RANGE: 'La fecha de fin debe ser posterior a la de inicio',
     NOT_FOUND: 'No existe un ciclo con id "{id}"',
     OUT_OF_SCOPE: 'Este ciclo no está dentro de tu alcance',
     SUMMARY_REQUIRED: 'La síntesis de diagnóstico es obligatoria',
+    UNKNOWN_COMPETENCY: 'Alguna competencia no existe en el catálogo',
   },
   EMAIL: {
     BRAND_RUTA: 'R.U.T.A.',

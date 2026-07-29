@@ -1,6 +1,11 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument, Schema as MongooseSchema, Types } from 'mongoose';
-import { DIAGNOSTIC_BLOCKS, type DiagnosticBlock } from '../../domain';
+import {
+  DIAGNOSTIC_BLOCKS,
+  type DiagnosticBlock,
+  GROWTH_AREAS,
+  type GrowthArea,
+} from '../../domain';
 
 export type CycleDocument = HydratedDocument<Cycle>;
 
@@ -30,6 +35,25 @@ export const DiagnosticAnswerSchema =
   SchemaFactory.createForClass(DiagnosticAnswer);
 
 @Schema({ _id: false })
+export class CycleCompetency {
+  @Prop({
+    type: MongooseSchema.Types.ObjectId,
+    ref: 'GrowthItem',
+    required: true,
+  })
+  growthItemId: Types.ObjectId;
+
+  @Prop({ required: true, trim: true })
+  text: string;
+
+  @Prop({ type: String, enum: GROWTH_AREAS, required: true })
+  growthArea: GrowthArea;
+}
+
+export const CycleCompetencySchema =
+  SchemaFactory.createForClass(CycleCompetency);
+
+@Schema({ _id: false })
 export class CycleFocus {
   @Prop({ trim: true })
   objective?: string;
@@ -37,8 +61,8 @@ export class CycleFocus {
   @Prop({ trim: true })
   educationalFocus?: string;
 
-  @Prop({ type: [String], default: [] })
-  competencies: string[];
+  @Prop({ type: [CycleCompetencySchema], default: [] })
+  competencies: CycleCompetency[];
 
   @Prop({ trim: true })
   environmentName?: string;

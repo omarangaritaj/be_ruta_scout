@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
+import { GrowthItemsModule } from '../growth-items/growth-items.module';
 import { QuestionsModule } from '../questions/questions.module';
 import { UnitsModule } from '../units/units.module';
 import { Cycle, CycleSchema } from './schemas/cycle.schema';
@@ -11,6 +12,7 @@ import { CyclesService } from './cycles.service';
     MongooseModule.forFeature([{ name: Cycle.name, schema: CycleSchema }]),
     UnitsModule,
     QuestionsModule,
+    GrowthItemsModule,
   ],
   controllers: [CyclesController],
   providers: [CyclesService],
