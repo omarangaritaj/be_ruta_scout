@@ -3,10 +3,12 @@ import { Test } from '@nestjs/testing';
 import type { AuthUser } from '../auth/strategies/jwt.strategy';
 import {
   AppBadRequestException,
+  AppConflictException,
   AppForbiddenException,
   AppNotFoundException,
 } from '../common';
 import { CurrentUserService } from '../current-user/current-user.service';
+import { D } from '../domain';
 import { QuestionsService } from '../questions/questions.service';
 import { Unit } from '../units/schemas/unit.schema';
 import { Cycle } from './schemas/cycle.schema';
@@ -57,7 +59,7 @@ describe('CyclesService', () => {
 
   it('ordena el listado por fecha de inicio descendente', async () => {
     unitModel.find.mockReturnValue(
-      chainOf([{ _id: 'u1', groupId: 7, branch: 'manada' }]),
+      chainOf([{ _id: 'u1', groupId: 7, branch: D.BRANCH.MANADA }]),
     );
     cycleModel.find.mockReturnValue(chainOf([]));
 
@@ -70,7 +72,7 @@ describe('CyclesService', () => {
 
   it('excluye los ciclos desactivados', async () => {
     unitModel.find.mockReturnValue(
-      chainOf([{ _id: 'u1', groupId: 7, branch: 'manada' }]),
+      chainOf([{ _id: 'u1', groupId: 7, branch: D.BRANCH.MANADA }]),
     );
     cycleModel.find.mockReturnValue(chainOf([]));
 
@@ -85,9 +87,9 @@ describe('CyclesService', () => {
     currentUser.get.mockResolvedValue(BRANCH_PROFILE);
     unitModel.find.mockReturnValue(
       chainOf([
-        { _id: 'u1', groupId: 7, branch: 'manada' },
-        { _id: 'u2', groupId: 7, branch: 'tropa' },
-        { _id: 'u3', groupId: 99, branch: 'manada' },
+        { _id: 'u1', groupId: 7, branch: D.BRANCH.MANADA },
+        { _id: 'u2', groupId: 7, branch: D.BRANCH.TROPA },
+        { _id: 'u3', groupId: 99, branch: D.BRANCH.MANADA },
       ]),
     );
     cycleModel.find.mockReturnValue(chainOf([]));
@@ -124,7 +126,7 @@ describe('CyclesService', () => {
       chainOf({ _id: 'c1', unitId: 'u2', isActive: true }),
     );
     unitModel.findById.mockReturnValue(
-      chainOf({ _id: 'u2', groupId: 99, branch: 'tropa' }),
+      chainOf({ _id: 'u2', groupId: 99, branch: D.BRANCH.TROPA }),
     );
     currentUser.get.mockResolvedValue(BRANCH_PROFILE);
 
@@ -137,7 +139,7 @@ describe('CyclesService', () => {
     const cycle = { _id: 'c1', unitId: 'u1', isActive: true };
     cycleModel.findById.mockReturnValue(chainOf(cycle));
     unitModel.findById.mockReturnValue(
-      chainOf({ _id: 'u1', groupId: 7, branch: 'manada' }),
+      chainOf({ _id: 'u1', groupId: 7, branch: D.BRANCH.MANADA }),
     );
     currentUser.get.mockResolvedValue(BRANCH_PROFILE);
 
@@ -147,18 +149,29 @@ describe('CyclesService', () => {
   describe('saveDiagnostic', () => {
     it('rechaza una respuesta de una pregunta de otra rama', async () => {
       cycleModel.findById.mockReturnValue(
-        chainOf({ _id: 'c1', unitId: 'u1', isActive: true }),
+        chainOf({
+          _id: 'c1',
+          unitId: 'u1',
+          isActive: true,
+          diagnosticAnswers: [],
+        }),
       );
       unitModel.findById.mockReturnValue(
-        chainOf({ _id: 'u1', groupId: 7, branch: 'manada' }),
+        chainOf({ _id: 'u1', groupId: 7, branch: D.BRANCH.MANADA }),
       );
       questionsMock.findActiveByBranch.mockResolvedValue([
-        { _id: 'q1', branch: 'tropa', block: 'rap', text: 'Uno' },
+        {
+          _id: 'q1',
+          branch: D.BRANCH.TROPA,
+          block: D.DIAGNOSTIC_BLOCK.RAP,
+          text: 'Uno',
+        },
       ]);
 
       await expect(
         service.saveDiagnostic(actor, 'c1', {
           answers: [{ questionId: 'q1', score: 3 }],
+          summary: 'Intento',
         } as never),
       ).rejects.toBeInstanceOf(AppBadRequestException);
     });
@@ -174,10 +187,15 @@ describe('CyclesService', () => {
       };
       cycleModel.findById.mockReturnValue(chainOf(cycle));
       unitModel.findById.mockReturnValue(
-        chainOf({ _id: 'u1', groupId: 7, branch: 'manada' }),
+        chainOf({ _id: 'u1', groupId: 7, branch: D.BRANCH.MANADA }),
       );
       questionsMock.findActiveByBranch.mockResolvedValue([
-        { _id: 'q1', branch: 'manada', block: 'gsat', text: 'Real' },
+        {
+          _id: 'q1',
+          branch: D.BRANCH.MANADA,
+          block: D.DIAGNOSTIC_BLOCK.GSAT,
+          text: 'Real',
+        },
       ]);
 
       await service.saveDiagnostic(actor, 'c1', {
@@ -186,89 +204,35 @@ describe('CyclesService', () => {
       } as never);
 
       expect(cycle.diagnosticAnswers).toEqual([
-        { questionId: 'q1', questionText: 'Real', block: 'gsat', score: 4 },
-      ]);
-      expect(save).toHaveBeenCalled();
-    });
-
-    it('conserva las respuestas cuya pregunta ya no está en el catálogo activo', async () => {
-      const save = jest.fn().mockResolvedValue(undefined);
-      const cycle = {
-        _id: 'c1',
-        unitId: 'u1',
-        isActive: true,
-        diagnosticAnswers: [
-          {
-            questionId: 'q1',
-            questionText: 'Desactivada',
-            block: 'rap',
-            score: 2,
-            notes: 'Lo que se dijo entonces',
-          },
-          {
-            questionId: 'q2',
-            questionText: 'Vigente',
-            block: 'gsat',
-            score: 3,
-          },
-        ],
-        save,
-      };
-      cycleModel.findById.mockReturnValue(chainOf(cycle));
-      unitModel.findById.mockReturnValue(
-        chainOf({ _id: 'u1', groupId: 7, branch: 'manada' }),
-      );
-      questionsMock.findActiveByBranch.mockResolvedValue([
-        { _id: 'q2', branch: 'manada', block: 'gsat', text: 'Vigente' },
-      ]);
-
-      await service.saveDiagnostic(actor, 'c1', {
-        answers: [{ questionId: 'q2', score: 5 }],
-      } as never);
-
-      expect(cycle.diagnosticAnswers).toEqual([
-        { questionId: 'q2', questionText: 'Vigente', block: 'gsat', score: 5 },
         {
           questionId: 'q1',
-          questionText: 'Desactivada',
-          block: 'rap',
-          score: 2,
-          notes: 'Lo que se dijo entonces',
+          questionText: 'Real',
+          block: D.DIAGNOSTIC_BLOCK.GSAT,
+          score: 4,
         },
       ]);
       expect(save).toHaveBeenCalled();
     });
 
-    it('borra la síntesis cuando llega vacía', async () => {
-      const save = jest.fn().mockResolvedValue(undefined);
-      const cycle = {
-        _id: 'c1',
-        unitId: 'u1',
-        isActive: true,
-        diagnosticAnswers: [],
-        diagnosticSummary: 'Lo que se escribió antes',
-        save,
-      };
-      cycleModel.findById.mockReturnValue(chainOf(cycle));
-      unitModel.findById.mockReturnValue(
-        chainOf({ _id: 'u1', groupId: 7, branch: 'manada' }),
-      );
-      questionsMock.findActiveByBranch.mockResolvedValue([]);
-
-      await service.saveDiagnostic(actor, 'c1', { answers: [], summary: '' });
-
-      expect(cycle.diagnosticSummary).toBe('');
-    });
-
     it('rechaza dos respuestas para la misma pregunta', async () => {
       cycleModel.findById.mockReturnValue(
-        chainOf({ _id: 'c1', unitId: 'u1', isActive: true }),
+        chainOf({
+          _id: 'c1',
+          unitId: 'u1',
+          isActive: true,
+          diagnosticAnswers: [],
+        }),
       );
       unitModel.findById.mockReturnValue(
-        chainOf({ _id: 'u1', groupId: 7, branch: 'manada' }),
+        chainOf({ _id: 'u1', groupId: 7, branch: D.BRANCH.MANADA }),
       );
       questionsMock.findActiveByBranch.mockResolvedValue([
-        { _id: 'q1', branch: 'manada', block: 'rap', text: 'Uno' },
+        {
+          _id: 'q1',
+          branch: D.BRANCH.MANADA,
+          block: D.DIAGNOSTIC_BLOCK.RAP,
+          text: 'Uno',
+        },
       ]);
 
       await expect(
@@ -277,8 +241,122 @@ describe('CyclesService', () => {
             { questionId: 'q1', score: 3 },
             { questionId: 'q1', score: 5 },
           ],
+          summary: 'Doble',
         } as never),
       ).rejects.toBeInstanceOf(AppBadRequestException);
+    });
+
+    it('rechaza con 409 un diagnóstico que ya fue registrado', async () => {
+      cycleModel.findById.mockReturnValue(
+        chainOf({
+          _id: 'c1',
+          unitId: 'u1',
+          isActive: true,
+          diagnosticAnswers: [{ questionId: 'q1' }],
+          diagnosticSummary: 'Ya quedó escrito',
+        }),
+      );
+      unitModel.findById.mockReturnValue(
+        chainOf({ _id: 'u1', groupId: 7, branch: D.BRANCH.MANADA }),
+      );
+
+      await expect(
+        service.saveDiagnostic(actor, 'c1', {
+          answers: [{ questionId: 'q1', score: 3 }],
+          summary: 'Intento de reescritura',
+        } as never),
+      ).rejects.toBeInstanceOf(AppConflictException);
+    });
+
+    it('no consulta el catálogo si el diagnóstico ya está cerrado', async () => {
+      cycleModel.findById.mockReturnValue(
+        chainOf({
+          _id: 'c1',
+          unitId: 'u1',
+          isActive: true,
+          diagnosticAnswers: [{ questionId: 'q1' }],
+          diagnosticSummary: 'Ya quedó escrito',
+        }),
+      );
+      unitModel.findById.mockReturnValue(
+        chainOf({ _id: 'u1', groupId: 7, branch: D.BRANCH.MANADA }),
+      );
+
+      await expect(
+        service.saveDiagnostic(actor, 'c1', {
+          answers: [],
+          summary: 'x',
+        }),
+      ).rejects.toBeInstanceOf(AppConflictException);
+      expect(questionsMock.findActiveByBranch).not.toHaveBeenCalled();
+    });
+
+    it('rechaza un diagnóstico al que le faltan preguntas', async () => {
+      cycleModel.findById.mockReturnValue(
+        chainOf({
+          _id: 'c1',
+          unitId: 'u1',
+          isActive: true,
+          diagnosticAnswers: [],
+        }),
+      );
+      unitModel.findById.mockReturnValue(
+        chainOf({ _id: 'u1', groupId: 7, branch: D.BRANCH.MANADA }),
+      );
+      questionsMock.findActiveByBranch.mockResolvedValue([
+        {
+          _id: 'q1',
+          branch: D.BRANCH.MANADA,
+          block: D.DIAGNOSTIC_BLOCK.RAP,
+          text: 'Uno',
+        },
+        {
+          _id: 'q2',
+          branch: D.BRANCH.MANADA,
+          block: D.DIAGNOSTIC_BLOCK.GSAT,
+          text: 'Dos',
+        },
+      ]);
+
+      await expect(
+        service.saveDiagnostic(actor, 'c1', {
+          answers: [{ questionId: 'q1', score: 3 }],
+          summary: 'Media tabla',
+        } as never),
+      ).rejects.toBeInstanceOf(AppBadRequestException);
+    });
+
+    it('guarda la síntesis junto con las respuestas', async () => {
+      const save = jest.fn().mockResolvedValue(undefined);
+      const cycle = {
+        _id: 'c1',
+        unitId: 'u1',
+        isActive: true,
+        diagnosticAnswers: [],
+        save,
+      };
+      cycleModel.findById.mockReturnValue(chainOf(cycle));
+      unitModel.findById.mockReturnValue(
+        chainOf({ _id: 'u1', groupId: 7, branch: D.BRANCH.MANADA }),
+      );
+      questionsMock.findActiveByBranch.mockResolvedValue([
+        {
+          _id: 'q1',
+          branch: D.BRANCH.MANADA,
+          block: D.DIAGNOSTIC_BLOCK.GSAT,
+          text: 'Real',
+        },
+      ]);
+
+      await service.saveDiagnostic(actor, 'c1', {
+        answers: [{ questionId: 'q1', score: 4 }],
+        summary: 'La unidad viene floja en participación',
+      } as never);
+
+      expect(cycle).toHaveProperty(
+        'diagnosticSummary',
+        'La unidad viene floja en participación',
+      );
     });
   });
 
@@ -296,7 +374,7 @@ describe('CyclesService', () => {
       };
       cycleModel.findById.mockReturnValue(chainOf(cycle));
       unitModel.findById.mockReturnValue(
-        chainOf({ _id: 'u1', groupId: 7, branch: 'manada' }),
+        chainOf({ _id: 'u1', groupId: 7, branch: D.BRANCH.MANADA }),
       );
 
       await service.updateFocus(actor, 'c1', {
@@ -324,7 +402,7 @@ describe('CyclesService', () => {
       };
       cycleModel.findById.mockReturnValue(chainOf(cycle));
       unitModel.findById.mockReturnValue(
-        chainOf({ _id: 'u1', groupId: 7, branch: 'manada' }),
+        chainOf({ _id: 'u1', groupId: 7, branch: D.BRANCH.MANADA }),
       );
 
       await service.updateFocus(actor, 'c1', { objective: '' });

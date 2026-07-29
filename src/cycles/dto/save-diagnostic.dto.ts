@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { objectIdSchema } from '../../common';
+import { K, t } from '../../i18n';
 
 export const saveDiagnosticSchema = z.object({
   answers: z.array(
@@ -9,7 +10,10 @@ export const saveDiagnosticSchema = z.object({
       notes: z.string().trim().optional(),
     }),
   ),
-  summary: z.string().trim().optional(),
+  summary: z
+    .string()
+    .trim()
+    .min(1, { error: t(K.CYCLES.SUMMARY_REQUIRED) }),
 });
 
 export type SaveDiagnosticDto = z.infer<typeof saveDiagnosticSchema>;
