@@ -1,4 +1,4 @@
-import { resolveUnitLeader } from './leader-resolution';
+import { leadersOfBranch, resolveUnitLeader } from './leader-resolution';
 
 const branchChief = {
   _id: 'a1',
@@ -81,5 +81,54 @@ describe('resolveUnitLeader', () => {
 
   it('sin adultos no hay jefe', () => {
     expect(resolveUnitLeader('manada', [])).toBeUndefined();
+  });
+});
+
+describe('leadersOfBranch', () => {
+  const deputy = {
+    _id: 'a7',
+    name: 'Aaron Paz',
+    cargoSiscout: 'SUB-JEFE DE MANADA',
+  };
+
+  it('reune al titular y a los subjefes de esa rama', () => {
+    expect(
+      leadersOfBranch('manada', [branchChief, deputy, groupChief]).map(
+        (a) => a._id,
+      ),
+    ).toEqual(['a7', 'a1']);
+  });
+
+  it('deja fuera a quien no tiene jefatura de la rama', () => {
+    expect(
+      leadersOfBranch('manada', [groupChief, collaborator, anyAdult]),
+    ).toEqual([]);
+  });
+
+  it('no arrastra la jefatura de otra rama', () => {
+    const otherBranch = {
+      _id: 'a5',
+      name: 'Elsa Mora',
+      cargoSiscout: 'JEFE DE TROPA',
+    };
+    expect(
+      leadersOfBranch('manada', [otherBranch, branchChief]).map((a) => a._id),
+    ).toEqual(['a1']);
+  });
+
+  it('cuenta el cargo asignado por la plataforma, no solo el de SiScout', () => {
+    const assigned = {
+      _id: 'a6',
+      name: 'Nora Gil',
+      cargoSiscout: 'ACOMPANANTE',
+      cargos: [{ nombreCargo: 'SUB-JEFE DE MANADA', nivel: 'rama' }],
+    };
+    expect(
+      leadersOfBranch('manada', [assigned, branchChief]).map((a) => a._id),
+    ).toEqual(['a6', 'a1']);
+  });
+
+  it('sin adultos no hay jefatura alguna', () => {
+    expect(leadersOfBranch('manada', [])).toEqual([]);
   });
 });

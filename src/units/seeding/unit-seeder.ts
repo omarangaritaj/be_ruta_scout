@@ -1,9 +1,14 @@
 import { ramaDeEtiquetaSiscout } from '../../catalogo-cargos/ramas';
-import { BRANCHES, D, type Branch } from '../../domain';
-import { resolveUnitLeader, type LeaderCandidate } from './leader-resolution';
+import { BRANCHES, D, branchFromAge, type Branch } from '../../domain';
+import {
+  leadersOfBranch,
+  resolveUnitLeader,
+  type LeaderCandidate,
+} from './leader-resolution';
 
 export interface SeedPerson extends LeaderCandidate {
   tipo: string;
+  age?: number;
   districtId?: number;
   districtName?: string;
 }
@@ -27,14 +32,16 @@ export interface PlannedUnit {
 export type SeedSkipReason = 'no-people' | 'no-adults' | 'no-protagonists';
 
 /**
- * Protagonista cuyo `cargoSiscout` no está en el catálogo de alias de rama. Se
- * queda sin unidad y hay que reportarlo: el texto va **literal**, sin
- * normalizar, porque es justo lo que hace falta para ampliar el catálogo.
+ * Protagonista al que no se le pudo deducir la rama ni por su `cargoSiscout` ni
+ * por su edad. Se queda sin unidad y hay que reportarlo: el texto va
+ * **literal**, sin normalizar, porque es justo lo que hace falta para ampliar
+ * el catálogo de alias.
  */
 export interface DiscardedPerson {
   _id: string;
   name: string;
   cargoSiscout?: string;
+  age?: number;
 }
 
 export interface SeedPlan {
@@ -53,18 +60,32 @@ interface Classification {
   discarded: DiscardedPerson[];
 }
 
+/**
+ * Rama del protagonista: primero su `cargoSiscout`, y si no es legible, su
+ * edad. El cargo manda porque es una declaración explícita de SiScout; la edad
+ * es una inferencia, y una inferencia no debe pisar un dato afirmado —- un
+ * repitente o un adelantado están en la rama que dice su cargo, no en la que
+ * les tocaría por años.
+ */
+function branchOf(person: SeedPerson): Branch | undefined {
+  return (
+    ramaDeEtiquetaSiscout(person.cargoSiscout) ?? branchFromAge(person.age)
+  );
+}
+
 function classifyProtagonists(people: SeedPerson[]): Classification {
   const grouped = new Map<Branch, string[]>();
   const discarded: DiscardedPerson[] = [];
 
   for (const person of people) {
     if (person.tipo !== D.PERSON_TYPE.PROTAGONIST) continue;
-    const branch = ramaDeEtiquetaSiscout(person.cargoSiscout);
+    const branch = branchOf(person);
     if (!branch) {
       discarded.push({
         _id: person._id,
         name: person.name,
         cargoSiscout: person.cargoSiscout,
+        age: person.age,
       });
       continue;
     }
@@ -72,6 +93,21 @@ function classifyProtagonists(people: SeedPerson[]): Classification {
   }
 
   return { grouped, discarded };
+}
+
+/**
+ * Las jefaturas de la rama entran a la unidad desde la siembra porque el bucket
+ * `units_of_the_member` de PowerSync se parametriza por `unit_memberships`: un
+ * subjefe sin fila propia no recibe en su dispositivo ni un solo protagonista.
+ */
+function assistantsOf(
+  branch: Branch,
+  adults: SeedPerson[],
+  leader: LeaderCandidate,
+): string[] {
+  return leadersOfBranch(branch, adults)
+    .filter((candidate) => candidate._id !== leader._id)
+    .map((candidate) => candidate._id);
 }
 
 export function planGroupSeed({ groupId, people }: SeedInput): SeedPlan {
@@ -93,16 +129,19 @@ export function planGroupSeed({ groupId, people }: SeedInput): SeedPlan {
   const withDistrict = people.find((p) => p.districtId !== undefined);
 
   const units = BRANCHES.filter((branch) => grouped.has(branch)).map(
-    (branch): PlannedUnit => ({
-      name: placeholderName(branch),
-      branch,
-      groupId,
-      districtId: withDistrict?.districtId,
-      districtName: withDistrict?.districtName,
-      unitLeaderId: resolveUnitLeader(branch, adults)!._id,
-      leaders: [],
-      members: grouped.get(branch)!,
-    }),
+    (branch): PlannedUnit => {
+      const leader = resolveUnitLeader(branch, adults)!;
+      return {
+        name: placeholderName(branch),
+        branch,
+        groupId,
+        districtId: withDistrict?.districtId,
+        districtName: withDistrict?.districtName,
+        unitLeaderId: leader._id,
+        leaders: assistantsOf(branch, adults, leader),
+        members: grouped.get(branch)!,
+      };
+    },
   );
 
   return { units, discarded };

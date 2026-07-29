@@ -45,16 +45,23 @@ function byName(a: LeaderCandidate, b: LeaderCandidate): number {
   return a.name.localeCompare(b.name);
 }
 
+export function leadersOfBranch(
+  branch: Branch,
+  adults: LeaderCandidate[],
+): LeaderCandidate[] {
+  return [...adults].sort(byName).filter((a) => leadsBranch(a, branch));
+}
+
 export function resolveUnitLeader(
   branch: Branch,
   adults: LeaderCandidate[],
 ): LeaderCandidate | undefined {
   const sorted = [...adults].sort(byName);
 
-  const branchLeaders = sorted.filter((a) => leadsBranch(a, branch));
-  const titular = branchLeaders.find((a) => !isDeputy(a, branch));
+  const ownLeaders = leadersOfBranch(branch, sorted);
+  const titular = ownLeaders.find((a) => !isDeputy(a, branch));
   if (titular) return titular;
-  if (branchLeaders.length > 0) return branchLeaders[0];
+  if (ownLeaders.length > 0) return ownLeaders[0];
 
   for (const title of GROUP_CHIEF_TITLES) {
     const found = sorted.find(
