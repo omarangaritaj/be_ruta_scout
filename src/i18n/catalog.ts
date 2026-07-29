@@ -50,8 +50,6 @@ export const CATALOG = {
     UNAUTHORIZED: 'Debes iniciar sesión para realizar esta acción.',
   },
   CYCLES: {
-    COMPETENCY_BRANCH_MISMATCH:
-      'Alguna competencia no pertenece a la rama de la unidad del ciclo',
     DIAGNOSTIC_INCOMPLETE:
       'El diagnóstico debe responder todas las preguntas de la rama',
     DIAGNOSTIC_LOCKED: 'El diagnóstico de este ciclo ya fue registrado',
