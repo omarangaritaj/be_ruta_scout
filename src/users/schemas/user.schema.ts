@@ -122,7 +122,14 @@ export class User {
   age?: number;
 
   // --- Datos de adulto ---
-  @Prop({ type: [MongooseSchema.Types.ObjectId], ref: 'Role', default: [] })
+  // Indexado porque el borrado de un rol pregunta "¿quién lo tiene?" antes de
+  // dejar hacerlo; sin índice esa guarda costaría un barrido de la colección.
+  @Prop({
+    type: [MongooseSchema.Types.ObjectId],
+    ref: 'Role',
+    default: [],
+    index: true,
+  })
   roles: Types.ObjectId[];
 
   /** Cargos scout del adulto, embebidos como value objects. */

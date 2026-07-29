@@ -152,8 +152,15 @@ export const CATALOG = {
     CANNOT_DELETE_SYSTEM_ROLE: 'No se puede eliminar un rol del sistema',
     NAME_ALREADY_EXISTS: 'Ya existe un rol con ese nombre',
     NOT_FOUND: 'No existe el rol "{id}"',
+    REASSIGNMENT_INCOMPLETE:
+      'Faltan {count, plural, one {# persona} other {# personas}} por reasignar antes de eliminar el rol',
+    ROLE_IN_USE:
+      'No se puede eliminar: {count, plural, one {# persona tiene} other {# personas tienen}} este rol',
     SYSTEM_ROLE_LOCKED:
       'No se pueden alterar los permisos, el nombre ni el estado de un rol del sistema',
+    TARGET_ROLE_IS_SOURCE:
+      'El rol de reemplazo no puede ser el que se va a eliminar',
+    TARGET_ROLE_NOT_FOUND: 'No existe el rol de reemplazo "{id}"',
   },
   SISCOUT: {
     CLIENT_NOT_CONFIGURED:

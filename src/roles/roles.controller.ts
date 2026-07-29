@@ -8,6 +8,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   Req,
   UseGuards,
 } from '@nestjs/common';
@@ -20,9 +21,17 @@ import { RequirePermissions } from '../authz/require-permissions.decorator';
 import type { RouteResource } from '../domain';
 import { ParseObjectIdPipe, ZodValidationPipe } from '../common';
 import { createRoleSchema, type CreateRoleDto } from './dto/create-role.dto';
+import {
+  listRoleUsersSchema,
+  type ListRoleUsersDto,
+} from './dto/list-role-users.dto';
+import {
+  reassignRoleSchema,
+  type ReassignRoleDto,
+} from './dto/reassign-role.dto';
 import { updateRoleSchema, type UpdateRoleDto } from './dto/update-role.dto';
 import { RoleDocument } from './schemas/role.schema';
-import { RolesService } from './roles.service';
+import { RolesService, type RoleHolders } from './roles.service';
 
 @UseGuards(JwtAuthGuard, PermissionsGuard)
 @Controller('roles')
@@ -74,10 +83,36 @@ export class RolesController {
     return this.service.update(req.user.userId, id, dto);
   }
 
+  /** Quiénes tienen el rol. Lista personas, así que exige verlas también. */
+  @Get(':id/users')
+  @RequirePermissions('role:read', 'user:read')
+  holders(
+    @Param('id', ParseObjectIdPipe) id: string,
+    @Query(new ZodValidationPipe(listRoleUsersSchema)) query: ListRoleUsersDto,
+  ): Promise<RoleHolders> {
+    return this.service.listHolders(id, query);
+  }
+
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   @RequirePermissions('role:delete')
   remove(@Param('id', ParseObjectIdPipe) id: string): Promise<void> {
     return this.service.remove(id);
+  }
+
+  /**
+   * Reasigna y elimina en un solo paso. Exige además `user:approve` porque
+   * cambia los roles de otras personas: es lo mismo que pide `PATCH /users/:id`,
+   * y sin ello quien solo puede borrar roles reasignaría a media organización.
+   */
+  @Post(':id/reassign')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @RequirePermissions('role:delete', 'user:approve')
+  reassign(
+    @Req() req: { user: AuthUser },
+    @Param('id', ParseObjectIdPipe) id: string,
+    @Body(new ZodValidationPipe(reassignRoleSchema)) dto: ReassignRoleDto,
+  ): Promise<void> {
+    return this.service.reassignAndRemove(req.user.userId, id, dto);
   }
 }
