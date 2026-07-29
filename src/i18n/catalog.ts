@@ -114,7 +114,8 @@ export const CATALOG = {
   GROWTH_ITEMS: {
     AREA_NOT_IN_BRANCH: 'El área "{area}" no corresponde a la rama "{rama}"',
     NOT_FOUND: 'No existe una dimensión con id "{id}"',
-    ORDER_TAKEN: 'Ya hay una dimensión con el orden {order} en esa rama y área',
+    ORDER_TAKEN:
+      'Ya hay una dimensión con el orden {order} en esa rama y área, incluso si está desactivada',
   },
   PASSWORD_RESET: {
     INVALID_TOKEN:

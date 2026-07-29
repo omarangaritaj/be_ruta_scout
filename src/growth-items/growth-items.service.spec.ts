@@ -113,6 +113,29 @@ describe('GrowthItemsService', () => {
     ).rejects.toBeInstanceOf(AppBadRequestException);
   });
 
+  it('falla al actualizar rama o área de una dimensión inexistente', async () => {
+    model.findById.mockReturnValue({
+      exec: jest.fn().mockResolvedValue(null),
+    });
+
+    await expect(
+      service.update('inexistente', {
+        branch: 'tropa',
+        growthArea: 'afectividad',
+      }),
+    ).rejects.toBeInstanceOf(AppNotFoundException);
+  });
+
+  it('falla al actualizar el texto de una dimensión inexistente', async () => {
+    model.findByIdAndUpdate.mockReturnValue({
+      exec: jest.fn().mockResolvedValue(null),
+    });
+
+    await expect(
+      service.update('inexistente', { text: 'nuevo texto' }),
+    ).rejects.toBeInstanceOf(AppNotFoundException);
+  });
+
   it('traduce el orden duplicado a conflicto en un update sin order en el dto', async () => {
     model.findByIdAndUpdate.mockReturnValue({
       exec: jest.fn().mockRejectedValue(duplicateKeyError()),
