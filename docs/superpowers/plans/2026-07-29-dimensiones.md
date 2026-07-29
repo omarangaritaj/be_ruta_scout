@@ -315,7 +315,7 @@ Expected: escribe `lib/domain/growth-areas.ts`.
 
 - [ ] **Step 12: Añadir las etiquetas de las áreas al catálogo del frontend**
 
-`GROWTH_AREA_MESSAGE_KEY` apunta a claves que tienen que existir, o `t()` no compila. En `fe_ruta/lib/i18n/catalogo.ts`, inserta el dominio `GROWTH_AREA` en orden alfabético (va después de `DISENO` y antes de la siguiente clave):
+`GROWTH_AREA_MESSAGE_KEY` apunta a claves que tienen que existir, o `t()` no compila. En `fe_ruta/lib/i18n/catalogo.ts`, inserta el dominio `GROWTH_AREA` en orden alfabético: va **después de `EMAIL`**, no después de `DISENO`.
 
 ```ts
   GROWTH_AREA: {
