@@ -113,6 +113,25 @@ describe('GrowthItemsService', () => {
     ).rejects.toBeInstanceOf(AppBadRequestException);
   });
 
+  it('traduce el orden duplicado a conflicto en un update sin order en el dto', async () => {
+    model.findByIdAndUpdate.mockReturnValue({
+      exec: jest.fn().mockRejectedValue(duplicateKeyError()),
+    });
+    model.findById.mockReturnValue({
+      exec: jest.fn().mockResolvedValue({ order: 7 }),
+    });
+
+    let error: AppConflictException | undefined;
+    try {
+      await service.update('abc', { text: 'nuevo texto' });
+    } catch (caught) {
+      error = caught as AppConflictException;
+    }
+
+    expect(error).toBeInstanceOf(AppConflictException);
+    expect(error?.message).toContain('7');
+  });
+
   it('desactiva en lugar de borrar', async () => {
     model.findByIdAndUpdate.mockReturnValue({
       exec: jest.fn().mockResolvedValue({ id: 'abc' }),

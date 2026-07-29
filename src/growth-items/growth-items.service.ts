@@ -60,11 +60,11 @@ export class GrowthItemsService {
     id: string,
     dto: UpdateGrowthItemDto,
   ): Promise<GrowthItemDocument> {
-    const current = await this.growthItemModel.findById(id).exec();
-    if (!current) {
-      throw new AppNotFoundException(K.GROWTH_ITEMS.NOT_FOUND, { id });
-    }
     if (dto.branch || dto.growthArea) {
+      const current = await this.growthItemModel.findById(id).exec();
+      if (!current) {
+        throw new AppNotFoundException(K.GROWTH_ITEMS.NOT_FOUND, { id });
+      }
       assertAreaBelongsToBranch(
         dto.branch ?? current.branch,
         dto.growthArea ?? current.growthArea,
@@ -81,9 +81,13 @@ export class GrowthItemsService {
       return updated;
     } catch (error) {
       if (isDuplicateKey(error)) {
-        throw new AppConflictException(K.GROWTH_ITEMS.ORDER_TAKEN, {
-          order: dto.order ?? current.order,
-        });
+        let order = dto.order;
+        if (order === undefined) {
+          const persisted = await this.growthItemModel.findById(id).exec();
+          order = persisted?.order;
+        }
+        if (order === undefined) throw error;
+        throw new AppConflictException(K.GROWTH_ITEMS.ORDER_TAKEN, { order });
       }
       throw error;
     }
