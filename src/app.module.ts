@@ -16,6 +16,7 @@ import { EmailModule } from './email/email.module';
 import { GrowthItemsModule } from './growth-items/growth-items.module';
 import { GruposModule } from './grupos/grupos.module';
 import { NotificacionesModule } from './notificaciones/notificaciones.module';
+import { OpportunitiesModule } from './opportunities/opportunities.module';
 import { PasswordResetModule } from './password-reset/password-reset.module';
 import { PowersyncModule } from './powersync/powersync.module';
 import { QuestionsModule } from './questions/questions.module';
@@ -47,6 +48,7 @@ import { UsersModule } from './users/users.module';
     QuestionsModule,
     GrowthItemsModule,
     CyclesModule,
+    OpportunitiesModule,
     SiscoutModule,
     AuthModule,
     PasswordResetModule,

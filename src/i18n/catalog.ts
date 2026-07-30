@@ -129,6 +129,11 @@ export const CATALOG = {
     ORDER_TAKEN:
       'Ya hay una dimensión con el orden {order} en esa rama y área, incluso si está desactivada',
   },
+  OPPORTUNITIES: {
+    NOT_FOUND: 'No existe una oportunidad con id "{id}"',
+    UNKNOWN_COMPETENCY:
+      'El foco educativo elegido no está entre las competencias del ciclo',
+  },
   PASSWORD_RESET: {
     INVALID_TOKEN:
       'El enlace para restablecer la contraseña no es válido o ya venció. Pide uno nuevo.',
