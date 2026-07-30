@@ -22,6 +22,7 @@ const MANIFEST = JSON.stringify({
   unitRoles: [{ name: 'UNIT_LEADER', value: 'unit_leader' }],
   diagnosticBlocks: [{ name: 'RAP', value: 'rap' }],
   growthAreas: [{ name: 'CORPORALIDAD', value: 'corporalidad' }],
+  opportunityAudiences: [{ name: 'UNIT', value: 'unidad_completa' }],
   permissions: [{ key: 'user:read', side: 'both' }],
   routeResources: [
     { path: '/tablero', label: 'Tablero', always: true },
@@ -43,6 +44,7 @@ const vacio = {
   unitRoles: [],
   diagnosticBlocks: [],
   growthAreas: [],
+  opportunityAudiences: [],
   permissions: [],
   routeResources: [],
   apiErrorCodes: [],
@@ -310,5 +312,33 @@ describe('áreas de crecimiento', () => {
 
     expect(archivo).toContain("manada: ['corporalidad'],");
     expect(archivo).toContain('export function growthAreasOf(');
+  });
+});
+
+describe('destinatarios de oportunidades', () => {
+  const manifest = readManifest(
+    readFileSync(join(__dirname, '..', 'domain-manifest.json'), 'utf8'),
+  );
+
+  it('emite las constantes en src/domain/opportunity-audiences.ts', () => {
+    const archivos = generateFiles(manifest);
+    expect(archivos.get('src/domain/opportunity-audiences.ts')).toContain(
+      "export const OPPORTUNITY_AUDIENCES = ['unidad_completa', 'subgrupo', 'protagonistas_especificos'] as const;",
+    );
+  });
+
+  it('los expone en el diccionario D', () => {
+    const archivos = generateFiles(manifest);
+    expect(archivos.get('src/domain/dictionary.ts')).toContain(
+      'OPPORTUNITY_AUDIENCE: {',
+    );
+  });
+
+  it('los suma al vocabulario que bloquea literales sueltos', () => {
+    const archivos = generateFiles(manifest);
+    const vocabulario = JSON.parse(
+      archivos.get('.domain-vocabulary.json') as string,
+    ) as string[];
+    expect(vocabulario).toContain('protagonistas_especificos');
   });
 });

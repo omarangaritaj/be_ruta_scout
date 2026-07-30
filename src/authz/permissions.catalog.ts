@@ -98,6 +98,22 @@ export const PERMISSIONS: PermissionDef[] = [
     lado: 'ambos',
   },
 
+  {
+    key: 'opportunity:read',
+    descripcion: 'Ver oportunidades de aprendizaje',
+    lado: 'ambos',
+  },
+  {
+    key: 'opportunity:create',
+    descripcion: 'Crear oportunidades de aprendizaje',
+    lado: 'ambos',
+  },
+  {
+    key: 'opportunity:update',
+    descripcion: 'Editar oportunidades de aprendizaje',
+    lado: 'ambos',
+  },
+
   { key: 'cycle:read', descripcion: 'Ver ciclos', lado: 'ambos' },
   { key: 'cycle:create', descripcion: 'Crear ciclos', lado: 'ambos' },
   { key: 'cycle:update', descripcion: 'Editar ciclos', lado: 'ambos' },

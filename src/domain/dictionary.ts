@@ -59,6 +59,11 @@ export const D = {
     ESPIRITUALIDAD: 'espiritualidad',
     SOCIOAFECTIVIDAD: 'socioafectividad',
   },
+  OPPORTUNITY_AUDIENCE: {
+    UNIT: 'unidad_completa',
+    SUBGROUP: 'subgrupo',
+    SPECIFIC_MEMBERS: 'protagonistas_especificos',
+  },
   API_ERROR: {
     UNITS_LEADERSHIP_REQUIRED: 'UNITS.LEADERSHIP_REQUIRED',
     UNITS_MISSING_GROUP: 'UNITS.MISSING_GROUP',

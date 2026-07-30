@@ -6,6 +6,7 @@ export * from './dictionary';
 export * from './diagnostic';
 export * from './errors';
 export * from './growth-areas';
+export * from './opportunity-audiences';
 export * from './permissions';
 export * from './roles';
 export * from './route-resources';

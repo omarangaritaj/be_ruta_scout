@@ -34,6 +34,7 @@ export interface DomainManifest {
   unitRoles: NamedValue[];
   diagnosticBlocks: NamedValue[];
   growthAreas: NamedValue[];
+  opportunityAudiences: NamedValue[];
   permissions: PermissionEntry[];
   routeResources: RouteResourceEntry[];
   apiErrorCodes: NamedValue[];
@@ -128,6 +129,7 @@ export function readManifest(raw: string): DomainManifest {
   assertUnique(ordenado.diagnosticBlocks, 'diagnosticBlocks');
   assertUnique(ordenado.growthAreas, 'growthAreas');
   assertBranchGrowthAreas(ordenado.branches, ordenado.growthAreas);
+  assertUnique(ordenado.opportunityAudiences, 'opportunityAudiences');
   assertUnique(ordenado.apiErrorCodes, 'apiErrorCodes');
   assertUniqueRoutePaths(ordenado.routeResources, 'routeResources');
   return ordenado;
@@ -318,6 +320,21 @@ export function generateFiles(manifest: DomainManifest): Map<string, string> {
   );
 
   archivos.set(
+    'src/domain/opportunity-audiences.ts',
+    HEADER +
+      constAndType(
+        'OPPORTUNITY_AUDIENCES',
+        'OpportunityAudience',
+        manifest.opportunityAudiences,
+      ) +
+      messageKeyMap(
+        'OPPORTUNITY_AUDIENCE_MESSAGE_KEY',
+        'OPPORTUNITY_AUDIENCE',
+        manifest.opportunityAudiences,
+      ),
+  );
+
+  archivos.set(
     'src/domain/permissions.ts',
     HEADER +
       `export const PERMISSION_KEYS = [${quoted(manifest.permissions.map((p) => p.key))}] as const;\n` +
@@ -348,6 +365,7 @@ export function generateFiles(manifest: DomainManifest): Map<string, string> {
       dictionaryGroup('UNIT_ROLE', manifest.unitRoles) +
       dictionaryGroup('DIAGNOSTIC_BLOCK', manifest.diagnosticBlocks) +
       dictionaryGroup('GROWTH_AREA', manifest.growthAreas) +
+      dictionaryGroup('OPPORTUNITY_AUDIENCE', manifest.opportunityAudiences) +
       dictionaryGroup('API_ERROR', manifest.apiErrorCodes) +
       '} as const;\n',
   );
@@ -361,6 +379,7 @@ export function generateFiles(manifest: DomainManifest): Map<string, string> {
       "export * from './diagnostic';\n" +
       "export * from './errors';\n" +
       "export * from './growth-areas';\n" +
+      "export * from './opportunity-audiences';\n" +
       "export * from './permissions';\n" +
       "export * from './roles';\n" +
       "export * from './route-resources';\n",
@@ -376,6 +395,7 @@ export function generateFiles(manifest: DomainManifest): Map<string, string> {
     ...manifest.unitRoles,
     ...manifest.diagnosticBlocks,
     ...manifest.growthAreas,
+    ...manifest.opportunityAudiences,
   ].map((e) => e.value);
   archivos.set(
     '.domain-vocabulary.json',

@@ -22,6 +22,7 @@
   "nacion",
   "pendiente",
   "protagonista",
+  "protagonistas_especificos",
   "rama",
   "rap",
   "rechazada",
@@ -30,8 +31,10 @@
   "sin_solicitud",
   "sociabilidad",
   "socioafectividad",
+  "subgrupo",
   "super_admin",
   "suspendido",
   "tropa",
+  "unidad_completa",
   "unit_leader"
 ]

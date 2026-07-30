@@ -132,6 +132,11 @@
     { "name": "ESPIRITUALIDAD", "value": "espiritualidad" },
     { "name": "SOCIOAFECTIVIDAD", "value": "socioafectividad" }
   ],
+  "opportunityAudiences": [
+    { "name": "UNIT", "value": "unidad_completa" },
+    { "name": "SUBGROUP", "value": "subgrupo" },
+    { "name": "SPECIFIC_MEMBERS", "value": "protagonistas_especificos" }
+  ],
   "permissions": [
     { "key": "role:read", "side": "both" },
     { "key": "role:create", "side": "both" },
@@ -158,6 +163,9 @@
     { "key": "growth-item:create", "side": "both" },
     { "key": "growth-item:update", "side": "both" },
     { "key": "growth-item:delete", "side": "both" },
+    { "key": "opportunity:read", "side": "both" },
+    { "key": "opportunity:create", "side": "both" },
+    { "key": "opportunity:update", "side": "both" },
     { "key": "cycle:read", "side": "both" },
     { "key": "cycle:create", "side": "both" },
     { "key": "cycle:update", "side": "both" },
