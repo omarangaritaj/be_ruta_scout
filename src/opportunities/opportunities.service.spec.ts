@@ -23,6 +23,20 @@ function chainOf(value: unknown) {
   };
 }
 
+/**
+ * Simula el filtrado real de Mongo: solo compara las claves presentes en
+ * `filter`, así una consulta que "pierda" una clave (por ejemplo `cycleId`)
+ * deja de filtrar por ella en vez de fallar en el mock por una clave `undefined`.
+ */
+function findOneByFilter(existing: Record<string, unknown> | null) {
+  return (filter: Record<string, unknown>) => {
+    const matches =
+      existing !== null &&
+      Object.entries(filter).every(([key, value]) => existing[key] === value);
+    return chainOf(matches ? existing : null);
+  };
+}
+
 const baseDto = {
   name: 'Fogata scout',
   description: 'Compartir historias alrededor del fuego',
@@ -159,7 +173,7 @@ describe('OpportunitiesService', () => {
     expect(opportunity.save).not.toHaveBeenCalled();
   });
 
-  it('excluye las oportunidades desactivadas del listado', async () => {
+  it('excluye las oportunidades desactivadas del listado y ordena por creación', async () => {
     cyclesService.findOne.mockResolvedValue({
       _id: 'c1',
       focus: { competencies: [] },
@@ -172,6 +186,10 @@ describe('OpportunitiesService', () => {
       cycleId: 'c1',
       isActive: true,
     });
+    const chain = opportunityModel.find.mock.results[0].value as {
+      sort: jest.Mock;
+    };
+    expect(chain.sort).toHaveBeenCalledWith({ createdAt: 1, _id: 1 });
   });
 
   it('propaga el 403 cuando el ciclo está fuera de alcance', async () => {
@@ -185,15 +203,23 @@ describe('OpportunitiesService', () => {
     expect(opportunityModel.find).not.toHaveBeenCalled();
   });
 
-  it('rechaza el update de una oportunidad que no aparece con ese id y cycleId', async () => {
+  it('rechaza el update de una oportunidad que existe pero bajo otro cycleId', async () => {
     cyclesService.findOne.mockResolvedValue({
       _id: 'c1',
       focus: { competencies: [] },
     });
-    opportunityModel.findOne.mockReturnValue(chainOf(null));
+    const opportunityFromOtherCycle = {
+      _id: 'o9',
+      cycleId: 'c2',
+      save: jest.fn(),
+    };
+    opportunityModel.findOne.mockImplementation(
+      findOneByFilter(opportunityFromOtherCycle),
+    );
 
     await expect(
       service.update(actor, 'c1', 'o9', { name: 'Nuevo nombre' }),
     ).rejects.toBeInstanceOf(AppNotFoundException);
+    expect(opportunityFromOtherCycle.save).not.toHaveBeenCalled();
   });
 });
