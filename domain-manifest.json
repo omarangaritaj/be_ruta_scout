@@ -137,6 +137,19 @@
     { "name": "SUBGROUP", "value": "subgrupo" },
     { "name": "SPECIFIC_MEMBERS", "value": "protagonistas_especificos" }
   ],
+  "programEventKinds": [
+    { "name": "REUNION", "value": "reunion" },
+    { "name": "ACTIVIDAD", "value": "actividad" }
+  ],
+  "riskTypes": [
+    { "name": "FINANCIERO", "value": "financiero" },
+    { "name": "FISICO", "value": "fisico" },
+    { "name": "MECANICO", "value": "mecanico" },
+    { "name": "ORGANIZACIONAL", "value": "organizacional" },
+    { "name": "PROTECCION_INFANTIL", "value": "proteccion_infantil" },
+    { "name": "PSICOSOCIAL", "value": "psicosocial" },
+    { "name": "REPUTACIONAL", "value": "reputacional" }
+  ],
   "permissions": [
     { "key": "role:read", "side": "both" },
     { "key": "role:create", "side": "both" },
@@ -170,6 +183,10 @@
     { "key": "cycle:create", "side": "both" },
     { "key": "cycle:update", "side": "both" },
     { "key": "cycle:delete", "side": "both" },
+    { "key": "event:read", "side": "both" },
+    { "key": "event:create", "side": "both" },
+    { "key": "event:update", "side": "both" },
+    { "key": "event:delete", "side": "both" },
     { "key": "siscout:sync", "side": "be" },
     { "key": "siscout:config", "side": "both" },
     { "key": "siscout:credentials", "side": "be" },
@@ -179,11 +196,13 @@
     { "path": "/tablero", "label": "Tablero", "always": true },
     { "path": "/units", "label": "Unidades" },
     { "path": "/ciclos", "label": "Ciclos" },
+    { "path": "/reuniones", "label": "Reuniones" },
     { "path": "/aprobaciones", "label": "Aprobaciones", "section": "Administración" },
     { "path": "/admin/usuarios", "label": "Usuarios", "section": "Administración" },
     { "path": "/admin/roles", "label": "Roles", "section": "Administración" },
     { "path": "/admin/preguntas", "label": "Preguntas de diagnóstico", "section": "Administración" },
-    { "path": "/admin/dimensiones", "label": "Dimensiones", "section": "Administración" }
+    { "path": "/admin/dimensiones", "label": "Área de desempeño", "section": "Administración" },
+    { "path": "/admin/configuracion", "label": "Configuración", "section": "Administración" }
   ],
   "apiErrorCodes": [
     {
@@ -191,6 +210,8 @@
       "value": "UNITS.LEADERSHIP_REQUIRED"
     },
     { "name": "UNITS_MISSING_GROUP", "value": "UNITS.MISSING_GROUP" },
+    { "name": "EVENTS_OUTSIDE_CYCLE", "value": "EVENTS.OUTSIDE_CYCLE" },
+    { "name": "EVENTS_DATE_TAKEN", "value": "EVENTS.DATE_TAKEN" },
     { "name": "VALIDATION_INVALID_INPUT", "value": "VALIDATION.INVALID_INPUT" }
   ]
 }

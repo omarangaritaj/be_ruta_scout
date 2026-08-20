@@ -1,7 +1,8 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
+import { InjectRepository } from '@nestjs/typeorm';
 import { randomUUID } from 'node:crypto';
-import { Model } from 'mongoose';
+import { In, Repository } from 'typeorm';
+import type { QueryDeepPartialEntity } from 'typeorm/query-builder/QueryPartialEntity';
 import { AppServiceUnavailableException } from '../common';
 import {
   CEDULA_HASHER,
@@ -10,11 +11,7 @@ import {
   type FieldCipher,
 } from '../crypto';
 import { K } from '../i18n';
-import {
-  User,
-  UserDocument,
-  type TipoPersona,
-} from '../users/schemas/user.schema';
+import { User, type TipoPersona } from '../users/user.entity';
 import { SiscoutConfigService } from './config/siscout-config.service';
 import { D } from '../domain';
 import { SiscoutCredentialsService } from './credentials';
@@ -22,15 +19,12 @@ import { encryptSensitiveFields } from './crypto/encrypted-fields';
 import { canonicalHash } from './hash/canonical-hash';
 import { normalizeMember, type SiscoutMember } from './normalize';
 import { SiscoutClient } from './ports/siscout-client.port';
-import {
-  SiscoutSnapshot,
-  SiscoutSnapshotDocument,
-} from './schemas/siscout-snapshot.schema';
+import { SiscoutSnapshot } from './siscout-snapshot.entity';
 
 interface PublicField {
   field: keyof User;
   /**
-   * Si SiScout deja de reportar el campo, ¿se borra del documento público?
+   * Si SiScout deja de reportar el campo, ¿se borra del registro público?
    *
    * Por defecto NO: un valor ausente se ignora y se conserva el anterior. Solo
    * los campos de los que cuelgan decisiones de permisos se limpian, porque ahí
@@ -40,7 +34,7 @@ interface PublicField {
 }
 
 /**
- * Campos del miembro que se copian al documento público.
+ * Campos del miembro que se copian al registro público.
  *
  * Lista de PERMITIDOS: lo que no esté aquí queda confinado al snapshot
  * privado. Con una lista de bloqueados, cualquier campo nuevo del servicio
@@ -48,7 +42,7 @@ interface PublicField {
  */
 const PUBLIC_FIELDS: Partial<Record<keyof SiscoutMember, PublicField>> = {
   nombre: { field: 'name' },
-  // Territorio: afiliación organizacional, no PII. Se proyecta al documento
+  // Territorio: afiliación organizacional, no PII. Se proyecta al registro
   // público para poder filtrar/gestionar por grupo y región sin descifrar el
   // snapshot. SiScout es la fuente de verdad; el sync reafirma estos campos.
   group_id: { field: 'groupId' },
@@ -56,7 +50,7 @@ const PUBLIC_FIELDS: Partial<Record<keyof SiscoutMember, PublicField>> = {
   district_id: { field: 'districtId' },
   district_name: { field: 'districtName' },
   // El cargo viaja con el territorio, y por el mismo motivo: tampoco es PII y
-  // así se lee desde `users` sin tocar la colección privada. Se limpia al
+  // así se lee desde `users` sin tocar la tabla privada. Se limpia al
   // desaparecer para no dejar en pie un cargo que SiScout ya retiró.
   cargo: { field: 'cargoSiscout', clearWhenAbsent: true },
   // La edad decide la rama del protagonista cuando `cargo` no es legible (ver
@@ -121,10 +115,10 @@ export class SiscoutSyncService {
   private inProgress = false;
 
   constructor(
-    @InjectModel(User.name)
-    private readonly userModel: Model<UserDocument>,
-    @InjectModel(SiscoutSnapshot.name)
-    private readonly snapshotModel: Model<SiscoutSnapshotDocument>,
+    @InjectRepository(User)
+    private readonly users: Repository<User>,
+    @InjectRepository(SiscoutSnapshot)
+    private readonly snapshots: Repository<SiscoutSnapshot>,
     private readonly client: SiscoutClient,
     @Inject(SNAPSHOT_CIPHER)
     private readonly cipher: FieldCipher,
@@ -463,22 +457,27 @@ export class SiscoutSyncService {
     }));
 
     // UNA consulta trae los hashes conocidos del lote completo: es lo que evita
-    // una ida y vuelta a Mongo por registro.
+    // una ida y vuelta a la base por registro.
     const ids = hashed.map(({ member }) => member.person_id);
-    const known = await this.snapshotModel
-      .find(
-        { idSiscout: { $in: ids } },
-        { idSiscout: 1, hash: 1, payload: 1, _id: 0 },
-      )
-      .lean()
-      .exec();
+    const known = await this.snapshots.find({
+      where: { idSiscout: In(ids) },
+      select: { idSiscout: true, hash: true, payload: true },
+    });
 
     const previousById = new Map(known.map((s) => [s.idSiscout, s]));
 
-    const userOps: Parameters<Model<UserDocument>['bulkWrite']>[0] = [];
-    const snapshotOps: Parameters<
-      Model<SiscoutSnapshotDocument>['bulkWrite']
-    >[0] = [];
+    // El upsert ciego de Mongo no existe aquí: se cargan los usuarios del lote
+    // para aplicar sobre la entity la misma semántica de $set/$unset y que un
+    // campo que SiScout deja de reportar conserve su valor anterior. Las
+    // columnas con `select: false` (passwordHash, cedulaHash) no vienen en la
+    // carga y por eso el save posterior no las toca salvo que se asignen aquí.
+    const existing = await this.users.find({ where: { idSiscout: In(ids) } });
+    const usersById = new Map(existing.map((user) => [user.idSiscout, user]));
+
+    const changedSnapshots = new Map<
+      string,
+      Pick<SiscoutSnapshot, 'idSiscout' | 'hash' | 'payload' | 'sincronizadoEn'>
+    >();
 
     for (const { member, hash } of hashed) {
       const previous = previousById.get(member.person_id);
@@ -489,55 +488,52 @@ export class SiscoutSyncService {
         this.recordChanges(previous.payload, member, result);
       }
 
-      const publicFields = this.projectPublicFields(member);
+      let target = usersById.get(member.person_id);
+      if (!target) {
+        // Equivalente del $setOnInsert: `estado` (plataforma) solo se fija al
+        // crear, porque un sync no reactiva a quien un administrador haya
+        // desactivado en la aplicación. Sin roles: la tabla puente queda vacía.
+        target = this.users.create({
+          idSiscout: member.person_id,
+          // `name` es NOT NULL en Postgres; un miembro sin nombre no debe
+          // abortar el lote entero.
+          name: member.nombre ?? '',
+          estado: true,
+          cargos: [],
+        });
+        usersById.set(member.person_id, target);
+      }
 
       // Todos los vistos se sellan con el syncId, incluso los que no cambiaron:
       // es lo que impide que la consolidación final los marque huérfanos.
-      userOps.push({
-        updateOne: {
-          filter: { idSiscout: member.person_id },
-          update: {
-            $set: {
-              ...publicFields.set,
-              // De SiScout vienen protagonistas Y adultos: se clasifica por
-              // los datos del miembro, no se asume.
-              tipo: classifyTipo(member),
-              idSiscout: member.person_id,
-              estadoSiscout: true,
-              sincronizadoEn: now,
-              ultimoSyncId: syncId,
-              ...(member.citizenship_card
-                ? {
-                    cedulaHash: this.cedulaHasher.hash(member.citizenship_card),
-                  }
-                : {}),
-            },
-            $unset: { fechaBajaSiscout: '', ...publicFields.unset },
-            // `estado` (plataforma) solo se fija al crear: un sync no reactiva a
-            // quien un administrador haya desactivado en la aplicación.
-            $setOnInsert: { estado: true, roles: [], cargos: [] },
-          },
-          upsert: true,
-        },
-      });
+      const publicFields = this.projectPublicFields(member);
+      Object.assign(target, publicFields.set);
+      for (const field of Object.keys(publicFields.unset)) {
+        (target as unknown as Record<string, unknown>)[field] = null;
+      }
+
+      // De SiScout vienen protagonistas Y adultos: se clasifica por los datos
+      // del miembro, no se asume.
+      target.tipo = classifyTipo(member);
+      target.estadoSiscout = true;
+      target.sincronizadoEn = now;
+      target.ultimoSyncId = syncId;
+      target.fechaBajaSiscout = null;
+
+      if (member.citizenship_card) {
+        target.cedulaHash = this.cedulaHasher.hash(member.citizenship_card);
+      }
 
       // El payload solo se reescribe si el hash cambió: es el dato pesado.
       // El hash se calculó sobre el miembro en CLARO (línea del `hashed`); lo
       // que se guarda es el payload con los campos sensibles cifrados. Cifrar
       // después de hashear es lo que mantiene el hash estable entre corridas.
       if (changed) {
-        snapshotOps.push({
-          updateOne: {
-            filter: { idSiscout: member.person_id },
-            update: {
-              $set: {
-                hash,
-                payload: encryptSensitiveFields(member, this.cipher),
-                sincronizadoEn: now,
-              },
-            },
-            upsert: true,
-          },
+        changedSnapshots.set(member.person_id, {
+          idSiscout: member.person_id,
+          hash,
+          payload: encryptSensitiveFields(member, this.cipher),
+          sincronizadoEn: now,
         });
       }
 
@@ -550,14 +546,23 @@ export class SiscoutSyncService {
       }
     }
 
-    // `ordered: false` para que un documento problemático no aborte el resto
-    // del lote y el servidor pueda paralelizar.
-    if (userOps.length > 0) {
-      await this.userModel.bulkWrite(userOps, { ordered: false });
+    // `usersById` contiene exactamente los usuarios vistos en este lote: los
+    // preexistentes cargados arriba y los recién creados. `save` agrupa los
+    // INSERT en un solo viaje y actualiza el resto dentro de una transacción.
+    const seen = [...usersById.values()];
+    if (seen.length > 0) {
+      await this.users.save(seen);
     }
 
-    if (snapshotOps.length > 0) {
-      await this.snapshotModel.bulkWrite(snapshotOps, { ordered: false });
+    if (changedSnapshots.size > 0) {
+      // La fila es un parcial válido de la entity; el cast solo salva que el
+      // tipo mapeado de `upsert` no digiere un jsonb Record<string, unknown>.
+      await this.snapshots.upsert(
+        [
+          ...changedSnapshots.values(),
+        ] as QueryDeepPartialEntity<SiscoutSnapshot>[],
+        ['idSiscout'],
+      );
     }
   }
 
@@ -624,19 +629,19 @@ export class SiscoutSyncService {
    * perderse porque un sistema externo deje de reportar a alguien.
    */
   private async markOrphans(syncId: string): Promise<number> {
-    const result = await this.userModel
-      .updateMany(
-        // Quien seguía marcado como presente en SiScout pero no vino en esta
-        // corrida, ya no está: se marca la baja. No afecta a `estado` (la
-        // activación en la plataforma), que es una decisión aparte.
-        {
-          estadoSiscout: true,
-          ultimoSyncId: { $ne: syncId },
-        },
-        { $set: { estadoSiscout: false, fechaBajaSiscout: new Date() } },
-      )
-      .exec();
+    const result = await this.users
+      .createQueryBuilder()
+      .update(User)
+      // Quien seguía marcado como presente en SiScout pero no vino en esta
+      // corrida, ya no está: se marca la baja. No afecta a `estado` (la
+      // activación en la plataforma), que es una decisión aparte.
+      .set({ estadoSiscout: false, fechaBajaSiscout: new Date() })
+      .where('"estadoSiscout" = true')
+      // IS DISTINCT FROM: el `$ne` de Mongo también alcanzaba a quien nunca
+      // llevó syncId (NULL) y un `!=` de SQL lo dejaría en pie.
+      .andWhere('"ultimoSyncId" IS DISTINCT FROM :syncId', { syncId })
+      .execute();
 
-    return result.modifiedCount;
+    return result.affected ?? 0;
   }
 }

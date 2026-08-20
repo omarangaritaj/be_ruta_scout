@@ -1,20 +1,19 @@
 import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
-import { getModelToken } from '@nestjs/mongoose';
 import { hash } from 'bcryptjs';
-import { Model } from 'mongoose';
+import { DataSource } from 'typeorm';
 import { AppModule } from '../app.module';
+import { BCRYPT_ROUNDS } from '../auth/password-hashing';
 import type { AppConfigService } from '../config';
 import { CEDULA_HASHER, type CedulaHasher } from '../crypto';
 import { D } from '../domain';
-import { Role, RoleDocument } from '../roles/schemas/role.schema';
-import { User, UserDocument } from '../users/schemas/user.schema';
+import { Role } from '../roles/role.entity';
+import { User } from '../users/user.entity';
 
-// eslint-disable-next-line no-restricted-syntax -- nombre del documento en `roles`, no el enum nivelAcceso
+// eslint-disable-next-line no-restricted-syntax -- nombre del registro en `roles`, no el enum nivelAcceso
 const ROLE_NAME = 'super_admin';
 const PERMISSIONS = ['*'];
 const RESOURCES = ['*'];
-const BCRYPT_ROUNDS = 12;
 
 /**
  * Seed de arranque de un solo uso: crea el rol super_admin (con permisos) y
@@ -27,12 +26,9 @@ async function seed(): Promise<void> {
   });
 
   try {
-    const roleModel = app.get<Model<RoleDocument>>(getModelToken(Role.name), {
-      strict: false,
-    });
-    const userModel = app.get<Model<UserDocument>>(getModelToken(User.name), {
-      strict: false,
-    });
+    const dataSource = app.get(DataSource);
+    const roles = dataSource.getRepository(Role);
+    const users = dataSource.getRepository(User);
     const cedulaHasher = app.get<CedulaHasher>(CEDULA_HASHER);
     const config = app.get<AppConfigService>(ConfigService);
 
@@ -50,55 +46,54 @@ async function seed(): Promise<void> {
       );
     }
 
-    const role = await roleModel
-      .findOneAndUpdate(
-        { nombre: ROLE_NAME },
-        {
-          $set: {
-            descripcion: 'Acceso total al panel de administración',
-            permissions: PERMISSIONS,
-            resources: RESOURCES,
-            status: 'activo',
-            esSistema: true,
-          },
-        },
-        { upsert: true, returnDocument: 'after' },
-      )
-      .exec();
+    let role = await roles.findOne({ where: { nombre: ROLE_NAME } });
     if (!role) {
-      throw new Error('No se pudo crear ni recuperar el rol super_admin.');
+      role = roles.create({ nombre: ROLE_NAME });
     }
-    const roleId = role._id;
+    role.descripcion = 'Acceso total al panel de administración';
+    role.permissions = PERMISSIONS;
+    role.resources = RESOURCES;
+    role.status = 'activo';
+    role.esSistema = true;
+    role = await roles.save(role);
 
     const cedulaHash = cedulaHasher.hash(cedula);
     const passwordHash = await hash(password, BCRYPT_ROUNDS);
 
-    const existing = await userModel.findOne({ cedulaHash }).exec();
+    const existing = await users
+      .createQueryBuilder('user')
+      .leftJoinAndSelect('user.roles', 'role')
+      .addSelect(['user.cedulaHash', 'user.passwordHash'])
+      .where('user.cedulaHash = :cedulaHash', { cedulaHash })
+      .getOne();
+
     if (existing) {
       existing.estado = true;
       existing.estadoAcceso = D.ACCESS_STATE.APPROVED;
       existing.nivelAcceso = D.ACCESS_LEVEL.SUPER_ADMIN;
       existing.passwordHash = passwordHash;
-      if (!existing.roles.some((id) => String(id) === String(roleId))) {
-        existing.roles.push(roleId);
+      if (!existing.roles.some((r) => r.id === role.id)) {
+        existing.roles.push(role);
       }
-      await existing.save();
+      await users.save(existing);
       console.log(
         `Super admin actualizado sobre la persona existente (idSiscout=${existing.idSiscout}).`,
       );
     } else {
-      await userModel.create({
-        name: 'Super Admin',
-        tipo: D.PERSON_TYPE.ADULT,
-        idSiscout: `seed-super-admin-${cedula}`,
-        cedulaHash,
-        estado: true,
-        estadoSiscout: false,
-        estadoAcceso: D.ACCESS_STATE.APPROVED,
-        nivelAcceso: D.ACCESS_LEVEL.SUPER_ADMIN,
-        roles: [roleId],
-        passwordHash,
-      });
+      await users.save(
+        users.create({
+          name: 'Super Admin',
+          tipo: D.PERSON_TYPE.ADULT,
+          idSiscout: `seed-super-admin-${cedula}`,
+          cedulaHash,
+          estado: true,
+          estadoSiscout: false,
+          estadoAcceso: D.ACCESS_STATE.APPROVED,
+          nivelAcceso: D.ACCESS_LEVEL.SUPER_ADMIN,
+          roles: [role],
+          passwordHash,
+        }),
+      );
       console.log('Super admin creado.');
     }
 

@@ -1,11 +1,11 @@
 import { z } from 'zod';
-import { objectIdSchema } from '../../common';
+import { uuidSchema } from '../../common';
 import { K, t } from '../../i18n';
 
 export const saveDiagnosticSchema = z.object({
   answers: z.array(
     z.object({
-      questionId: objectIdSchema,
+      questionId: uuidSchema,
       score: z.number().int().min(1).max(5),
       notes: z.string().trim().optional(),
     }),

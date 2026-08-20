@@ -1,39 +1,30 @@
-import { Logger, Module } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { MongooseModule } from '@nestjs/mongoose';
-import { Connection, ConnectionStates } from 'mongoose';
+import { TypeOrmModule } from '@nestjs/typeorm';
 import type { AppConfigService } from '../config';
 
 @Module({
   imports: [
-    MongooseModule.forRootAsync({
+    TypeOrmModule.forRootAsync({
       inject: [ConfigService],
       useFactory: (config: AppConfigService) => ({
-        uri: config.get('MONGODB_URI', { infer: true }),
-        connectionFactory: (connection: Connection) => {
-          const logger = new Logger('MongooseConnection');
-          const logConnected = () =>
-            logger.log(`Conectado a la base de datos "${connection.name}"`);
-
-          // Nest invoca esta factory con la conexión ya establecida, por lo que
-          // el evento 'connected' ya se emitió: hay que consultar el estado.
-          if (connection.readyState === ConnectionStates.connected) {
-            logConnected();
-          }
-
-          connection.on('connected', logConnected);
-          connection.on('reconnected', () =>
-            logger.log('Reconectado a MongoDB'),
-          );
-          connection.on('disconnected', () =>
-            logger.warn('Desconectado de MongoDB'),
-          );
-          connection.on('error', (error: Error) =>
-            logger.error(`Error de conexión: ${error.message}`),
-          );
-
-          return connection;
-        },
+        type: 'postgres' as const,
+        url: config.get('DATABASE_URL', { infer: true }),
+        // Todo el esquema vive en `ruta`, NUNCA en `public`. En Supabase el
+        // schema `public` lo publica PostgREST con la anon key (clave pública
+        // por diseño) y arrastra `ALTER DEFAULT PRIVILEGES ... IN SCHEMA public
+        // GRANT ALL ON TABLES TO anon`, así que una tabla creada ahí nace
+        // legible desde internet. Un schema propio no hereda esos privilegios.
+        // TypeORM no usa `SET search_path`: califica cada nombre como
+        // "ruta"."tabla", así que esto es seguro con el pooler de Supabase en
+        // modo transaction (sin estado de sesión que se recicle entre queries).
+        schema: 'ruta',
+        // Las entidades se registran por módulo con `TypeOrmModule.forFeature`;
+        // autoLoadEntities evita mantener una lista central duplicada.
+        autoLoadEntities: true,
+        // El esquema evoluciona SOLO por migraciones (pnpm migration:run).
+        // synchronize en true destruiría datos ante cualquier cambio de entidad.
+        synchronize: false,
       }),
     }),
   ],

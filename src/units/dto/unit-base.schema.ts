@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { objectIdSchema } from '../../common';
+import { uuidSchema } from '../../common';
 import { BRANCHES } from '../../domain';
 import { K, t } from '../../i18n';
 
@@ -21,9 +21,9 @@ export const unitBaseSchema = z.object({
 
   city: z.string().trim(),
 
-  unitLeaderId: objectIdSchema,
+  unitLeaderId: uuidSchema,
 
-  leaders: z.array(objectIdSchema),
+  leaders: z.array(uuidSchema),
 
-  members: z.array(objectIdSchema),
+  members: z.array(uuidSchema),
 });

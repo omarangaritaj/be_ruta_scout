@@ -11,6 +11,7 @@ export const ROUTE_RESOURCES: readonly RouteResource[] = [
   { path: '/tablero', label: 'Tablero', always: true },
   { path: '/units', label: 'Unidades' },
   { path: '/ciclos', label: 'Ciclos' },
+  { path: '/reuniones', label: 'Reuniones' },
   { path: '/aprobaciones', label: 'Aprobaciones', section: 'Administración' },
   { path: '/admin/usuarios', label: 'Usuarios', section: 'Administración' },
   { path: '/admin/roles', label: 'Roles', section: 'Administración' },
@@ -21,7 +22,12 @@ export const ROUTE_RESOURCES: readonly RouteResource[] = [
   },
   {
     path: '/admin/dimensiones',
-    label: 'Dimensiones',
+    label: 'Área de desempeño',
+    section: 'Administración',
+  },
+  {
+    path: '/admin/configuracion',
+    label: 'Configuración',
     section: 'Administración',
   },
 ];

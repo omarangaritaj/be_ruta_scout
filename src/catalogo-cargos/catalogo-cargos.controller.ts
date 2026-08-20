@@ -15,13 +15,13 @@ import {
 @Controller('cargos')
 export class CatalogoCargosController {
   @Get()
-  listar(@Query('nivel') nivel?: string): CargoCatalogo[] {
+  listar(@Query('nivel') nivel?: string): { cargos: CargoCatalogo[] } {
     if (nivel === undefined) {
-      return CARGOS;
+      return { cargos: CARGOS };
     }
     if (!esNivelSolicitud(nivel)) {
       throw new AppBadRequestException(K.VALIDATION.INVALID_LEVEL);
     }
-    return cargosPorNivel(nivel);
+    return { cargos: cargosPorNivel(nivel) };
   }
 }

@@ -38,6 +38,8 @@ export interface DomainManifest {
   permissions: PermissionEntry[];
   routeResources: RouteResourceEntry[];
   apiErrorCodes: NamedValue[];
+  programEventKinds: NamedValue[];
+  riskTypes: NamedValue[];
 }
 
 const HEADER =
@@ -131,6 +133,8 @@ export function readManifest(raw: string): DomainManifest {
   assertBranchGrowthAreas(ordenado.branches, ordenado.growthAreas);
   assertUnique(ordenado.opportunityAudiences, 'opportunityAudiences');
   assertUnique(ordenado.apiErrorCodes, 'apiErrorCodes');
+  assertUnique(ordenado.programEventKinds, 'programEventKinds');
+  assertUnique(ordenado.riskTypes, 'riskTypes');
   assertUniqueRoutePaths(ordenado.routeResources, 'routeResources');
   return ordenado;
 }
@@ -335,6 +339,17 @@ export function generateFiles(manifest: DomainManifest): Map<string, string> {
   );
 
   archivos.set(
+    'src/domain/program-events.ts',
+    HEADER +
+      constAndType(
+        'PROGRAM_EVENT_KINDS',
+        'ProgramEventKind',
+        manifest.programEventKinds,
+      ) +
+      constAndType('RISK_TYPES', 'RiskType', manifest.riskTypes),
+  );
+
+  archivos.set(
     'src/domain/permissions.ts',
     HEADER +
       `export const PERMISSION_KEYS = [${quoted(manifest.permissions.map((p) => p.key))}] as const;\n` +
@@ -381,6 +396,7 @@ export function generateFiles(manifest: DomainManifest): Map<string, string> {
       "export * from './growth-areas';\n" +
       "export * from './opportunity-audiences';\n" +
       "export * from './permissions';\n" +
+      "export * from './program-events';\n" +
       "export * from './roles';\n" +
       "export * from './route-resources';\n",
   );

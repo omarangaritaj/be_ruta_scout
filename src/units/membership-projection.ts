@@ -1,9 +1,9 @@
 import { D, type UnitRole } from '../domain';
 
 export interface ProjectableUnit {
-  _id: string;
+  id: string;
   groupId: number;
-  unitLeaderId: string;
+  leaderId: string;
   leaders: string[];
   members: string[];
 }
@@ -22,10 +22,10 @@ export function projectMemberships(unit: ProjectableUnit): MembershipRow[] {
   const add = (userId: string, role: UnitRole) => {
     if (seen.has(userId)) return;
     seen.add(userId);
-    rows.push({ userId, unitId: unit._id, role, groupId: unit.groupId });
+    rows.push({ userId, unitId: unit.id, role, groupId: unit.groupId });
   };
 
-  add(unit.unitLeaderId, D.UNIT_ROLE.UNIT_LEADER);
+  add(unit.leaderId, D.UNIT_ROLE.UNIT_LEADER);
   unit.leaders.forEach((id) => add(id, D.UNIT_ROLE.ASSISTANT));
   unit.members.forEach((id) => add(id, D.UNIT_ROLE.MEMBER));
 

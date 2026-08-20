@@ -1,17 +1,14 @@
 import { Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
-import { MongooseModule } from '@nestjs/mongoose';
 import { PassportModule } from '@nestjs/passport';
+import { TypeOrmModule } from '@nestjs/typeorm';
 import type { AppConfigService } from '../config';
 import { UsersModule } from '../users/users.module';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
-import { PowerSyncKeyService } from './powersync-keys';
-import {
-  RefreshToken,
-  RefreshTokenSchema,
-} from './schemas/refresh-token.schema';
+import { RefreshToken } from './refresh-token.entity';
+import { RefreshTokenCleanup } from './refresh-token.cleanup';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { LocalStrategy } from './strategies/local.strategy';
 
@@ -19,9 +16,7 @@ import { LocalStrategy } from './strategies/local.strategy';
   imports: [
     UsersModule,
     PassportModule,
-    MongooseModule.forFeature([
-      { name: RefreshToken.name, schema: RefreshTokenSchema },
-    ]),
+    TypeOrmModule.forFeature([RefreshToken]),
     JwtModule.registerAsync({
       inject: [ConfigService],
       useFactory: (config: AppConfigService) => ({
@@ -33,7 +28,7 @@ import { LocalStrategy } from './strategies/local.strategy';
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, LocalStrategy, JwtStrategy, PowerSyncKeyService],
+  providers: [AuthService, LocalStrategy, JwtStrategy, RefreshTokenCleanup],
   exports: [AuthService],
 })
 export class AuthModule {}

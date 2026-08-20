@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { D } from '../../domain';
 import { K, t } from '../../i18n';
-import { objectIdSchema } from '../../common';
+import { uuidSchema } from '../../common';
 import { cargoSchema } from './cargo.schema';
 import { protagonistaFieldsSchema } from './protagonista.schema';
 
@@ -21,7 +21,7 @@ const createAdultoSchema = z.object({
   tipo: z.literal(D.PERSON_TYPE.ADULT),
   name,
   idSiscout,
-  roles: z.array(objectIdSchema).default([]),
+  roles: z.array(uuidSchema).default([]),
   cargos: z.array(cargoSchema).default([]),
 });
 

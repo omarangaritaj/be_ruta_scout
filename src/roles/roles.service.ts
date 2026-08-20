@@ -1,24 +1,38 @@
 import { Injectable } from '@nestjs/common';
-import { InjectConnection, InjectModel } from '@nestjs/mongoose';
-import { Connection, Model, Types, type ClientSession } from 'mongoose';
+import { InjectRepository } from '@nestjs/typeorm';
+import {
+  ArrayContains,
+  DataSource,
+  EntityManager,
+  In,
+  Not,
+  Repository,
+} from 'typeorm';
 import { addedValues } from '../authz/escalation';
 import { EscalationService, type Grant } from '../authz/escalation.service';
 import {
   AppBadRequestException,
   AppConflictException,
+  AppForbiddenException,
   AppNotFoundException,
 } from '../common';
-import { CurrentUserService } from '../current-user/current-user.service';
 import { K } from '../i18n';
-import { User, UserDocument } from '../users/schemas/user.schema';
+import { User } from '../users/user.entity';
+import {
+  ancestrosDeHijo,
+  creaCiclo,
+  nivelDeHijo,
+  puedeColgarDe,
+  relinajar,
+} from './jerarquia';
 import type { CreateRoleDto } from './dto/create-role.dto';
 import type { ListRoleUsersDto } from './dto/list-role-users.dto';
 import type { ReassignRoleDto } from './dto/reassign-role.dto';
 import type { UpdateRoleDto } from './dto/update-role.dto';
-import { Role, RoleDocument } from './schemas/role.schema';
+import { Role } from './role.entity';
 
 export interface RoleHolders {
-  items: UserDocument[];
+  items: User[];
   total: number;
   page: number;
   pageSize: number;
@@ -32,13 +46,12 @@ type Reassignment = ReassignRoleDto['reassignments'][number];
  */
 function groupByTarget(
   reassignments: readonly Reassignment[],
-): Map<string, Types.ObjectId[]> {
-  const groups = new Map<string, Types.ObjectId[]>();
+): Map<string, string[]> {
+  const groups = new Map<string, string[]>();
   for (const { userId, targetRoleId } of reassignments) {
-    const key = targetRoleId.toString();
-    const users = groups.get(key) ?? [];
+    const users = groups.get(targetRoleId) ?? [];
     users.push(userId);
-    groups.set(key, users);
+    groups.set(targetRoleId, users);
   }
   return groups;
 }
@@ -48,7 +61,7 @@ function groupByTarget(
  * reactivar: un rol inactivo no concede nada, así que volverlo activo concede
  * de golpe todo lo que lleva, no solo lo que cambia en esta petición.
  */
-function grantedByUpdate(role: RoleDocument, dto: UpdateRoleDto): Grant {
+function grantedByUpdate(role: Role, dto: UpdateRoleDto): Grant {
   const permissions = dto.permissions ?? role.permissions;
   const resources = dto.resources ?? role.resources;
 
@@ -64,43 +77,76 @@ function grantedByUpdate(role: RoleDocument, dto: UpdateRoleDto): Grant {
 @Injectable()
 export class RolesService {
   constructor(
-    @InjectModel(Role.name)
-    private readonly roleModel: Model<RoleDocument>,
-    @InjectModel(User.name)
-    private readonly userModel: Model<UserDocument>,
-    @InjectConnection()
-    private readonly connection: Connection,
-    private readonly currentUser: CurrentUserService,
+    @InjectRepository(Role)
+    private readonly roles: Repository<Role>,
+    private readonly dataSource: DataSource,
     private readonly escalation: EscalationService,
   ) {}
 
-  list(): Promise<RoleDocument[]> {
-    return this.roleModel.find().sort({ nombre: 1 }).exec();
+  list(): Promise<Role[]> {
+    return this.roles.find({ order: { nombre: 'ASC' } });
   }
 
-  async findOne(id: string): Promise<RoleDocument> {
-    const role = await this.roleModel.findById(id).exec();
+  async findOne(id: string): Promise<Role> {
+    const role = await this.roles.findOne({ where: { id } });
     if (!role) throw new AppNotFoundException(K.ROLES.NOT_FOUND, { id });
     return role;
   }
 
-  async create(actorId: string, dto: CreateRoleDto): Promise<RoleDocument> {
+  async create(actorId: string, dto: CreateRoleDto): Promise<Role> {
     await this.escalation.assertCanGrant(actorId, {
       permissions: dto.permissions,
       resources: dto.resources,
     });
 
-    const existe = await this.roleModel.findOne({ nombre: dto.nombre }).exec();
+    const existe = await this.roles.findOne({ where: { nombre: dto.nombre } });
     if (existe) throw new AppConflictException(K.ROLES.NAME_ALREADY_EXISTS);
-    return this.roleModel.create(dto);
+
+    const padre = await this.resolverPadre(actorId, dto.parentId);
+
+    return this.roles.save(
+      this.roles.create({
+        ...dto,
+        // El `parentId` del DTO es solo la PETICIÓN; el que se guarda sale de
+        // `resolverPadre`, que ya lo validó contra el subárbol del actor.
+        parentId: padre.id,
+        nivel: nivelDeHijo(padre),
+        ancestros: ancestrosDeHijo(padre),
+      }),
+    );
   }
 
-  async update(
+  /**
+   * El rol bajo el que cuelga el nuevo: siempre uno del actor.
+   *
+   * Quien crea se vuelve padre de lo que crea, así que sus hijos solo pueden
+   * crear nietos suyos y el árbol se mantiene coherente generación a
+   * generación. Elegir un padre ajeno permitiría inventarse linaje y colarse en
+   * la rama de otro.
+   */
+  private async resolverPadre(
     actorId: string,
-    id: string,
-    dto: UpdateRoleDto,
-  ): Promise<RoleDocument> {
+    parentId: string | undefined,
+  ): Promise<Role> {
+    const propios = await this.escalation.rolesDelActor(actorId);
+
+    const elegido = parentId ?? (propios.length === 1 ? propios[0] : undefined);
+    if (!elegido) {
+      throw new AppBadRequestException(K.ROLES.PARENT_REQUIRED);
+    }
+
+    const padre = await this.findOne(elegido);
+    if (!puedeColgarDe(padre, propios)) {
+      throw new AppForbiddenException(K.ROLES.PARENT_NOT_OWNED);
+    }
+
+    return padre;
+  }
+
+  async update(actorId: string, id: string, dto: UpdateRoleDto): Promise<Role> {
     const role = await this.findOne(id);
+    // Custodia antes que contenido: si el rol no es mío, da igual qué le pida.
+    await this.escalation.assertRolesInSubtree(actorId, [id]);
 
     // Un rol del sistema no puede cambiar sus permisos, sus rutas ni
     // desactivarse; sí su descripción. Es la salvaguarda para no dejar al
@@ -119,9 +165,9 @@ export class RolesService {
     await this.escalation.assertCanGrant(actorId, grantedByUpdate(role, dto));
 
     if (dto.nombre && dto.nombre !== role.nombre) {
-      const existe = await this.roleModel
-        .findOne({ nombre: dto.nombre, _id: { $ne: role._id } })
-        .exec();
+      const existe = await this.roles.findOne({
+        where: { nombre: dto.nombre, id: Not(role.id) },
+      });
       if (existe) throw new AppConflictException(K.ROLES.NAME_ALREADY_EXISTS);
     }
 
@@ -130,20 +176,77 @@ export class RolesService {
     if (dto.permissions !== undefined) role.permissions = dto.permissions;
     if (dto.resources !== undefined) role.resources = dto.resources;
     if (dto.status !== undefined) role.status = dto.status;
-    await role.save();
-    await this.currentUser.refreshByRole(id);
-    return role;
+    await this.roles.save(role);
+
+    if (dto.parentId !== undefined && dto.parentId !== role.parentId) {
+      await this.recolgar(actorId, role, dto.parentId);
+    }
+    return this.findOne(id);
+  }
+
+  /**
+   * Mueve un rol bajo otro padre y reescribe el linaje de su descendencia.
+   *
+   * Todo va en UNA transacción: si a mitad de camino falla algo, un subárbol
+   * con la mitad de los linajes viejos y la otra mitad nuevos sería peor que
+   * no haber movido nada — la custodia quedaría partida en dos.
+   *
+   * La raíz no se mueve: dejarla colgar de otro rol la sacaría de encima del
+   * árbol y todo el mundo perdería alcance sobre ella.
+   */
+  private async recolgar(
+    actorId: string,
+    role: Role,
+    nuevoPadreId: string,
+  ): Promise<void> {
+    if (role.parentId === null) {
+      throw new AppBadRequestException(K.ROLES.CANNOT_MOVE_ROOT);
+    }
+
+    const padre = await this.findOne(nuevoPadreId);
+    // El padre nuevo tiene que ser suyo, igual que al crear: si no, se movería
+    // el rol a una rama ajena y cambiaría de dueño.
+    const propios = await this.escalation.rolesDelActor(actorId);
+    if (!puedeColgarDe(padre, propios)) {
+      throw new AppForbiddenException(K.ROLES.PARENT_NOT_OWNED);
+    }
+    if (creaCiclo(role, padre)) {
+      throw new AppBadRequestException(K.ROLES.PARENT_CYCLE);
+    }
+
+    const linajeAnterior = role.ancestros;
+    const linajeNuevo = ancestrosDeHijo(padre);
+
+    // Se leen ANTES de mover: después el propio filtro por `ancestros` ya no
+    // encontraría a los mismos.
+    const descendientes = await this.roles.find({
+      where: { ancestros: ArrayContains([role.id]) },
+    });
+
+    await this.dataSource.transaction(async (manager) => {
+      await manager.update(Role, role.id, {
+        parentId: padre.id,
+        nivel: nivelDeHijo(padre),
+        ancestros: linajeNuevo,
+      });
+
+      for (const hijo of descendientes) {
+        const ancestros = relinajar(hijo, linajeAnterior.length, linajeNuevo);
+        await manager.update(Role, hijo.id, {
+          ancestros,
+          nivel: ancestros.length,
+        });
+      }
+    });
   }
 
   /** Cuántas personas tienen el rol asignado, sin importar su estado. */
-  countHolders(
-    roleId: Types.ObjectId,
-    session?: ClientSession,
-  ): Promise<number> {
-    return this.userModel
-      .countDocuments({ roles: roleId })
-      .session(session ?? null)
-      .exec();
+  countHolders(roleId: string, manager?: EntityManager): Promise<number> {
+    const runner = manager ?? this.dataSource.manager;
+    return runner
+      .createQueryBuilder(User, 'user')
+      .innerJoin('user.roles', 'role', 'role.id = :roleId', { roleId })
+      .getCount();
   }
 
   /**
@@ -155,37 +258,44 @@ export class RolesService {
     { page, pageSize }: ListRoleUsersDto,
   ): Promise<RoleHolders> {
     const role = await this.findOne(id);
-    const query = { roles: role._id };
 
-    const [items, total] = await Promise.all([
-      this.userModel
-        .find(query, 'name roles')
-        .sort({ name: 1 })
-        .skip((page - 1) * pageSize)
-        .limit(pageSize)
-        .populate('roles', 'nombre status')
-        .exec(),
-      this.countHolders(role._id),
-    ]);
+    const [items, total] = await this.dataSource
+      .createQueryBuilder(User, 'user')
+      .innerJoin('user.roles', 'filtro', 'filtro.id = :roleId', {
+        roleId: role.id,
+      })
+      .leftJoinAndSelect('user.roles', 'role')
+      .orderBy('user.name', 'ASC')
+      .skip((page - 1) * pageSize)
+      .take(pageSize)
+      .getManyAndCount();
 
     return { items, total, page, pageSize };
   }
 
-  async remove(id: string): Promise<void> {
+  async remove(actorId: string, id: string): Promise<void> {
     const role = await this.findOne(id);
     if (role.esSistema) {
       throw new AppBadRequestException(K.ROLES.CANNOT_DELETE_SYSTEM_ROLE);
     }
+    await this.escalation.assertRolesInSubtree(actorId, [id]);
 
-    // Sin esta guarda el borrado dejaba el ObjectId colgando en `users.roles`:
+    // Sin esta guarda el borrado dejaba filas colgando en `user_roles`:
     // referencias a un rol inexistente que nadie vuelve a limpiar.
-    const holders = await this.countHolders(role._id);
+    const holders = await this.countHolders(role.id);
     if (holders > 0) {
       throw new AppConflictException(K.ROLES.ROLE_IN_USE, { count: holders });
     }
 
-    await role.deleteOne();
-    await this.currentUser.refreshByRole(id);
+    // Borrar un padre dejaría a sus hijos sin linaje, y un rol sin linaje no lo
+    // podría gestionar nadie. La FK es RESTRICT, así que sin esta guarda el
+    // error saldría como un 500 opaco del driver en vez de decir qué pasa.
+    const hijos = await this.roles.count({ where: { parentId: role.id } });
+    if (hijos > 0) {
+      throw new AppConflictException(K.ROLES.HAS_CHILDREN, { count: hijos });
+    }
+
+    await this.roles.remove(role);
   }
 
   /**
@@ -205,34 +315,32 @@ export class RolesService {
     }
 
     const groups = groupByTarget(dto.reassignments);
-    const fallback = dto.defaultTargetRoleId?.toString();
+    const fallback = dto.defaultTargetRoleId;
     await this.assertValidTargets(actorId, role, [
       ...groups.keys(),
       ...(fallback ? [fallback] : []),
     ]);
 
-    await this.inTransaction(async (session) => {
+    await this.dataSource.transaction(async (manager) => {
       for (const [targetRoleId, userIds] of groups) {
-        await this.replaceRole(role._id, targetRoleId, userIds, session);
+        await this.replaceRole(manager, role.id, targetRoleId, userIds);
       }
 
       // Después de los destinos nominales: barre a quien quedó, incluido quien
       // recibió el rol mientras el diálogo estaba abierto.
       if (fallback) {
-        await this.replaceRole(role._id, fallback, null, session);
+        await this.replaceRole(manager, role.id, fallback, null);
       }
 
-      const left = await this.countHolders(role._id, session);
+      const left = await this.countHolders(role.id, manager);
       if (left > 0) {
         throw new AppConflictException(K.ROLES.REASSIGNMENT_INCOMPLETE, {
           count: left,
         });
       }
 
-      await this.roleModel.deleteOne({ _id: role._id }, { session });
+      await manager.delete(Role, { id: role.id });
     });
-
-    await this.currentUser.refreshByRole(id);
   }
 
   /**
@@ -243,19 +351,20 @@ export class RolesService {
    */
   private async assertValidTargets(
     actorId: string,
-    role: RoleDocument,
+    role: Role,
     targetIds: readonly string[],
   ): Promise<void> {
     if (targetIds.length === 0) return;
 
-    if (targetIds.includes(role._id.toString())) {
+    if (targetIds.includes(role.id)) {
       throw new AppBadRequestException(K.ROLES.TARGET_ROLE_IS_SOURCE);
     }
 
-    const found = await this.roleModel
-      .find({ _id: { $in: targetIds } }, '_id')
-      .exec();
-    const existing = new Set(found.map((target) => target._id.toString()));
+    const found = await this.roles.find({
+      where: { id: In([...targetIds]) },
+      select: { id: true },
+    });
+    const existing = new Set(found.map((target) => target.id));
     const missing = targetIds.find((target) => !existing.has(target));
     if (missing) {
       throw new AppNotFoundException(K.ROLES.TARGET_ROLE_NOT_FOUND, {
@@ -270,52 +379,33 @@ export class RolesService {
   }
 
   /**
-   * Cambia un rol por otro conservando los demás. `userIds` en `null` alcanza a
-   * todo el que lo tenga. Va como pipeline de agregación porque `$pull` y
-   * `$addToSet` sobre el mismo campo chocan en una sola actualización, y
-   * partirlo en dos dejaría un instante sin ninguno de los dos.
+   * Cambia un rol por otro conservando los demás, directamente sobre la tabla
+   * puente `user_roles`: se inserta el destino para quien no lo tenga y luego
+   * se retira el origen, dentro de la transacción. `userIds` en `null` alcanza
+   * a todo el que lo tenga.
    */
-  private replaceRole(
-    sourceRoleId: Types.ObjectId,
+  private async replaceRole(
+    manager: EntityManager,
+    sourceRoleId: string,
     targetRoleId: string,
-    userIds: readonly Types.ObjectId[] | null,
-    session: ClientSession,
-  ): Promise<unknown> {
-    return this.userModel
-      .updateMany(
-        userIds
-          ? { _id: { $in: userIds }, roles: sourceRoleId }
-          : { roles: sourceRoleId },
-        [
-          {
-            $set: {
-              roles: {
-                $setUnion: [
-                  {
-                    $filter: {
-                      input: '$roles',
-                      cond: { $ne: ['$$this', sourceRoleId] },
-                    },
-                  },
-                  [new Types.ObjectId(targetRoleId)],
-                ],
-              },
-            },
-          },
-        ],
-        { session },
-      )
-      .exec();
-  }
+    userIds: readonly string[] | null,
+  ): Promise<void> {
+    const filtroUsuarios = userIds ? 'AND ur.user_id = ANY($3)' : '';
+    const params: unknown[] = userIds
+      ? [sourceRoleId, targetRoleId, [...userIds]]
+      : [sourceRoleId, targetRoleId];
 
-  private async inTransaction<T>(
-    work: (session: ClientSession) => Promise<T>,
-  ): Promise<T> {
-    const session = await this.connection.startSession();
-    try {
-      return await session.withTransaction(() => work(session));
-    } finally {
-      await session.endSession();
-    }
+    await manager.query(
+      `INSERT INTO user_roles (user_id, role_id)
+       SELECT ur.user_id, $2 FROM user_roles ur
+       WHERE ur.role_id = $1 ${filtroUsuarios}
+       ON CONFLICT DO NOTHING`,
+      params,
+    );
+    await manager.query(
+      `DELETE FROM user_roles ur
+       WHERE ur.role_id = $1 ${userIds ? 'AND ur.user_id = ANY($2)' : ''}`,
+      userIds ? [sourceRoleId, [...userIds]] : [sourceRoleId],
+    );
   }
 }

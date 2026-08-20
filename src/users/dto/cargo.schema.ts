@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { K, t } from '../../i18n';
-import { NIVELES_CARGO } from '../schemas/cargo.subschema';
+import { NIVELES_CARGO } from '../user.entity';
 
 /** Un cargo scout embebido en el usuario. */
 export const cargoSchema = z.object({

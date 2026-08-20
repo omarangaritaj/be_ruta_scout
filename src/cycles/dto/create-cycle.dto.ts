@@ -1,11 +1,11 @@
 import { z } from 'zod';
-import { objectIdSchema } from '../../common';
+import { uuidSchema } from '../../common';
 import { K, t } from '../../i18n';
 import { hasValidRange } from '../cycle-dates';
 
 export const createCycleSchema = z
   .object({
-    unitId: objectIdSchema,
+    unitId: uuidSchema,
     name: z.string().trim().min(1),
     startDate: z.coerce.date(),
     endDate: z.coerce.date(),

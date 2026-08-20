@@ -31,6 +31,14 @@ export interface EmailNotifier {
     nota?: string | null;
   }): Promise<void>;
 
+  /** Aviso de suspensión o de reactivación del acceso. */
+  sendAccesoCambiado(params: {
+    to: string;
+    nombre: string;
+    suspendido: boolean;
+    nota?: string | null;
+  }): Promise<void>;
+
   sendPasswordReset(params: {
     to: string;
     nombre: string;

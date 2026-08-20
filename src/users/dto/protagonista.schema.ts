@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { K, t } from '../../i18n';
-import { objectIdSchema } from '../../common';
+import { uuidSchema } from '../../common';
 
 const textoOpcional = z.string().trim().min(1).optional();
 
@@ -17,8 +17,8 @@ export const acudienteSchema = z.object({
  * SiScout aún no los tiene (se completan en la aplicación).
  */
 export const protagonistaFieldsSchema = z.object({
-  unitId: objectIdSchema.optional(),
-  idSubgrupo: objectIdSchema.optional(),
+  unitId: uuidSchema.optional(),
+  idSubgrupo: uuidSchema.optional(),
   nombrePreferido: textoOpcional,
   fechaNacimiento: z.coerce.date().optional(),
   fechaIngreso: z.coerce.date().optional(),

@@ -6,7 +6,6 @@ export {
 } from './siscout-credentials.service';
 export {
   SiscoutCredential,
-  SiscoutCredentialSchema,
   type AlcanceCredencial,
   type AlcanceTipo,
-} from './schemas/siscout-credential.schema';
+} from './siscout-credential.entity';

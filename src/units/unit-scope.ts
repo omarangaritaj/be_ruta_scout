@@ -1,8 +1,7 @@
 import { ramaDeCargo } from '../catalogo-cargos/catalogo-cargos';
 import { ramaDeEtiquetaSiscout, type Rama } from '../catalogo-cargos/ramas';
 import { D } from '../domain';
-import type { NivelCargo } from '../users/schemas/cargo.subschema';
-import type { NivelAcceso } from '../users/schemas/user.schema';
+import type { NivelAcceso, NivelCargo } from '../users/user.entity';
 
 /**
  * Qué unidades le tocan a quien entra a `/units`.
@@ -23,9 +22,9 @@ export type UnitScope =
   | { type: 'no-group' };
 
 export interface ScopeProfile {
-  nivelAcceso?: NivelAcceso;
-  groupId?: number;
-  cargoSiscout?: string;
+  nivelAcceso?: NivelAcceso | null;
+  groupId?: number | null;
+  cargoSiscout?: string | null;
   cargos?: { nombreCargo: string; nivel: NivelCargo }[];
 }
 

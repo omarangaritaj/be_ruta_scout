@@ -19,7 +19,7 @@ import { PERMISSIONS, type PermissionDef } from '../authz/permissions.catalog';
 import { ROUTE_RESOURCES } from '../authz/route-resources.catalog';
 import { RequirePermissions } from '../authz/require-permissions.decorator';
 import type { RouteResource } from '../domain';
-import { ParseObjectIdPipe, ZodValidationPipe } from '../common';
+import { ParseUuidPipe, ZodValidationPipe } from '../common';
 import { createRoleSchema, type CreateRoleDto } from './dto/create-role.dto';
 import {
   listRoleUsersSchema,
@@ -30,7 +30,7 @@ import {
   type ReassignRoleDto,
 } from './dto/reassign-role.dto';
 import { updateRoleSchema, type UpdateRoleDto } from './dto/update-role.dto';
-import { RoleDocument } from './schemas/role.schema';
+import { Role } from './role.entity';
 import { RolesService, type RoleHolders } from './roles.service';
 
 @UseGuards(JwtAuthGuard, PermissionsGuard)
@@ -41,26 +41,26 @@ export class RolesController {
   /** Catálogo de permisos disponibles (para armar los roles en la UI). */
   @Get('permissions')
   @RequirePermissions('role:read')
-  permisos(): PermissionDef[] {
-    return PERMISSIONS;
+  permisos(): { permissions: PermissionDef[] } {
+    return { permissions: PERMISSIONS };
   }
 
   /** Catálogo de rutas del frontend disponibles (para armar los roles en la UI). */
   @Get('resources')
   @RequirePermissions('role:read')
-  recursos(): readonly RouteResource[] {
-    return ROUTE_RESOURCES;
+  recursos(): { resources: readonly RouteResource[] } {
+    return { resources: ROUTE_RESOURCES };
   }
 
   @Get()
   @RequirePermissions('role:read')
-  list(): Promise<RoleDocument[]> {
-    return this.service.list();
+  async list(): Promise<{ roles: Role[] }> {
+    return { roles: await this.service.list() };
   }
 
   @Get(':id')
   @RequirePermissions('role:read')
-  findOne(@Param('id', ParseObjectIdPipe) id: string): Promise<RoleDocument> {
+  findOne(@Param('id', ParseUuidPipe) id: string): Promise<Role> {
     return this.service.findOne(id);
   }
 
@@ -69,7 +69,7 @@ export class RolesController {
   create(
     @Req() req: { user: AuthUser },
     @Body(new ZodValidationPipe(createRoleSchema)) dto: CreateRoleDto,
-  ): Promise<RoleDocument> {
+  ): Promise<Role> {
     return this.service.create(req.user.userId, dto);
   }
 
@@ -77,9 +77,9 @@ export class RolesController {
   @RequirePermissions('role:update')
   update(
     @Req() req: { user: AuthUser },
-    @Param('id', ParseObjectIdPipe) id: string,
+    @Param('id', ParseUuidPipe) id: string,
     @Body(new ZodValidationPipe(updateRoleSchema)) dto: UpdateRoleDto,
-  ): Promise<RoleDocument> {
+  ): Promise<Role> {
     return this.service.update(req.user.userId, id, dto);
   }
 
@@ -87,7 +87,7 @@ export class RolesController {
   @Get(':id/users')
   @RequirePermissions('role:read', 'user:read')
   holders(
-    @Param('id', ParseObjectIdPipe) id: string,
+    @Param('id', ParseUuidPipe) id: string,
     @Query(new ZodValidationPipe(listRoleUsersSchema)) query: ListRoleUsersDto,
   ): Promise<RoleHolders> {
     return this.service.listHolders(id, query);
@@ -96,8 +96,11 @@ export class RolesController {
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   @RequirePermissions('role:delete')
-  remove(@Param('id', ParseObjectIdPipe) id: string): Promise<void> {
-    return this.service.remove(id);
+  remove(
+    @Req() req: { user: AuthUser },
+    @Param('id', ParseUuidPipe) id: string,
+  ): Promise<void> {
+    return this.service.remove(req.user.userId, id);
   }
 
   /**
@@ -110,7 +113,7 @@ export class RolesController {
   @RequirePermissions('role:delete', 'user:approve')
   reassign(
     @Req() req: { user: AuthUser },
-    @Param('id', ParseObjectIdPipe) id: string,
+    @Param('id', ParseUuidPipe) id: string,
     @Body(new ZodValidationPipe(reassignRoleSchema)) dto: ReassignRoleDto,
   ): Promise<void> {
     return this.service.reassignAndRemove(req.user.userId, id, dto);

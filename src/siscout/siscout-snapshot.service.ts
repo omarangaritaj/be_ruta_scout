@@ -1,12 +1,9 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 import { SNAPSHOT_CIPHER, type FieldCipher } from '../crypto';
 import { decryptSensitiveFields } from './crypto/encrypted-fields';
-import {
-  SiscoutSnapshot,
-  SiscoutSnapshotDocument,
-} from './schemas/siscout-snapshot.schema';
+import { SiscoutSnapshot } from './siscout-snapshot.entity';
 
 /**
  * Acceso de LECTURA al snapshot de SiScout, con descifrado de los campos
@@ -20,8 +17,8 @@ import {
 @Injectable()
 export class SiscoutSnapshotService {
   constructor(
-    @InjectModel(SiscoutSnapshot.name)
-    private readonly snapshotModel: Model<SiscoutSnapshotDocument>,
+    @InjectRepository(SiscoutSnapshot)
+    private readonly snapshots: Repository<SiscoutSnapshot>,
     @Inject(SNAPSHOT_CIPHER)
     private readonly cipher: FieldCipher,
   ) {}
@@ -29,10 +26,10 @@ export class SiscoutSnapshotService {
   async findDecrypted(
     idSiscout: string,
   ): Promise<Record<string, unknown> | null> {
-    const snapshot = await this.snapshotModel
-      .findOne({ idSiscout }, { payload: 1, _id: 0 })
-      .lean()
-      .exec();
+    const snapshot = await this.snapshots.findOne({
+      where: { idSiscout },
+      select: { payload: true },
+    });
 
     if (!snapshot) {
       return null;

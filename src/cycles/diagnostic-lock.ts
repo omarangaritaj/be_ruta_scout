@@ -1,6 +1,6 @@
 export function isDiagnosticLocked(cycle: {
   diagnosticAnswers: unknown[];
-  diagnosticSummary?: string;
+  diagnosticSummary?: string | null;
 }): boolean {
   return (
     cycle.diagnosticAnswers.length > 0 &&

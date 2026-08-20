@@ -5,8 +5,9 @@ import { AppService } from './app.service';
 export class AppController {
   constructor(private readonly appService: AppService) {}
 
-  @Get()
-  getHello(): string {
-    return this.appService.getHello();
+  /** Healthcheck para Traefik/compose y monitoreo. */
+  @Get('health')
+  health(): { status: string } {
+    return this.appService.health();
   }
 }

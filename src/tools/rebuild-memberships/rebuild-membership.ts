@@ -1,37 +1,30 @@
-import { Connection, Model, Types } from 'mongoose';
+import { DataSource } from 'typeorm';
 import {
   projectMemberships,
   type ProjectableUnit,
 } from '../../units/membership-projection';
-import type { UnitMembershipDocument } from '../../units/schemas/unit-membership.schema';
+import { UnitMembership } from '../../units/unit-membership.entity';
 
 export async function rebuildUnitMembership(
   unit: ProjectableUnit,
-  membershipModel: Model<UnitMembershipDocument>,
-  connection: Connection,
+  dataSource: DataSource,
 ): Promise<number> {
   const rows = projectMemberships(unit);
-  const unitId = new Types.ObjectId(unit._id);
 
-  const session = await connection.startSession();
-  try {
-    await session.withTransaction(async () => {
-      await membershipModel.deleteMany({ unitId }, { session });
-      if (rows.length > 0) {
-        await membershipModel.insertMany(
-          rows.map((row) => ({
-            userId: new Types.ObjectId(row.userId),
-            unitId: new Types.ObjectId(row.unitId),
-            role: row.role,
-            groupId: row.groupId,
-          })),
-          { session },
-        );
-      }
-    });
-  } finally {
-    await session.endSession();
-  }
+  await dataSource.transaction(async (manager) => {
+    await manager.delete(UnitMembership, { unitId: unit.id });
+    if (rows.length > 0) {
+      await manager.insert(
+        UnitMembership,
+        rows.map((row) => ({
+          userId: row.userId,
+          unitId: row.unitId,
+          role: row.role,
+          groupId: row.groupId,
+        })),
+      );
+    }
+  });
 
   return rows.length;
 }

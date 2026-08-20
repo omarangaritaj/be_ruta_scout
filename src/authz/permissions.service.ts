@@ -1,24 +1,23 @@
 import { Injectable } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 import { type AccessLevel } from '../domain';
-import { RoleDocument } from '../roles/schemas/role.schema';
-import { User, UserDocument } from '../users/schemas/user.schema';
+import { User } from '../users/user.entity';
 import { granting } from './permissions.catalog';
 
 @Injectable()
 export class PermissionsService {
   constructor(
-    @InjectModel(User.name)
-    private readonly userModel: Model<UserDocument>,
+    @InjectRepository(User)
+    private readonly users: Repository<User>,
   ) {}
 
   /** Permisos efectivos = unión de los permisos de los roles ACTIVOS del usuario. */
   async effectivePermissions(userId: string): Promise<Set<string>> {
-    const user = await this.userModel
-      .findById(userId)
-      .populate<{ roles: RoleDocument[] }>('roles', 'permissions status')
-      .exec();
+    const user = await this.users.findOne({
+      where: { id: userId },
+      relations: { roles: true },
+    });
 
     const permisos = new Set<string>();
     if (!user) return permisos;
@@ -28,6 +27,23 @@ export class PermissionsService {
       for (const permiso of role.permissions) permisos.add(permiso);
     }
     return permisos;
+  }
+
+  /**
+   * Ids de los roles ACTIVOS del usuario: las raíces de su subárbol.
+   *
+   * Solo activos, igual que `effectivePermissions`: un rol desactivado no
+   * concede sus permisos, así que tampoco debe conceder custodia sobre su
+   * descendencia.
+   */
+  async effectiveRoleIds(userId: string): Promise<string[]> {
+    const user = await this.users.findOne({
+      where: { id: userId },
+      relations: { roles: true },
+    });
+    return (user?.roles ?? [])
+      .filter((role) => role.status === 'activo')
+      .map((role) => role.id);
   }
 
   /** ¿El usuario tiene TODOS los permisos requeridos (con comodines)? */
@@ -43,16 +59,19 @@ export class PermissionsService {
    * ninguno, así que ambos casos fallan cerrado.
    */
   async effectiveLevel(userId: string): Promise<AccessLevel | undefined> {
-    const user = await this.userModel.findById(userId, 'nivelAcceso').exec();
-    return user?.nivelAcceso;
+    const user = await this.users.findOne({
+      where: { id: userId },
+      select: { id: true, nivelAcceso: true },
+    });
+    return user?.nivelAcceso ?? undefined;
   }
 
   /** Rutas efectivas = unión de las rutas de los roles ACTIVOS del usuario. */
   async effectiveResources(userId: string): Promise<Set<string>> {
-    const user = await this.userModel
-      .findById(userId)
-      .populate<{ roles: RoleDocument[] }>('roles', 'resources status')
-      .exec();
+    const user = await this.users.findOne({
+      where: { id: userId },
+      relations: { roles: true },
+    });
 
     const recursos = new Set<string>();
     if (!user) return recursos;

@@ -15,7 +15,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import type { AuthUser } from '../auth/strategies/jwt.strategy';
 import { PermissionsGuard } from '../authz/permissions.guard';
 import { RequirePermissions } from '../authz/require-permissions.decorator';
-import { ParseObjectIdPipe, ZodValidationPipe } from '../common';
+import { ParseUuidPipe, ZodValidationPipe } from '../common';
 import {
   configureUnitSchema,
   type ConfigureUnitDto,
@@ -26,26 +26,29 @@ import {
 } from './dto/declare-leadership.dto';
 import { setMembersSchema, type SetMembersDto } from './dto/set-members.dto';
 import { updateUnitSchema, type UpdateUnitDto } from './dto/update-unit.dto';
-import { UnitDocument } from './schemas/unit.schema';
-import { UnitsService, type UnitPeople } from './units.service';
+import { UnitsService, type UnitPeople, type UnitView } from './units.service';
 
 @UseGuards(JwtAuthGuard, PermissionsGuard)
 @Controller('units')
 export class UnitsController {
   constructor(private readonly unitsService: UnitsService) {}
 
+  // Convención v2: ningún endpoint responde un array raíz; las listas viajan
+  // como objeto con el campo nombrado por el recurso ({ units: [...] }).
   @Get()
   @RequirePermissions('unit:read')
-  async findAll(@Req() req: { user: AuthUser }): Promise<UnitDocument[]> {
-    return this.unitsService.findAll(req.user);
+  async findAll(
+    @Req() req: { user: AuthUser },
+  ): Promise<{ units: UnitView[] }> {
+    return { units: await this.unitsService.findAll(req.user) };
   }
 
   @Get(':id')
   @RequirePermissions('unit:read')
   async findOne(
     @Req() req: { user: AuthUser },
-    @Param('id', ParseObjectIdPipe) id: string,
-  ): Promise<UnitDocument> {
+    @Param('id', ParseUuidPipe) id: string,
+  ): Promise<UnitView> {
     return this.unitsService.findOne(req.user, id);
   }
 
@@ -53,7 +56,7 @@ export class UnitsController {
   @RequirePermissions('unit:read')
   async people(
     @Req() req: { user: AuthUser },
-    @Param('id', ParseObjectIdPipe) id: string,
+    @Param('id', ParseUuidPipe) id: string,
   ): Promise<UnitPeople> {
     return this.unitsService.people(req.user, id);
   }
@@ -64,17 +67,22 @@ export class UnitsController {
     @Req() req: { user: AuthUser },
     @Body(new ZodValidationPipe(declareLeadershipSchema))
     dto: DeclareLeadershipDto,
-  ): Promise<UnitDocument[]> {
-    return this.unitsService.declareLeadership(req.user, dto.nombreCargo);
+  ): Promise<{ units: UnitView[] }> {
+    return {
+      units: await this.unitsService.declareLeadership(
+        req.user,
+        dto.nombreCargo,
+      ),
+    };
   }
 
   @Patch(':id/configure')
   @RequirePermissions('unit:update')
   async configure(
     @Req() req: { user: AuthUser },
-    @Param('id', ParseObjectIdPipe) id: string,
+    @Param('id', ParseUuidPipe) id: string,
     @Body(new ZodValidationPipe(configureUnitSchema)) dto: ConfigureUnitDto,
-  ): Promise<UnitDocument> {
+  ): Promise<UnitView> {
     return this.unitsService.configure(req.user, id, dto);
   }
 
@@ -82,24 +90,26 @@ export class UnitsController {
   @RequirePermissions('unit:update', 'unit:create')
   async setMembers(
     @Req() req: { user: AuthUser },
-    @Param('id', ParseObjectIdPipe) id: string,
+    @Param('id', ParseUuidPipe) id: string,
     @Body(new ZodValidationPipe(setMembersSchema)) dto: SetMembersDto,
-  ): Promise<UnitDocument[]> {
-    return this.unitsService.setMembers(
-      req.user,
-      id,
-      dto.memberIds.map((memberId) => memberId.toString()),
-      dto.targetUnitId?.toString(),
-    );
+  ): Promise<{ units: UnitView[] }> {
+    return {
+      units: await this.unitsService.setMembers(
+        req.user,
+        id,
+        dto.memberIds,
+        dto.targetUnitId,
+      ),
+    };
   }
 
   @Patch(':id')
   @RequirePermissions('unit:update')
   async update(
     @Req() req: { user: AuthUser },
-    @Param('id', ParseObjectIdPipe) id: string,
+    @Param('id', ParseUuidPipe) id: string,
     @Body(new ZodValidationPipe(updateUnitSchema)) dto: UpdateUnitDto,
-  ): Promise<UnitDocument> {
+  ): Promise<UnitView> {
     return this.unitsService.update(req.user, id, dto);
   }
 
@@ -108,7 +118,7 @@ export class UnitsController {
   @RequirePermissions('unit:delete')
   async remove(
     @Req() req: { user: AuthUser },
-    @Param('id', ParseObjectIdPipe) id: string,
+    @Param('id', ParseUuidPipe) id: string,
   ): Promise<void> {
     return this.unitsService.remove(req.user, id);
   }

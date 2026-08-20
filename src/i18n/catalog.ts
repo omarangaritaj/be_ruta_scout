@@ -32,6 +32,8 @@ export const CATALOG = {
       'No puedes conceder el nivel de acceso "{nivel}": tú no tienes ningún nivel asignado',
     CANNOT_GRANT_UNOWNED:
       'No puedes conceder lo que tu propio rol no te da: {missing}',
+    ROLE_OUT_OF_SUBTREE:
+      'El rol "{nombre}" no depende de los tuyos: solo puedes gestionar y asignar roles que cuelguen de tu propio rol',
   },
   BRANCH: {
     CLAN: 'Clan',
@@ -49,7 +51,12 @@ export const CATALOG = {
     SERVICE_UNAVAILABLE: 'El servicio no está disponible en este momento.',
     UNAUTHORIZED: 'Debes iniciar sesión para realizar esta acción.',
   },
+  CONFIG: {
+    UNKNOWN_GROUP: "No existe el grupo de configuración '{grupo}'",
+    UNKNOWN_KEY: "No existe la configuración '{clave}' en el grupo '{grupo}'",
+  },
   CYCLES: {
+    ALREADY_ENDED: 'Este ciclo ya terminó: su estado no se puede cambiar',
     COMPETENCIES_REQUIRED:
       'El foco educativo necesita al menos una competencia',
     DIAGNOSTIC_INCOMPLETE:
@@ -65,6 +72,8 @@ export const CATALOG = {
     INVALID_DATE_RANGE: 'La fecha de fin debe ser posterior a la de inicio',
     NOT_FOUND: 'No existe un ciclo con id "{id}"',
     OUT_OF_SCOPE: 'Este ciclo no está dentro de tu alcance',
+    SELECTED_OPPORTUNITY_REQUIRED:
+      'Selecciona al menos una oportunidad antes de activar el ciclo',
     SUMMARY_REQUIRED: 'La síntesis de diagnóstico es obligatoria',
     UNKNOWN_COMPETENCY: 'Alguna competencia no existe en el catálogo',
   },
@@ -117,8 +126,50 @@ export const CATALOG = {
     RESOLVED_REJECTED_SUBJECT: 'Sobre tu solicitud de acceso a Ruta',
     RESOLVED_REJECTED_SUFFIX: ' no fue aprobada en esta ocasión.',
     RESOLVED_REQUEST_PREFIX: 'Tu solicitud de acceso a ',
+    REINSTATED_BODY:
+      'Un administrador restableció tu acceso a Ruta. Ya puedes entrar con tu cuenta de siempre.',
+    REINSTATED_HEADING: 'Hola {nombre}, tu acceso fue restablecido',
+    REINSTATED_PREVIEW: 'Tu acceso a Ruta fue restablecido',
+    REINSTATED_SUBJECT: 'Tu acceso a Ruta fue restablecido',
+    SUSPENDED_BODY:
+      'Un administrador suspendió temporalmente tu acceso a Ruta. Mientras dure la suspensión no podrás entrar a la aplicación.',
+    SUSPENDED_CONTACT:
+      'Si crees que se trata de un error, escribe a la Dirección Nacional de Programa de Jóvenes para revisar tu caso.',
+    SUSPENDED_HEADING: 'Hola {nombre}, sobre tu acceso a Ruta',
+    SUSPENDED_PREVIEW: 'Tu acceso a Ruta fue suspendido',
+    SUSPENDED_SUBJECT: 'Tu acceso a Ruta fue suspendido',
     RESOLVED_TUTORIAL_NOTICE:
       'Al ingresar a la plataforma se activará un tutorial paso a paso. Te invitamos a seguirlo completo para conocer el flujo principal de R.U.T.A.',
+  },
+  EVENTS: {
+    AGENDA_DAY_OUTSIDE_RANGE:
+      'Cada momento de la agenda debe caer dentro de las fechas del evento',
+    ANSWER_REQUIRED:
+      'Faltan respuestas obligatorias de A Salvo del Peligro o de gestión del riesgo',
+    DATE_TAKEN: 'Ya hay una reunión de esta unidad en esa fecha',
+    EVALUATION_TOO_EARLY:
+      'La evaluación se habilita cuando el evento haya terminado',
+    INVALID_DATE_RANGE: 'La fecha de fin no puede ser anterior a la de inicio',
+    NOT_FOUND: 'No existe un evento con id "{id}"',
+    NO_ACTIVE_CYCLE:
+      'La unidad no tiene un ciclo activo para planear reuniones',
+    OPPORTUNITY_NOT_SELECTED:
+      'Solo se pueden vincular oportunidades seleccionadas del ciclo',
+    OPPORTUNITY_REQUIRED:
+      'La reunión necesita al menos una oportunidad de aprendizaje',
+    OUTSIDE_CYCLE: 'La fecha debe estar dentro del rango del ciclo',
+    PARTICIPATING_UNITS_NOT_ALLOWED:
+      'Solo las actividades de alcance mayor que rama listan unidades participantes',
+    RISK_CHECK_1:
+      '¿Se realizó inspección previa del lugar, terreno y equipos a utilizar?',
+    RISK_CHECK_2:
+      '¿Se verificó la disponibilidad de botiquín, contactos de emergencia y ruta de atención?',
+    RISK_CHECK_3:
+      '¿Se asignaron adultos responsables para supervisión y respuesta durante la actividad?',
+    RISK_CHECK_4:
+      '¿Se comunicaron medidas de seguridad, normas y límites a protagonistas de programa y equipo adulto?',
+    SCOPE_NOT_ALLOWED: 'Tu nivel de acceso no cubre ese alcance',
+    SINGLE_DAY_REQUIRED: 'Una reunión ocupa un solo día',
   },
   GROUPS: {
     NOT_FOUND: 'No existe un grupo con id "{id}"',
@@ -130,6 +181,8 @@ export const CATALOG = {
       'Ya hay una dimensión con el orden {order} en esa rama y área, incluso si está desactivada',
   },
   OPPORTUNITIES: {
+    CYCLE_NOT_DRAFT:
+      'Este ciclo ya fue activado: devuélvelo a borrador para cambiar sus oportunidades',
     NOT_FOUND: 'No existe una oportunidad con id "{id}"',
     UNKNOWN_COMPETENCY:
       'El foco educativo elegido no está entre las competencias del ciclo',
@@ -169,7 +222,16 @@ export const CATALOG = {
   ROLES: {
     CANNOT_DELETE_SYSTEM_ROLE: 'No se puede eliminar un rol del sistema',
     NAME_ALREADY_EXISTS: 'Ya existe un rol con ese nombre',
+    HAS_CHILDREN:
+      'No se puede eliminar: {count, plural, one {# rol cuelga} other {# roles cuelgan}} de este',
+    CANNOT_MOVE_ROOT:
+      'El rol raíz no se puede mover: todo el árbol cuelga de él',
     NOT_FOUND: 'No existe el rol "{id}"',
+    PARENT_CYCLE:
+      'Un rol no puede colgar de sí mismo ni de uno de sus descendientes',
+    PARENT_NOT_OWNED:
+      'Solo puedes crear un rol bajo uno de los tuyos: el rol padre elegido no es tuyo',
+    PARENT_REQUIRED: 'Elige bajo cuál de tus roles debe colgar el nuevo rol',
     REASSIGNMENT_INCOMPLETE:
       'Faltan {count, plural, one {# persona} other {# personas}} por reasignar antes de eliminar el rol',
     ROLE_IN_USE:
@@ -238,15 +300,15 @@ export const CATALOG = {
     INVALID_EMAIL: 'debe ser un correo válido',
     INVALID_INPUT: 'Datos de entrada incorrectos',
     INVALID_LEVEL: 'nivel no válido: debe ser rama, grupo, region o nacion',
-    INVALID_OBJECT_ID:
-      '"{valor}" no es un ObjectId válido (se esperan 24 caracteres hexadecimales)',
+    INVALID_UUID: '"{valor}" no es un identificador UUID válido',
+    INVALID_OPTION: 'no es una de las opciones permitidas',
     INVALID_PHONE: 'no es un teléfono válido',
     LOWERCASE_SLUG: 'solo admite minúsculas, números y guiones',
     MUST_BE_STRING: 'debe ser una cadena de texto',
     MUST_START_WITH_SLASH: 'debe empezar por /',
     NOT_EMPTY_FEMININE: 'no puede estar vacía',
     NOT_EMPTY_MASCULINE: 'no puede estar vacío',
-    OBJECT_ID: 'debe ser un ObjectId válido (24 caracteres hexadecimales)',
+    UUID: 'debe ser un identificador UUID válido',
     PASSWORD_MAX_BYTES:
       'máximo 72 bytes (las tildes y los emojis cuentan doble)',
     PASSWORD_MIN_LENGTH: 'mínimo 8 caracteres',

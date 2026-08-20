@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { objectIdSchema } from '../../common';
+import { uuidSchema } from '../../common';
 import { K, t } from '../../i18n';
 
 const requiredEnvironmentText = z
@@ -15,7 +15,7 @@ export const updateFocusSchema = z.object({
     .min(1, { error: t(K.CYCLES.EDUCATIONAL_FOCUS_REQUIRED) })
     .optional(),
   competencies: z
-    .array(objectIdSchema)
+    .array(uuidSchema)
     .min(1, { error: t(K.CYCLES.COMPETENCIES_REQUIRED) })
     .optional(),
   environmentName: requiredEnvironmentText.optional(),

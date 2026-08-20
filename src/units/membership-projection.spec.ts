@@ -1,9 +1,9 @@
 import { projectMemberships } from './membership-projection';
 
 const unit = {
-  _id: 'u1',
+  id: 'u1',
   groupId: 304,
-  unitLeaderId: 'a1',
+  leaderId: 'a1',
   leaders: ['a2', 'a3'],
   members: ['p1', 'p2'],
 };

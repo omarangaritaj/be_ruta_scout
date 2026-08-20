@@ -7,8 +7,8 @@ import { PermissionsService } from './permissions.service';
 
 /**
  * Autorización por permisos (RBAC). Global para que cualquier controller use el
- * `PermissionsGuard`. Necesita el modelo `User` (permisos efectivos) y el
- * modelo `Role` (qué concede un rol al asignarlo), que exportan sus módulos.
+ * `PermissionsGuard`. Necesita la entidad `User` (permisos efectivos) y la
+ * entidad `Role` (qué concede un rol al asignarlo), que exportan sus módulos.
  */
 @Global()
 @Module({

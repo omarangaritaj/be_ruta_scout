@@ -1,33 +1,46 @@
 import { NestFactory } from '@nestjs/core';
-import { getModelToken } from '@nestjs/mongoose';
-import { Model, type AnyBulkWriteOperation } from 'mongoose';
+import { DataSource } from 'typeorm';
 import { AppModule } from '../app.module';
-import {
-  GrowthItem,
-  GrowthItemDocument,
-} from '../growth-items/schemas/growth-item.schema';
+import { GrowthItem } from '../growth-items/growth-item.entity';
 import catalog from './data/growth-items.json';
-import { buildSeedOperations } from './growth-items-operations';
 
+/**
+ * Siembra el catálogo completo de dimensiones/objetivos de crecimiento.
+ *
+ * `orIgnore` (ON CONFLICT DO NOTHING sobre el índice único branch+área+orden)
+ * y nunca un update: la semilla puebla, no reconcilia. Un item ya existente
+ * conserva el texto y el estado que le haya dado un administrador — misma
+ * semántica que el `$setOnInsert` del sistema anterior.
+ */
 async function seed(): Promise<void> {
   const app = await NestFactory.createApplicationContext(AppModule, {
     logger: false,
   });
 
   try {
-    const model = app.get<Model<GrowthItemDocument>>(
-      getModelToken(GrowthItem.name),
-      { strict: false },
-    );
+    const dataSource = app.get(DataSource);
+    const repo = dataSource.getRepository(GrowthItem);
 
-    await model.syncIndexes();
-    const result = await model.bulkWrite(
-      buildSeedOperations(catalog) as AnyBulkWriteOperation<GrowthItem>[],
-    );
-    const total = await model.countDocuments().exec();
+    const result = await repo
+      .createQueryBuilder()
+      .insert()
+      .values(
+        catalog.map((item) => ({
+          branch: item.branch as GrowthItem['branch'],
+          growthArea: item.growthArea as GrowthItem['growthArea'],
+          order: item.order,
+          text: item.text,
+          isActive: true,
+        })),
+      )
+      .orIgnore()
+      .execute();
+
+    const insertadas = result.identifiers.filter(Boolean).length;
+    const total = await repo.count();
 
     console.log(
-      `✔ Semilla lista — ${result.upsertedCount} nuevas, ${catalog.length - result.upsertedCount} ya existían, ${total} en total.`,
+      `✔ Semilla lista — ${insertadas} nuevas, ${catalog.length - insertadas} ya existían, ${total} en total.`,
     );
   } finally {
     await app.close();

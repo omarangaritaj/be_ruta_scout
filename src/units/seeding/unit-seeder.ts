@@ -24,7 +24,7 @@ export interface PlannedUnit {
   groupId: number;
   districtId?: number;
   districtName?: string;
-  unitLeaderId: string;
+  leaderId: string;
   leaders: string[];
   members: string[];
 }
@@ -38,7 +38,7 @@ export type SeedSkipReason = 'no-people' | 'no-adults' | 'no-protagonists';
  * el catálogo de alias.
  */
 export interface DiscardedPerson {
-  _id: string;
+  id: string;
   name: string;
   cargoSiscout?: string;
   age?: number;
@@ -82,23 +82,23 @@ function classifyProtagonists(people: SeedPerson[]): Classification {
     const branch = branchOf(person);
     if (!branch) {
       discarded.push({
-        _id: person._id,
+        id: person.id,
         name: person.name,
         cargoSiscout: person.cargoSiscout,
         age: person.age,
       });
       continue;
     }
-    grouped.set(branch, [...(grouped.get(branch) ?? []), person._id]);
+    grouped.set(branch, [...(grouped.get(branch) ?? []), person.id]);
   }
 
   return { grouped, discarded };
 }
 
 /**
- * Las jefaturas de la rama entran a la unidad desde la siembra porque el bucket
- * `units_of_the_member` de PowerSync se parametriza por `unit_memberships`: un
- * subjefe sin fila propia no recibe en su dispositivo ni un solo protagonista.
+ * Las jefaturas de la rama entran a la unidad desde la siembra porque
+ * `unit_memberships` es lo que define el alcance sobre la unidad: un subjefe
+ * sin fila propia no alcanza ni un solo protagonista.
  */
 function assistantsOf(
   branch: Branch,
@@ -106,8 +106,8 @@ function assistantsOf(
   leader: LeaderCandidate,
 ): string[] {
   return leadersOfBranch(branch, adults)
-    .filter((candidate) => candidate._id !== leader._id)
-    .map((candidate) => candidate._id);
+    .filter((candidate) => candidate.id !== leader.id)
+    .map((candidate) => candidate.id);
 }
 
 export function planGroupSeed({ groupId, people }: SeedInput): SeedPlan {
@@ -137,7 +137,7 @@ export function planGroupSeed({ groupId, people }: SeedInput): SeedPlan {
         groupId,
         districtId: withDistrict?.districtId,
         districtName: withDistrict?.districtName,
-        unitLeaderId: leader._id,
+        leaderId: leader.id,
         leaders: assistantsOf(branch, adults, leader),
         members: grouped.get(branch)!,
       };

@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { K, t } from '../../i18n';
 import { NIVELES_SOLICITUD } from '../../catalogo-cargos/catalogo-cargos';
-import { RAMAS } from '../schemas/solicitud-acceso.schema';
+import { RAMAS } from '../solicitud-acceso.entity';
 
 const TELEFONO_RE = /^\+?[\d\s\-().]{7,20}$/;
 

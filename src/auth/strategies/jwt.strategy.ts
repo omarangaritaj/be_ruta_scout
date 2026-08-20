@@ -3,10 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import type { AppConfigService } from '../../config';
-import type {
-  EstadoAcceso,
-  NivelAcceso,
-} from '../../users/schemas/user.schema';
+import type { EstadoAcceso, NivelAcceso } from '../../users/user.entity';
 
 export interface JwtPayload {
   sub: string;

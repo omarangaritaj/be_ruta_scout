@@ -52,10 +52,11 @@ export class SiscoutCredentialsController {
     return this.credentialsService.create(dto);
   }
 
+  // Convención v2: los endpoints de lista responden objeto, nunca array raíz.
   @Get()
   @RequirePermissions('siscout:credentials')
-  async findAll(): Promise<SiscoutCredentialView[]> {
-    return this.credentialsService.findAll();
+  async findAll(): Promise<{ credentials: SiscoutCredentialView[] }> {
+    return { credentials: await this.credentialsService.findAll() };
   }
 
   @Get(':nombre')

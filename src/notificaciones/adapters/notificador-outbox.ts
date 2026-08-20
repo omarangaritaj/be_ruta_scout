@@ -1,26 +1,24 @@
 import { Injectable } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 import { Notificador, type NuevaNotificacion } from '../notificador.port';
-import {
-  ESTADO_NOTIFICACION,
-  Notificacion,
-  NotificacionDocument,
-} from '../schemas/notificacion.schema';
+import { ESTADO_NOTIFICACION, Notificacion } from '../notificacion.entity';
 
 @Injectable()
 export class NotificadorOutbox extends Notificador {
   constructor(
-    @InjectModel(Notificacion.name)
-    private readonly model: Model<NotificacionDocument>,
+    @InjectRepository(Notificacion)
+    private readonly notificaciones: Repository<Notificacion>,
   ) {
     super();
   }
 
   async encolar(notificacion: NuevaNotificacion): Promise<void> {
-    await this.model.create({
-      ...notificacion,
-      estado: ESTADO_NOTIFICACION.PENDIENTE,
-    });
+    await this.notificaciones.save(
+      this.notificaciones.create({
+        ...notificacion,
+        estado: ESTADO_NOTIFICACION.PENDIENTE,
+      }),
+    );
   }
 }

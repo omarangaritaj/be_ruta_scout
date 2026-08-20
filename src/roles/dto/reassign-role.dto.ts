@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { objectIdSchema } from '../../common';
+import { uuidSchema } from '../../common';
 
 /**
  * Destino de quienes hoy tienen el rol que se va a eliminar.
@@ -13,12 +13,12 @@ import { objectIdSchema } from '../../common';
  * Ambos pueden faltar: si nadie tiene ya el rol, la operación solo borra.
  */
 export const reassignRoleSchema = z.object({
-  defaultTargetRoleId: objectIdSchema.optional(),
+  defaultTargetRoleId: uuidSchema.optional(),
   reassignments: z
     .array(
       z.object({
-        userId: objectIdSchema,
-        targetRoleId: objectIdSchema,
+        userId: uuidSchema,
+        targetRoleId: uuidSchema,
       }),
     )
     .default([]),

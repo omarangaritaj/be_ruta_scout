@@ -1,20 +1,12 @@
 import { Module } from '@nestjs/common';
-import { MongooseModule } from '@nestjs/mongoose';
+import { TypeOrmModule } from '@nestjs/typeorm';
 import { CyclesModule } from '../cycles/cycles.module';
-import {
-  LearningOpportunity,
-  LearningOpportunitySchema,
-} from './schemas/learning-opportunity.schema';
+import { LearningOpportunity } from './learning-opportunity.entity';
 import { OpportunitiesController } from './opportunities.controller';
 import { OpportunitiesService } from './opportunities.service';
 
 @Module({
-  imports: [
-    MongooseModule.forFeature([
-      { name: LearningOpportunity.name, schema: LearningOpportunitySchema },
-    ]),
-    CyclesModule,
-  ],
+  imports: [TypeOrmModule.forFeature([LearningOpportunity]), CyclesModule],
   controllers: [OpportunitiesController],
   providers: [OpportunitiesService],
 })

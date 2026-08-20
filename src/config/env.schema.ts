@@ -56,18 +56,41 @@ export const envSchema = z.object({
     .max(65535, { error: 'debe estar entre 1 y 65535' })
     .default(3000),
 
-  MONGODB_URI: z
+  // Orígenes permitidos para CORS y socket.io, separados por coma. En v2 el
+  // navegador habla directo con este backend (el FE es una PWA client-only,
+  // ya no existe el BFF de Next del sistema anterior).
+  CORS_ORIGINS: z
+    .string()
+    .default('http://localhost:3001')
+    .transform((valor) =>
+      valor
+        .split(',')
+        .map((origen) => origen.trim())
+        .filter(Boolean),
+    ),
+
+  // Conexión principal a PostgreSQL. En desarrollo, el Postgres local del
+  // docker compose; en producción puede ser directamente Supabase.
+  DATABASE_URL: z
     .string({ error: 'debe ser una cadena de texto' })
-    .regex(/^mongodb(\+srv)?:\/\/.+/, {
+    .regex(/^postgres(ql)?:\/\/.+/, {
       error:
-        'debe ser una URI de MongoDB válida (mongodb://… o mongodb+srv://…)',
+        'debe ser una URI de PostgreSQL válida (postgres://… o postgresql://…)',
     }),
+
+  // Conexión remota a Supabase (réplica / lecturas remotas / migración).
+  // Opcional a propósito: sin ella la aplicación opera solo con DATABASE_URL.
+  SUPABASE_DATABASE_URL: optionalEnv(
+    z.string().regex(/^postgres(ql)?:\/\/.+/, {
+      error:
+        'debe ser una URI de PostgreSQL válida (postgres://… o postgresql://…)',
+    }),
+  ),
 
   // Conexión al Redis local que respalda el cache en memoria (perfil/permisos).
   // Tiene default para arrancar sin configurar nada; y si el servicio no
   // responde, el cache degrada con gracia (miss → se recomputa), así que la
-  // aplicación opera igual sin Redis. El TTL por defecto NO va aquí: es editable
-  // en caliente en la colección `app_config`. Ver `src/app-settings` y `src/redis`.
+  // aplicación opera igual sin Redis.
   REDIS_URL: z
     .string({ error: 'debe ser una cadena de texto' })
     .regex(/^rediss?:\/\/.+/, {
@@ -81,11 +104,6 @@ export const envSchema = z.object({
   // sin depender del servicio externo.
 
   SISCOUT_BASE_URL: optionalEnv(z.url({ error: 'debe ser una URL válida' })),
-
-  // Las CREDENCIALES no están aquí: usuario, contraseña y ruta de cambio de
-  // rol viven en la colección `siscout_credentials`, editables en caliente y
-  // con la contraseña cifrada. Cada credencial trae la suya, porque cada perfil
-  // de acceso activa una ruta distinta. Ver `src/siscout/credentials`.
 
   // --- Claves de cifrado ---
   // Nunca van a la base de datos ni se editan en caliente: un secreto que la
@@ -126,7 +144,7 @@ export const envSchema = z.object({
     .default(30),
 
   // Bootstrap del super admin (seed de un solo uso). Opcionales y descartables:
-  // si se omiten, el seed usa sus valores por defecto. Ver `src/seeds`.
+  // si se omiten, el seed usa sus valores por defecto.
   CEDULA_SUPER_ADMIN: optionalEnv(z.string().trim()),
   PASSWORD_SUPER_ADMIN: optionalEnv(z.string()),
 
@@ -135,20 +153,6 @@ export const envSchema = z.object({
   EMAIL_FROM: optionalEnv(z.string()),
   // URL pública del sitio, para los enlaces y logos de los correos.
   SITE_URL: z.string().url().default('https://ruta.scout.org.co'),
-
-  // URL del servicio PowerSync (offline-first). Se devuelve al cliente junto al
-  // token para que conecte. Opcional: sin ella el token igual se emite.
-  POWERSYNC_URL: optionalEnv(z.url({ error: 'debe ser una URL válida' })),
-
-  // Clave privada RS256 (PEM PKCS8 en base64) para firmar el token de PowerSync.
-  // Si está, el token va firmado RS256 y /auth/jwks publica la clave pública;
-  // si no, se cae a HS256 con JWT_SECRET (arranque rápido). Generar en el README.
-  POWERSYNC_JWT_PRIVATE_KEY: optionalEnv(z.string()),
-
-  // Los ajustes operativos de la sincronización (zonas, tamaños de página y de
-  // lote, cron e interruptor) NO viven aquí: son configuración editable en
-  // tiempo de ejecución, en la colección `siscout_config`. Ver
-  // `src/siscout/config`. En el entorno solo quedan los secretos y la conexión.
 });
 
 /** Tipo derivado del esquema: ya con las conversiones aplicadas (PORT es number). */

@@ -14,7 +14,7 @@ import {
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../authz/permissions.guard';
 import { RequirePermissions } from '../authz/require-permissions.decorator';
-import { ParseObjectIdPipe, ZodValidationPipe } from '../common';
+import { ParseUuidPipe, ZodValidationPipe } from '../common';
 import {
   createGrowthItemSchema,
   type CreateGrowthItemDto,
@@ -27,7 +27,7 @@ import {
   updateGrowthItemSchema,
   type UpdateGrowthItemDto,
 } from './dto/update-growth-item.dto';
-import { GrowthItemDocument } from './schemas/growth-item.schema';
+import { GrowthItem } from './growth-item.entity';
 import { GrowthItemsService } from './growth-items.service';
 
 @UseGuards(JwtAuthGuard, PermissionsGuard)
@@ -40,12 +40,14 @@ export class GrowthItemsController {
   async findAll(
     @Query(new ZodValidationPipe(listGrowthItemsSchema))
     query: ListGrowthItemsDto,
-  ): Promise<GrowthItemDocument[]> {
-    return this.growthItemsService.findAll(
-      query.branch,
-      query.growthArea,
-      query.includeInactive,
-    );
+  ): Promise<{ growthItems: GrowthItem[] }> {
+    return {
+      growthItems: await this.growthItemsService.findAll(
+        query.branch,
+        query.growthArea,
+        query.includeInactive,
+      ),
+    };
   }
 
   @Post()
@@ -53,24 +55,24 @@ export class GrowthItemsController {
   async create(
     @Body(new ZodValidationPipe(createGrowthItemSchema))
     dto: CreateGrowthItemDto,
-  ): Promise<GrowthItemDocument> {
+  ): Promise<GrowthItem> {
     return this.growthItemsService.create(dto);
   }
 
   @Patch(':id')
   @RequirePermissions('growth-item:update')
   async update(
-    @Param('id', ParseObjectIdPipe) id: string,
+    @Param('id', ParseUuidPipe) id: string,
     @Body(new ZodValidationPipe(updateGrowthItemSchema))
     dto: UpdateGrowthItemDto,
-  ): Promise<GrowthItemDocument> {
+  ): Promise<GrowthItem> {
     return this.growthItemsService.update(id, dto);
   }
 
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   @RequirePermissions('growth-item:delete')
-  async remove(@Param('id', ParseObjectIdPipe) id: string): Promise<void> {
+  async remove(@Param('id', ParseUuidPipe) id: string): Promise<void> {
     return this.growthItemsService.remove(id);
   }
 }

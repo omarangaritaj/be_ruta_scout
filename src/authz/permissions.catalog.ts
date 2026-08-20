@@ -120,6 +120,27 @@ export const PERMISSIONS: PermissionDef[] = [
   { key: 'cycle:delete', descripcion: 'Eliminar ciclos', lado: 'ambos' },
 
   {
+    key: 'event:read',
+    descripcion: 'Ver reuniones y actividades',
+    lado: 'ambos',
+  },
+  {
+    key: 'event:create',
+    descripcion: 'Crear reuniones y actividades',
+    lado: 'ambos',
+  },
+  {
+    key: 'event:update',
+    descripcion: 'Editar reuniones y actividades',
+    lado: 'ambos',
+  },
+  {
+    key: 'event:delete',
+    descripcion: 'Eliminar reuniones y actividades',
+    lado: 'ambos',
+  },
+
+  {
     key: 'siscout:sync',
     descripcion: 'Ejecutar la sincronización con SiScout',
     lado: 'be',

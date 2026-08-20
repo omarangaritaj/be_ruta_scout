@@ -1,8 +1,8 @@
 import { z } from 'zod';
-import { objectIdSchema } from '../../common';
+import { uuidSchema } from '../../common';
 
 export const listCyclesSchema = z.object({
-  unitId: objectIdSchema.optional(),
+  unitId: uuidSchema.optional(),
 });
 
 export type ListCyclesDto = z.infer<typeof listCyclesSchema>;

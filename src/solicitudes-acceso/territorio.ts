@@ -2,7 +2,7 @@ import type { NivelSolicitud } from '../catalogo-cargos/catalogo-cargos';
 import { ramaDeEtiquetaSiscout } from '../catalogo-cargos/ramas';
 import { D } from '../domain';
 import { K, type MessageKey } from '../i18n';
-import type { Rama } from './schemas/solicitud-acceso.schema';
+import type { Rama } from './solicitud-acceso.entity';
 
 export interface Territorio {
   rama?: Rama;

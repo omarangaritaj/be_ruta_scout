@@ -9,6 +9,6 @@ export {
   type CodedErrorBody,
 } from './exceptions/app.exceptions';
 export { CodedExceptionFilter } from './filters/coded-exception.filter';
-export { ParseObjectIdPipe } from './pipes/parse-object-id.pipe';
+export { ParseUuidPipe } from './pipes/parse-uuid.pipe';
 export { ZodValidationPipe } from './pipes/zod-validation.pipe';
-export { objectIdSchema } from './schemas/object-id.schema';
+export { uuidSchema } from './schemas/uuid.schema';

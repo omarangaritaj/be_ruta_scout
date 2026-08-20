@@ -1,14 +1,13 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
-import { InjectModel } from '@nestjs/mongoose';
+import { InjectRepository } from '@nestjs/typeorm';
 import { compare, hash } from 'bcryptjs';
 import { createHash, randomBytes } from 'node:crypto';
-import { Model } from 'mongoose';
+import { Repository } from 'typeorm';
 import { PermissionsService } from '../authz/permissions.service';
 import {
   AppConflictException,
-  AppForbiddenException,
   AppNotFoundException,
   AppUnauthorizedException,
 } from '../common';
@@ -17,18 +16,13 @@ import type { AppConfigService } from '../config';
 import { CEDULA_HASHER, type CedulaHasher } from '../crypto';
 import {
   User,
-  UserDocument,
   type EstadoAcceso,
   type NivelAcceso,
   type TipoPersona,
-} from '../users/schemas/user.schema';
-import { CurrentUserService } from '../current-user/current-user.service';
+} from '../users/user.entity';
 import { D } from '../domain';
-import { PowerSyncKeyService, type PowerSyncJwks } from './powersync-keys';
-import {
-  RefreshToken,
-  RefreshTokenDocument,
-} from './schemas/refresh-token.schema';
+import { BCRYPT_ROUNDS } from './password-hashing';
+import { RefreshToken } from './refresh-token.entity';
 
 export type NextStep = 'app' | 'onboarding' | 'suspended';
 export type AccountStatus = 'registered' | 'new' | 'inactive';
@@ -50,6 +44,8 @@ export interface CheckResult {
 export interface AuthenticatedUser extends Person {
   permissions: string[];
   resources: string[];
+  /** Roles activos: las raíces de su subárbol para la jerarquía de roles. */
+  roleIds: string[];
 }
 
 export interface AuthResult {
@@ -59,36 +55,21 @@ export interface AuthResult {
   nextStep: NextStep;
 }
 
-/** Credenciales que el cliente offline usa para conectarse a PowerSync. */
-export interface PowerSyncTokenResult {
-  token: string;
-  powersyncUrl: string | null;
-}
-
-const BCRYPT_ROUNDS = 12;
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
-
-// Audiencia que debe llevar el token PowerSync; DEBE coincidir con
-// `client_auth.audience` en infra_ruta/powersync/service.yaml (PS_JWT_AUDIENCE).
-const POWERSYNC_AUDIENCE = 'powersync';
-// Vida corta (segundos): el cliente lo renueva vía fetchCredentials al reconectar.
-const POWERSYNC_TOKEN_TTL_SECONDS = 300;
 
 @Injectable()
 export class AuthService {
   constructor(
-    @InjectModel(User.name)
-    private readonly userModel: Model<UserDocument>,
-    @InjectModel(RefreshToken.name)
-    private readonly refreshModel: Model<RefreshTokenDocument>,
+    @InjectRepository(User)
+    private readonly users: Repository<User>,
+    @InjectRepository(RefreshToken)
+    private readonly refreshTokens: Repository<RefreshToken>,
     @Inject(CEDULA_HASHER)
     private readonly cedulaHasher: CedulaHasher,
     private readonly jwt: JwtService,
     @Inject(ConfigService)
     private readonly config: AppConfigService,
     private readonly permissions: PermissionsService,
-    private readonly powerSyncKeys: PowerSyncKeyService,
-    private readonly currentUser: CurrentUserService,
   ) {}
 
   async check(cedula: string): Promise<CheckResult> {
@@ -110,15 +91,12 @@ export class AuthService {
     }
 
     user.passwordHash = await hash(password, BCRYPT_ROUNDS);
-    await user.save();
+    await this.users.save(user);
 
     return this.issueAuthResult(user);
   }
 
-  async validateCredentials(
-    cedula: string,
-    password: string,
-  ): Promise<UserDocument> {
+  async validateCredentials(cedula: string, password: string): Promise<User> {
     const user = await this.findByCedula(cedula);
     if (!user?.passwordHash) {
       throw new AppUnauthorizedException(K.AUTH.INVALID_CREDENTIALS);
@@ -127,26 +105,25 @@ export class AuthService {
       throw new AppUnauthorizedException(K.AUTH.INVALID_CREDENTIALS);
     }
 
-    await this.currentUser.seed(user.idSiscout);
     return user;
   }
 
-  async login(user: UserDocument): Promise<AuthResult> {
+  async login(user: User): Promise<AuthResult> {
     return this.issueAuthResult(user);
   }
 
   async refresh(refreshToken: string): Promise<AuthResult> {
-    const stored = await this.refreshModel
-      .findOne({ tokenHash: this.hashToken(refreshToken) })
-      .exec();
+    const stored = await this.refreshTokens.findOne({
+      where: { tokenHash: this.hashToken(refreshToken) },
+    });
     if (!stored || stored.revoked || stored.expiresAt.getTime() < Date.now()) {
       throw new AppUnauthorizedException(K.AUTH.REFRESH_TOKEN_INVALID);
     }
 
     stored.revoked = true;
-    await stored.save();
+    await this.refreshTokens.save(stored);
 
-    const user = await this.userModel.findById(stored.userId).exec();
+    const user = await this.users.findOne({ where: { id: stored.userId } });
     if (!user) {
       throw new AppUnauthorizedException(K.AUTH.ACCOUNT_GONE);
     }
@@ -154,75 +131,39 @@ export class AuthService {
   }
 
   async logout(refreshToken: string): Promise<void> {
-    await this.refreshModel
-      .updateOne(
-        { tokenHash: this.hashToken(refreshToken) },
-        { $set: { revoked: true } },
-      )
-      .exec();
+    await this.refreshTokens.update(
+      { tokenHash: this.hashToken(refreshToken) },
+      { revoked: true },
+    );
   }
 
   async me(userId: string): Promise<AuthenticatedUser> {
-    const user = await this.userModel.findById(userId).exec();
+    const user = await this.users.findOne({ where: { id: userId } });
     if (!user) {
       throw new AppUnauthorizedException(K.AUTH.ACCOUNT_GONE);
     }
-    const [permissions, resources] = await Promise.all([
+    const [permissions, resources, roleIds] = await Promise.all([
       this.permissions.effectivePermissions(userId),
       this.permissions.effectiveResources(userId),
+      // Las raíces de su subárbol de roles: sin esto el frontend no puede
+      // saber qué roles le pertenecen y tendría que ofrecerlos todos para que
+      // be_ruta rechace con un 403 lo que nunca debió mostrarse.
+      this.permissions.effectiveRoleIds(userId),
     ]);
     return {
       ...this.toPerson(user),
       permissions: [...permissions],
       resources: [...resources],
+      roleIds,
     };
   }
 
-  /**
-   * Emite un token de corta vida para que el cliente se autentique contra
-   * PowerSync (sync offline de campo). Solo para usuarios con acceso aprobado:
-   * los datos de campo son de menores y solo un dirigente con acceso los sincroniza.
-   */
-  async powersyncToken(userId: string): Promise<PowerSyncTokenResult> {
-    const user = await this.userModel.findById(userId).exec();
-    if (!user) {
-      throw new AppUnauthorizedException(K.AUTH.ACCOUNT_GONE);
-    }
-    if (user.estadoAcceso !== D.ACCESS_STATE.APPROVED) {
-      throw new AppForbiddenException(K.AUTH.SYNC_REQUIRES_APPROVED_ACCESS);
-    }
-
-    const subject = String(user._id);
-    const token = this.powerSyncKeys.enabled
-      ? this.powerSyncKeys.signToken(
-          subject,
-          POWERSYNC_AUDIENCE,
-          POWERSYNC_TOKEN_TTL_SECONDS,
-        )
-      : await this.jwt.signAsync(
-          { sub: subject },
-          {
-            audience: POWERSYNC_AUDIENCE,
-            expiresIn: POWERSYNC_TOKEN_TTL_SECONDS,
-          },
-        );
-    const powersyncUrl =
-      this.config.get('POWERSYNC_URL', { infer: true }) ?? null;
-
-    return { token, powersyncUrl };
-  }
-
-  /** JWKS público con la clave que valida los tokens de PowerSync (RS256). */
-  powerSyncJwks(): PowerSyncJwks {
-    return this.powerSyncKeys.jwks();
-  }
-
-  private async issueAuthResult(user: UserDocument): Promise<AuthResult> {
+  private async issueAuthResult(user: User): Promise<AuthResult> {
     const accessToken = await this.jwt.signAsync({
-      sub: String(user._id),
+      sub: user.id,
       idSiscout: user.idSiscout,
       accessStatus: user.estadoAcceso,
-      accessLevel: user.nivelAcceso,
+      accessLevel: user.nivelAcceso ?? undefined,
     });
     const refreshToken = await this.createRefreshToken(user);
     return {
@@ -233,14 +174,16 @@ export class AuthService {
     };
   }
 
-  private async createRefreshToken(user: UserDocument): Promise<string> {
+  private async createRefreshToken(user: User): Promise<string> {
     const token = randomBytes(32).toString('base64url');
     const days = this.config.get('JWT_REFRESH_TTL_DAYS', { infer: true });
-    await this.refreshModel.create({
-      tokenHash: this.hashToken(token),
-      userId: user._id,
-      expiresAt: new Date(Date.now() + days * MS_PER_DAY),
-    });
+    await this.refreshTokens.save(
+      this.refreshTokens.create({
+        tokenHash: this.hashToken(token),
+        userId: user.id,
+        expiresAt: new Date(Date.now() + days * MS_PER_DAY),
+      }),
+    );
     return token;
   }
 
@@ -248,19 +191,28 @@ export class AuthService {
     return createHash('sha256').update(token).digest('hex');
   }
 
-  private async findByCedula(cedula: string): Promise<UserDocument | null> {
-    return this.userModel
-      .findOne({ cedulaHash: this.cedulaHasher.hash(cedula) })
-      .exec();
+  /**
+   * Busca por el HMAC de la cédula. `cedulaHash` y `passwordHash` llevan
+   * `select: false` en la entidad, así que aquí se piden explícitamente:
+   * auth es el único lugar que los necesita.
+   */
+  private async findByCedula(cedula: string): Promise<User | null> {
+    return this.users
+      .createQueryBuilder('user')
+      .addSelect(['user.cedulaHash', 'user.passwordHash'])
+      .where('user.cedulaHash = :hash', {
+        hash: this.cedulaHasher.hash(cedula),
+      })
+      .getOne();
   }
 
-  private toPerson(user: UserDocument): Person {
+  private toPerson(user: User): Person {
     return {
-      id: String(user._id),
+      id: user.id,
       name: user.name,
       type: user.tipo,
       accessStatus: user.estadoAcceso,
-      accessLevel: user.nivelAcceso,
+      accessLevel: user.nivelAcceso ?? undefined,
     };
   }
 

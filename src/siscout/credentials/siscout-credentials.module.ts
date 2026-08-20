@@ -1,19 +1,12 @@
 import { Global, Module } from '@nestjs/common';
-import { MongooseModule } from '@nestjs/mongoose';
+import { TypeOrmModule } from '@nestjs/typeorm';
 import { SiscoutCredentialsController } from './siscout-credentials.controller';
 import { SiscoutCredentialsService } from './siscout-credentials.service';
-import {
-  SiscoutCredential,
-  SiscoutCredentialSchema,
-} from './schemas/siscout-credential.schema';
+import { SiscoutCredential } from './siscout-credential.entity';
 
 @Global()
 @Module({
-  imports: [
-    MongooseModule.forFeature([
-      { name: SiscoutCredential.name, schema: SiscoutCredentialSchema },
-    ]),
-  ],
+  imports: [TypeOrmModule.forFeature([SiscoutCredential])],
   controllers: [SiscoutCredentialsController],
   providers: [SiscoutCredentialsService],
   exports: [SiscoutCredentialsService],

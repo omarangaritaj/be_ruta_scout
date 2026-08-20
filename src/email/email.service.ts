@@ -9,6 +9,7 @@ import type { EmailNotifier, ResultadoResolucion } from './email-notifier.port';
 import { EMAIL_SENDER, type EmailSender } from './email-sender.port';
 import PasswordReset from './templates/password-reset';
 import SolicitudRecibida from './templates/solicitud-recibida';
+import AccesoCambiado from './templates/acceso-cambiado';
 import SolicitudResuelta from './templates/solicitud-resuelta';
 
 /**
@@ -78,6 +79,37 @@ export class EmailService implements EmailNotifier {
         params.resultado === D.ACCESS_STATE.APPROVED
           ? K.EMAIL.RESOLVED_APPROVED_SUBJECT
           : K.EMAIL.RESOLVED_REJECTED_SUBJECT,
+      ),
+      html,
+    });
+  }
+
+  /**
+   * Aviso de suspensión o de reactivación del acceso.
+   *
+   * Sin este correo la persona se enteraba de la suspensión al chocar con la
+   * pantalla de acceso suspendido, sin saber por qué ni cuándo.
+   */
+  async sendAccesoCambiado(params: {
+    to: string;
+    nombre: string;
+    suspendido: boolean;
+    nota?: string | null;
+  }): Promise<void> {
+    const html = await render(
+      AccesoCambiado({
+        nombre: params.nombre,
+        suspendido: params.suspendido,
+        nota: params.nota ?? null,
+        siteUrl: this.siteUrl,
+      }),
+    );
+    await this.sender.send({
+      to: params.to,
+      subject: t(
+        params.suspendido
+          ? K.EMAIL.SUSPENDED_SUBJECT
+          : K.EMAIL.REINSTATED_SUBJECT,
       ),
       html,
     });

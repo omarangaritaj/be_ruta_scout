@@ -1,6 +1,13 @@
 import { Injectable } from '@nestjs/common';
-import { InjectConnection, InjectModel } from '@nestjs/mongoose';
-import { ClientSession, Connection, Model, Types } from 'mongoose';
+import { InjectRepository } from '@nestjs/typeorm';
+import {
+  DataSource,
+  EntityManager,
+  In,
+  IsNull,
+  Repository,
+  type FindOptionsWhere,
+} from 'typeorm';
 import type { AuthUser } from '../auth/strategies/jwt.strategy';
 import {
   cargosDeJefaturaDeRama,
@@ -12,18 +19,12 @@ import {
   AppForbiddenException,
   AppNotFoundException,
 } from '../common';
-import { CurrentUserService } from '../current-user/current-user.service';
 import { D, type Branch } from '../domain';
 import { K } from '../i18n';
-import { User, UserDocument } from '../users/schemas/user.schema';
+import { User } from '../users/user.entity';
 import type { ConfigureUnitDto } from './dto/configure-unit.dto';
 import type { UpdateUnitDto } from './dto/update-unit.dto';
 import { projectMemberships } from './membership-projection';
-import {
-  UnitMembership,
-  UnitMembershipDocument,
-} from './schemas/unit-membership.schema';
-import { Unit, UnitDocument } from './schemas/unit.schema';
 import {
   placeholderName,
   planGroupSeed,
@@ -31,9 +32,12 @@ import {
   type PlannedUnit,
   type SeedSkipReason,
 } from './seeding/unit-seeder';
+import { UnitMembership } from './unit-membership.entity';
+import { Unit } from './unit.entity';
 import { resolveUnitScope, scopeReaches } from './unit-scope';
 
-const DUPLICATE_KEY = 11000;
+/** Código que devuelve Postgres al violar un índice único. */
+const UNIQUE_VIOLATION = '23505';
 
 /**
  * Techo de sufijos al bautizar una unidad clon. Sin él la búsqueda de nombre
@@ -42,17 +46,47 @@ const DUPLICATE_KEY = 11000;
  */
 const MAX_NAME_ATTEMPTS = 50;
 
+/** Relaciones que hacen falta para proyectar y serializar una unidad. */
+const UNIT_RELATIONS = { leaders: true, members: true } as const;
+
 function isDuplicateKey(error: unknown): boolean {
   return (
     typeof error === 'object' &&
     error !== null &&
-    'code' in error &&
-    error.code === DUPLICATE_KEY
+    'driverError' in error &&
+    (error as { driverError?: { code?: string } }).driverError?.code ===
+      UNIQUE_VIOLATION
   );
 }
 
+/** Referencias a usuarios por id, suficientes para escribir las tablas puente. */
+function userRefs(ids: readonly string[]): User[] {
+  return ids.map((id) => ({ id }) as User);
+}
+
+/**
+ * Forma con la que una unidad viaja por HTTP: los mismos nombres del contrato
+ * del sistema anterior (`unitLeaderId`, `leaders` y `members` como arreglos de
+ * ids) y nunca las entidades User completas de las relaciones.
+ */
+export interface UnitView {
+  id: string;
+  name: string;
+  branch: Branch;
+  groupId: number;
+  districtId?: number;
+  districtName?: string;
+  city?: string;
+  unitLeaderId: string;
+  leaders: string[];
+  members: string[];
+  configuredAt?: Date;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 export interface UnitPerson {
-  _id: string;
+  id: string;
   name: string;
   tipo: string;
   groupId?: number;
@@ -80,31 +114,33 @@ export type SeedGroupOutcome =
 @Injectable()
 export class UnitsService {
   constructor(
-    @InjectModel(Unit.name)
-    private readonly unitModel: Model<UnitDocument>,
-    @InjectModel(UnitMembership.name)
-    private readonly membershipModel: Model<UnitMembershipDocument>,
-    @InjectModel(User.name)
-    private readonly userModel: Model<UserDocument>,
-    @InjectConnection()
-    private readonly connection: Connection,
-    private readonly currentUser: CurrentUserService,
+    @InjectRepository(Unit)
+    private readonly units: Repository<Unit>,
+    @InjectRepository(User)
+    private readonly users: Repository<User>,
+    private readonly dataSource: DataSource,
   ) {}
 
-  async findAll(user: AuthUser): Promise<UnitDocument[]> {
-    const profile = await this.currentUser.get(user.idSiscout!);
+  async findAll(user: AuthUser): Promise<UnitView[]> {
+    const profile = await this.profileOf(user);
     const scope = resolveUnitScope(profile);
 
     switch (scope.type) {
-      case 'all':
-        return this.unitModel.find().exec();
+      case 'all': {
+        const units = await this.units.find({ relations: UNIT_RELATIONS });
+        return units.map((unit) => this.toView(unit));
+      }
 
-      case 'group':
-        return this.ofGroup(scope.groupId);
+      case 'group': {
+        const units = await this.ofGroup(scope.groupId);
+        return units.map((unit) => this.toView(unit));
+      }
 
       case 'branch': {
         const units = await this.ofGroup(scope.groupId);
-        return units.filter((unit) => unit.branch === scope.branch);
+        return units
+          .filter((unit) => unit.branch === scope.branch)
+          .map((unit) => this.toView(unit));
       }
 
       case 'no-group':
@@ -119,23 +155,23 @@ export class UnitsService {
     }
   }
 
-  async findOne(user: AuthUser, id: string): Promise<UnitDocument> {
-    return this.authorize(user, id);
+  async findOne(user: AuthUser, id: string): Promise<UnitView> {
+    return this.toView(await this.authorize(user, id));
   }
 
   /**
-   * Las dos listas que pinta el detalle. Se sirven por HTTP y no por PowerSync:
-   * la unidad se administra en línea, así que replicar personas al dispositivo
-   * solo añadía una copia que mantener y un dato de menores que custodiar.
+   * Las dos listas que pinta el detalle. Se sirven por HTTP: la unidad se
+   * administra en línea, así que replicar personas al dispositivo solo añadía
+   * una copia que mantener y un dato de menores que custodiar.
    *
    * La proyección es explícita, no `*`: de `users` solo sale lo que la pantalla
-   * muestra, y nunca el documento completo de un protagonista menor de edad.
+   * muestra, y nunca la fila completa de un protagonista menor de edad.
    */
   async people(user: AuthUser, id: string): Promise<UnitPeople> {
     const unit = await this.authorize(user, id);
 
     const [members, adults] = await Promise.all([
-      this.peopleBy({ unitId: unit._id, tipo: D.PERSON_TYPE.PROTAGONIST }),
+      this.peopleBy({ unitId: unit.id, tipo: D.PERSON_TYPE.PROTAGONIST }),
       this.peopleBy({
         groupId: unit.groupId,
         tipo: D.PERSON_TYPE.ADULT,
@@ -147,22 +183,38 @@ export class UnitsService {
   }
 
   private async peopleBy(
-    filter: Record<string, unknown>,
+    filter: FindOptionsWhere<User>,
   ): Promise<UnitPerson[]> {
-    const people = await this.userModel
-      .find(filter)
-      .select('_id name tipo groupId unitId')
-      .sort({ name: 1 })
-      .lean()
-      .exec();
+    const people = await this.users.find({
+      where: filter,
+      select: { id: true, name: true, tipo: true, groupId: true, unitId: true },
+      order: { name: 'ASC' },
+    });
 
     return people.map((person) => ({
-      _id: person._id.toString(),
+      id: person.id,
       name: person.name,
       tipo: person.tipo,
-      groupId: person.groupId,
-      unitId: person.unitId?.toString(),
+      groupId: person.groupId ?? undefined,
+      unitId: person.unitId ?? undefined,
     }));
+  }
+
+  /**
+   * Perfil de la persona autenticada, leído de la base en cada operación
+   * (sustituye a la caché de current-user del sistema anterior).
+   */
+  private async profileOf(
+    user: AuthUser,
+    manager: EntityManager = this.dataSource.manager,
+  ): Promise<User> {
+    const profile = await manager.findOne(User, {
+      where: { id: user.userId },
+    });
+    if (!profile) {
+      throw new AppNotFoundException(K.REQUESTS.AUTHENTICATED_PERSON_NOT_FOUND);
+    }
+    return profile;
   }
 
   /**
@@ -171,33 +223,36 @@ export class UnitsService {
    * hay forma de añadir uno nuevo que se salte la comprobación sin notarlo.
    *
    * El 403 es deliberado: el recurso existe y devolver 404 mentiría sobre algo
-   * que el actor ya conoce, porque `adults_of_the_group` le baja al dispositivo
-   * los ids de todas las unidades de su grupo.
+   * que el actor ya conoce, porque `GET /units` le lista las unidades de su
+   * grupo con sus ids.
    */
   private async authorize(
     user: AuthUser,
     id: string,
-    session: ClientSession | null = null,
-  ): Promise<UnitDocument> {
-    const unit = await this.unitModel.findById(id).session(session).exec();
+    manager: EntityManager = this.dataSource.manager,
+  ): Promise<Unit> {
+    const unit = await manager.findOne(Unit, {
+      where: { id },
+      relations: UNIT_RELATIONS,
+    });
     if (!unit) throw new AppNotFoundException(K.UNITS.NOT_FOUND, { id });
 
-    const profile = await this.currentUser.get(user.idSiscout!);
+    const profile = await this.profileOf(user, manager);
     if (scopeReaches(resolveUnitScope(profile), unit)) return unit;
 
     // Un subjefe asignado a mano vive fuera de su alcance por cargo, pero su
     // fila en unit_memberships es justo lo que dice que esa unidad es suya.
-    const member = await this.membershipModel
-      .exists({ unitId: unit._id, userId: new Types.ObjectId(profile._id) })
-      .session(session);
+    const member = await manager.exists(UnitMembership, {
+      where: { unitId: unit.id, userId: profile.id },
+    });
     if (member) return unit;
 
     throw new AppForbiddenException(K.UNITS.OUT_OF_SCOPE);
   }
 
-  private async ofGroup(groupId: number): Promise<UnitDocument[]> {
+  private async ofGroup(groupId: number): Promise<Unit[]> {
     await this.seedGroup(groupId);
-    return this.unitModel.find({ groupId }).exec();
+    return this.units.find({ where: { groupId }, relations: UNIT_RELATIONS });
   }
 
   /**
@@ -207,29 +262,47 @@ export class UnitsService {
    * unidad para siempre, porque ningún otro camino asigna una.
    */
   async seedGroup(groupId: number): Promise<SeedGroupOutcome> {
-    const pending = await this.userModel.exists({
-      groupId,
-      estado: true,
-      tipo: D.PERSON_TYPE.PROTAGONIST,
-      unitId: null,
+    const pending = await this.users.exists({
+      where: {
+        groupId,
+        estado: true,
+        tipo: D.PERSON_TYPE.PROTAGONIST,
+        unitId: IsNull(),
+      },
     });
     if (!pending) {
       return { status: 'skipped', reason: 'all-assigned', discarded: [] };
     }
 
-    const people = await this.userModel
-      .find({ groupId, estado: true })
-      .select(
-        '_id name tipo cargoSiscout cargos age districtId districtName unitId',
-      )
-      .lean()
-      .exec();
+    const people = await this.users.find({
+      where: { groupId, estado: true },
+      select: {
+        id: true,
+        name: true,
+        tipo: true,
+        cargoSiscout: true,
+        cargos: true,
+        age: true,
+        districtId: true,
+        districtName: true,
+        unitId: true,
+      },
+    });
 
     const plan = planGroupSeed({
       groupId,
       people: people
         .filter((p) => p.tipo !== D.PERSON_TYPE.PROTAGONIST || !p.unitId)
-        .map((p) => ({ ...p, _id: p._id.toString() })),
+        .map((p) => ({
+          id: p.id,
+          name: p.name,
+          tipo: p.tipo,
+          cargoSiscout: p.cargoSiscout ?? undefined,
+          cargos: p.cargos,
+          age: p.age ?? undefined,
+          districtId: p.districtId ?? undefined,
+          districtName: p.districtName ?? undefined,
+        })),
     });
 
     if (plan.units.length === 0) {
@@ -241,8 +314,8 @@ export class UnitsService {
     }
 
     try {
-      const applied = await this.inTransaction(async (session) =>
-        this.applySeedPlan(plan.units, groupId, session),
+      const applied = await this.inTransaction(async (manager) =>
+        this.applySeedPlan(plan.units, groupId, manager),
       );
 
       return { status: 'seeded', ...applied, discarded: plan.discarded };
@@ -265,40 +338,38 @@ export class UnitsService {
   private async applySeedPlan(
     planned: PlannedUnit[],
     groupId: number,
-    session: ClientSession,
+    manager: EntityManager,
   ): Promise<{ created: PlannedUnit[]; joined: number }> {
     const created: PlannedUnit[] = [];
     let joined = 0;
 
     for (const unitPlan of planned) {
-      const host = await this.branchHost(groupId, unitPlan.branch, session);
+      const host = await this.branchHost(groupId, unitPlan.branch, manager);
 
       if (!host) {
-        const [unit] = await this.unitModel.create(
-          [
-            {
-              ...unitPlan,
-              unitLeaderId: new Types.ObjectId(unitPlan.unitLeaderId),
-              members: unitPlan.members.map((id) => new Types.ObjectId(id)),
-            },
-          ],
-          { session },
-        );
-        await this.syncMembership(unit, session);
+        const unit = manager.create(Unit, {
+          name: unitPlan.name,
+          branch: unitPlan.branch,
+          groupId: unitPlan.groupId,
+          districtId: unitPlan.districtId,
+          districtName: unitPlan.districtName,
+          leaderId: unitPlan.leaderId,
+          leaders: userRefs(unitPlan.leaders),
+          members: userRefs(unitPlan.members),
+        });
+        await manager.save(unit);
+        await this.syncMembership(unit, manager);
         created.push(unitPlan);
         continue;
       }
 
-      const present = new Set(host.members.map((id) => id.toString()));
+      const present = new Set(host.members.map((member) => member.id));
       const incoming = unitPlan.members.filter((id) => !present.has(id));
       if (incoming.length === 0) continue;
 
-      host.members = [
-        ...host.members,
-        ...incoming.map((id) => new Types.ObjectId(id)),
-      ];
-      await host.save({ session });
-      await this.syncMembership(host, session);
+      host.members = [...host.members, ...userRefs(incoming)];
+      await manager.save(host);
+      await this.syncMembership(host, manager);
       joined += incoming.length;
     }
 
@@ -312,19 +383,19 @@ export class UnitsService {
    *
    * Se prefiere una con miembros porque una unidad vacía suele estar en
    * tránsito hacia el borrado (es la única vía para eliminarla) y repoblarla la
-   * dejaría otra vez sin poder borrarse. El `_id` ascendente desempata: es un
-   * orden total y estable, a diferencia del nombre, que la jefatura cambia.
+   * dejaría otra vez sin poder borrarse. `createdAt` con `id` de desempate da
+   * un orden total y estable, a diferencia del nombre, que la jefatura cambia.
    */
   private async branchHost(
     groupId: number,
     branch: Branch,
-    session: ClientSession,
-  ): Promise<UnitDocument | null> {
-    const candidates = await this.unitModel
-      .find({ groupId, branch })
-      .sort({ _id: 1 })
-      .session(session)
-      .exec();
+    manager: EntityManager,
+  ): Promise<Unit | null> {
+    const candidates = await manager.find(Unit, {
+      where: { groupId, branch },
+      relations: UNIT_RELATIONS,
+      order: { createdAt: 'ASC', id: 'ASC' },
+    });
 
     return (
       candidates.find((unit) => unit.members.length > 0) ??
@@ -333,92 +404,76 @@ export class UnitsService {
     );
   }
 
-  private async inTransaction<T>(
-    work: (session: ClientSession) => Promise<T>,
+  private inTransaction<T>(
+    work: (manager: EntityManager) => Promise<T>,
   ): Promise<T> {
-    const session = await this.connection.startSession();
-    try {
-      return await session.withTransaction(() => work(session));
-    } finally {
-      await session.endSession();
-    }
+    return this.dataSource.transaction(work);
   }
 
   /**
-   * Único método autorizado a escribir las dos colecciones derivadas
+   * Único método autorizado a escribir las dos tablas derivadas
    * (`unit_memberships` y `users.unitId`). Nadie más las toca, ni siquiera
    * `remove`: con `detached` la unidad se queda sin proyección y sin punteros,
    * que es lo que hace falta justo antes de borrarla.
    */
   private async syncMembership(
-    unit: UnitDocument,
-    session: ClientSession,
+    unit: Unit,
+    manager: EntityManager,
     { detached = false }: { detached?: boolean } = {},
   ): Promise<void> {
     const rows = detached
       ? []
       : projectMemberships({
-          _id: unit._id.toString(),
+          id: unit.id,
           groupId: unit.groupId,
-          unitLeaderId: unit.unitLeaderId.toString(),
-          leaders: unit.leaders.map((id) => id.toString()),
-          members: unit.members.map((id) => id.toString()),
+          leaderId: unit.leaderId,
+          leaders: unit.leaders.map((leader) => leader.id),
+          members: unit.members.map((member) => member.id),
         });
 
-    await this.membershipModel.deleteMany({ unitId: unit._id }, { session });
+    await manager.delete(UnitMembership, { unitId: unit.id });
     if (rows.length > 0) {
-      await this.membershipModel.insertMany(
+      await manager.insert(
+        UnitMembership,
         rows.map((row) => ({
-          userId: new Types.ObjectId(row.userId),
-          unitId: new Types.ObjectId(row.unitId),
+          userId: row.userId,
+          unitId: row.unitId,
           role: row.role,
           groupId: row.groupId,
         })),
-        { session },
       );
     }
 
-    await this.userModel.updateMany(
-      { unitId: unit._id },
-      { $unset: { unitId: '' } },
-      { session },
-    );
+    await manager.update(User, { unitId: unit.id }, { unitId: null });
 
-    const members = detached ? [] : unit.members;
-    if (members.length > 0) {
-      await this.userModel.updateMany(
-        { _id: { $in: members } },
-        { $set: { unitId: unit._id } },
-        { session },
-      );
+    const memberIds = detached ? [] : unit.members.map((member) => member.id);
+    if (memberIds.length > 0) {
+      await manager.update(User, { id: In(memberIds) }, { unitId: unit.id });
     }
   }
 
   /**
    * Jefe y subjefes tienen que ser adultos activos del grupo de la unidad.
-   * `projectMemberships` les emite fila en `unit_memberships`, y esa fila es el
-   * parámetro del bucket `units_of_the_member`: nombrar jefe a un protagonista
-   * le bajaría al dispositivo los documentos completos de sus compañeros.
+   * `projectMemberships` les emite fila en `unit_memberships`, y esa fila es la
+   * que define el alcance sobre la unidad: nombrar jefe a un protagonista le
+   * daría acceso a los documentos completos de sus compañeros.
    */
   private async assertEligibleLeaders(
-    unit: UnitDocument,
-    candidates: Types.ObjectId[],
-    session: ClientSession,
+    unit: Unit,
+    candidates: string[],
+    manager: EntityManager,
   ): Promise<void> {
-    const unique = [
-      ...new Map(candidates.map((id) => [id.toString(), id])).values(),
-    ];
+    const unique = [...new Set(candidates)];
     if (unique.length === 0) return;
 
-    const eligible = await this.userModel.countDocuments(
-      {
-        _id: { $in: unique },
+    const eligible = await manager.count(User, {
+      where: {
+        id: In(unique),
         tipo: D.PERSON_TYPE.ADULT,
         estado: true,
         groupId: unit.groupId,
       },
-      { session },
-    );
+    });
 
     if (eligible !== unique.length) {
       throw new AppBadRequestException(K.UNITS.LEADER_NOT_ELIGIBLE);
@@ -429,26 +484,26 @@ export class UnitsService {
     user: AuthUser,
     id: string,
     dto: ConfigureUnitDto,
-  ): Promise<UnitDocument> {
-    return this.inTransaction(async (session) => {
-      const unit = await this.authorize(user, id, session);
+  ): Promise<UnitView> {
+    return this.inTransaction(async (manager) => {
+      const unit = await this.authorize(user, id, manager);
 
       await this.assertEligibleLeaders(
         unit,
         [dto.unitLeaderId, ...dto.leaders],
-        session,
+        manager,
       );
 
       unit.name = dto.name;
       unit.city = dto.city;
-      unit.unitLeaderId = dto.unitLeaderId;
-      unit.leaders = dto.leaders.filter(
-        (leaderId) => !leaderId.equals(dto.unitLeaderId),
+      unit.leaderId = dto.unitLeaderId;
+      unit.leaders = userRefs(
+        dto.leaders.filter((leaderId) => leaderId !== dto.unitLeaderId),
       );
       unit.configuredAt = new Date();
 
       try {
-        await unit.save({ session });
+        await manager.save(unit);
       } catch (error) {
         if (isDuplicateKey(error)) {
           throw new AppBadRequestException(K.UNITS.NAME_TAKEN);
@@ -456,8 +511,8 @@ export class UnitsService {
         throw error;
       }
 
-      await this.syncMembership(unit, session);
-      return unit;
+      await this.syncMembership(unit, manager);
+      return this.toView(unit);
     });
   }
 
@@ -466,11 +521,11 @@ export class UnitsService {
     id: string,
     memberIds: string[],
     targetUnitId?: string,
-  ): Promise<UnitDocument[]> {
-    return this.inTransaction(async (session) => {
-      const unit = await this.authorize(user, id, session);
+  ): Promise<UnitView[]> {
+    return this.inTransaction(async (manager) => {
+      const unit = await this.authorize(user, id, manager);
 
-      const current = unit.members.map((m) => m.toString());
+      const current = unit.members.map((member) => member.id);
       const staying = new Set(memberIds);
 
       if (memberIds.some((memberId) => !current.includes(memberId))) {
@@ -479,47 +534,40 @@ export class UnitsService {
 
       const leaving = current.filter((memberId) => !staying.has(memberId));
 
-      unit.members = memberIds.map((memberId) => new Types.ObjectId(memberId));
-      await unit.save({ session });
-      await this.syncMembership(unit, session);
+      unit.members = userRefs(memberIds);
+      await manager.save(unit);
+      await this.syncMembership(unit, manager);
 
-      if (leaving.length === 0) return [unit];
+      if (leaving.length === 0) return [this.toView(unit)];
 
       if (targetUnitId) {
         const target = await this.receivingUnit(
           user,
           unit,
           targetUnitId,
-          session,
+          manager,
         );
-        target.members = [
-          ...target.members,
-          ...leaving.map((memberId) => new Types.ObjectId(memberId)),
-        ];
-        await target.save({ session });
-        await this.syncMembership(target, session);
-        return [unit, target];
+        target.members = [...target.members, ...userRefs(leaving)];
+        await manager.save(target);
+        await this.syncMembership(target, manager);
+        return [this.toView(unit), this.toView(target)];
       }
 
-      const [clone] = await this.unitModel.create(
-        [
-          {
-            name: await this.freeName(unit.groupId, unit.branch, session),
-            branch: unit.branch,
-            groupId: unit.groupId,
-            districtId: unit.districtId,
-            districtName: unit.districtName,
-            city: unit.city,
-            unitLeaderId: unit.unitLeaderId,
-            leaders: [],
-            members: leaving.map((memberId) => new Types.ObjectId(memberId)),
-          },
-        ],
-        { session },
-      );
-      await this.syncMembership(clone, session);
+      const clone = manager.create(Unit, {
+        name: await this.freeName(unit.groupId, unit.branch, manager),
+        branch: unit.branch,
+        groupId: unit.groupId,
+        districtId: unit.districtId,
+        districtName: unit.districtName,
+        city: unit.city,
+        leaderId: unit.leaderId,
+        leaders: [],
+        members: userRefs(leaving),
+      });
+      await manager.save(clone);
+      await this.syncMembership(clone, manager);
 
-      return [unit, clone];
+      return [this.toView(unit), this.toView(clone)];
     });
   }
 
@@ -531,15 +579,15 @@ export class UnitsService {
    */
   private async receivingUnit(
     user: AuthUser,
-    origin: UnitDocument,
+    origin: Unit,
     targetUnitId: string,
-    session: ClientSession,
-  ): Promise<UnitDocument> {
-    if (targetUnitId === origin._id.toString()) {
+    manager: EntityManager,
+  ): Promise<Unit> {
+    if (targetUnitId === origin.id) {
       throw new AppBadRequestException(K.UNITS.TARGET_NOT_COMPATIBLE);
     }
 
-    const target = await this.authorize(user, targetUnitId, session);
+    const target = await this.authorize(user, targetUnitId, manager);
     if (target.groupId !== origin.groupId || target.branch !== origin.branch) {
       throw new AppBadRequestException(K.UNITS.TARGET_NOT_COMPATIBLE);
     }
@@ -550,14 +598,14 @@ export class UnitsService {
   private async freeName(
     groupId: number,
     branch: Branch,
-    session: ClientSession,
+    manager: EntityManager,
   ): Promise<string> {
     const last = MAX_NAME_ATTEMPTS + 1;
     for (let index = 2; index <= last; index += 1) {
       const candidate = placeholderName(branch, index);
-      const taken = await this.unitModel
-        .exists({ groupId, name: candidate })
-        .session(session);
+      const taken = await manager.exists(Unit, {
+        where: { groupId, name: candidate },
+      });
       if (!taken) return candidate;
     }
 
@@ -568,58 +616,59 @@ export class UnitsService {
     user: AuthUser,
     id: string,
     dto: UpdateUnitDto,
-  ): Promise<UnitDocument> {
-    return this.inTransaction(async (session) => {
-      const current = await this.authorize(user, id, session);
+  ): Promise<UnitView> {
+    return this.inTransaction(async (manager) => {
+      const unit = await this.authorize(user, id, manager);
 
       const patch = { ...dto };
       if (patch.unitLeaderId && patch.leaders) {
         const unitLeaderId = patch.unitLeaderId;
         patch.leaders = patch.leaders.filter(
-          (leaderId) => !leaderId.equals(unitLeaderId),
+          (leaderId) => leaderId !== unitLeaderId,
         );
       }
 
       await this.assertEligibleLeaders(
-        current,
+        unit,
         [
           ...(patch.unitLeaderId ? [patch.unitLeaderId] : []),
           ...(patch.leaders ?? []),
         ],
-        session,
+        manager,
       );
 
-      let unit: UnitDocument | null;
+      if (patch.name !== undefined) unit.name = patch.name;
+      if (patch.districtId !== undefined) unit.districtId = patch.districtId;
+      if (patch.districtName !== undefined) {
+        unit.districtName = patch.districtName;
+      }
+      if (patch.city !== undefined) unit.city = patch.city;
+      if (patch.unitLeaderId !== undefined) unit.leaderId = patch.unitLeaderId;
+      if (patch.leaders !== undefined) unit.leaders = userRefs(patch.leaders);
+
       try {
-        unit = await this.unitModel
-          .findByIdAndUpdate(id, patch, {
-            returnDocument: 'after',
-            runValidators: true,
-            session,
-          })
-          .exec();
+        await manager.save(unit);
       } catch (error) {
         if (isDuplicateKey(error)) {
           throw new AppBadRequestException(K.UNITS.NAME_TAKEN);
         }
         throw error;
       }
-      if (!unit) throw new AppNotFoundException(K.UNITS.NOT_FOUND, { id });
 
-      await this.syncMembership(unit, session);
-      return unit;
+      await this.syncMembership(unit, manager);
+      return this.toView(unit);
     });
   }
 
   async remove(user: AuthUser, id: string): Promise<void> {
-    await this.inTransaction(async (session) => {
-      const unit = await this.authorize(user, id, session);
+    await this.inTransaction(async (manager) => {
+      const unit = await this.authorize(user, id, manager);
       if (unit.members.length > 0) {
         throw new AppBadRequestException(K.UNITS.CANNOT_DELETE_WITH_MEMBERS);
       }
 
-      await this.syncMembership(unit, session, { detached: true });
-      await this.unitModel.findByIdAndDelete(id, { session }).exec();
+      await this.syncMembership(unit, manager, { detached: true });
+      await manager.delete(Unit, { id: unit.id });
     });
   }
 
@@ -634,7 +683,7 @@ export class UnitsService {
   async declareLeadership(
     user: AuthUser,
     nombreCargo: string,
-  ): Promise<UnitDocument[]> {
+  ): Promise<UnitView[]> {
     const branch = ramaDeCargo(nombreCargo);
     if (!branch) {
       throw new AppBadRequestException(K.UNITS.LEADERSHIP_NOT_A_BRANCH, {
@@ -642,7 +691,7 @@ export class UnitsService {
       });
     }
 
-    const profile = await this.currentUser.get(user.idSiscout!);
+    const profile = await this.profileOf(user);
     const scope = resolveUnitScope(profile);
     if (scope.type === 'no-group') {
       throw new AppBadRequestException(K.UNITS.MISSING_GROUP);
@@ -652,22 +701,48 @@ export class UnitsService {
     }
 
     // El filtro es "ningún cargo de rama", no "este cargo sin repetir": el
-    // perfil que leyó la guarda viene de la caché, así que dos peticiones a la
-    // vez la pasarían las dos. Que la escritura no prenda significa que otra
-    // llegó primero, y entonces la rama concedida no es la que se pidió.
-    const { modifiedCount } = await this.userModel
-      .updateOne(
-        { _id: profile._id, 'cargos.nivel': { $ne: D.ROLE_LEVEL.RAMA } },
-        { $push: { cargos: { nombreCargo, nivel: D.ROLE_LEVEL.RAMA } } },
+    // perfil que leyó la guarda se leyó antes de escribir, así que dos
+    // peticiones a la vez la pasarían las dos. Que la escritura no prenda
+    // significa que otra llegó primero, y entonces la rama concedida no es la
+    // que se pidió.
+    const result = await this.dataSource
+      .createQueryBuilder()
+      .update(User)
+      .set({ cargos: () => `"cargos" || :cargoNuevo::jsonb` })
+      .where('id = :id', { id: profile.id })
+      .andWhere(`NOT ("cargos" @> :cargoDeRama::jsonb)`, {
+        cargoDeRama: JSON.stringify([{ nivel: D.ROLE_LEVEL.RAMA }]),
+      })
+      .setParameter(
+        'cargoNuevo',
+        JSON.stringify([{ nombreCargo, nivel: D.ROLE_LEVEL.RAMA }]),
       )
-      .exec();
-    if (modifiedCount === 0) {
+      .execute();
+    if ((result.affected ?? 0) === 0) {
       throw new AppForbiddenException(K.UNITS.LEADERSHIP_ALREADY_SCOPED);
     }
 
-    await this.currentUser.refresh(user.idSiscout!);
-
     const units = await this.ofGroup(scope.groupId);
-    return units.filter((unit) => unit.branch === branch);
+    return units
+      .filter((unit) => unit.branch === branch)
+      .map((unit) => this.toView(unit));
+  }
+
+  private toView(unit: Unit): UnitView {
+    return {
+      id: unit.id,
+      name: unit.name,
+      branch: unit.branch,
+      groupId: unit.groupId,
+      districtId: unit.districtId ?? undefined,
+      districtName: unit.districtName ?? undefined,
+      city: unit.city ?? undefined,
+      unitLeaderId: unit.leaderId,
+      leaders: unit.leaders.map((leader) => leader.id),
+      members: unit.members.map((member) => member.id),
+      configuredAt: unit.configuredAt ?? undefined,
+      createdAt: unit.createdAt,
+      updatedAt: unit.updatedAt,
+    };
   }
 }

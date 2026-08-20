@@ -1,10 +1,11 @@
 import { Injectable } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { Model, Types } from 'mongoose';
+import { InjectRepository } from '@nestjs/typeorm';
+import { In, Repository } from 'typeorm';
 import { AppForbiddenException } from '../common';
 import { type AccessLevel } from '../domain';
 import { K } from '../i18n';
-import { Role, RoleDocument } from '../roles/schemas/role.schema';
+import { enSubarbolDe } from '../roles/jerarquia';
+import { Role } from '../roles/role.entity';
 import { canGrantLevel } from './access-levels';
 import { addedValues, ungrantable } from './escalation';
 import { PermissionsService } from './permissions.service';
@@ -15,13 +16,11 @@ export interface Grant {
   resources?: readonly string[];
 }
 
-type RoleRef = string | Types.ObjectId;
-
 @Injectable()
 export class EscalationService {
   constructor(
-    @InjectModel(Role.name)
-    private readonly roleModel: Model<RoleDocument>,
+    @InjectRepository(Role)
+    private readonly roles: Repository<Role>,
     private readonly permissions: PermissionsService,
   ) {}
 
@@ -30,12 +29,13 @@ export class EscalationService {
    * también los roles inactivos, porque asignar uno inactivo siembra el
    * privilegio para el día que alguien lo reactive.
    */
-  async grantsOfRoles(roleIds: readonly RoleRef[]): Promise<Grant> {
+  async grantsOfRoles(roleIds: readonly string[]): Promise<Grant> {
     if (roleIds.length === 0) return {};
 
-    const roles = await this.roleModel
-      .find({ _id: { $in: roleIds } }, 'permissions resources')
-      .exec();
+    const roles = await this.roles.find({
+      where: { id: In([...roleIds]) },
+      select: { id: true, permissions: true, resources: true },
+    });
 
     const permissions = new Set<string>();
     const resources = new Set<string>();
@@ -91,14 +91,49 @@ export class EscalationService {
   /** Igual, sobre los roles que se AÑADEN a una persona. */
   async assertCanGrantRoles(
     actorId: string,
-    previous: readonly RoleRef[],
-    next: readonly RoleRef[],
+    previous: readonly string[],
+    next: readonly string[],
   ): Promise<void> {
-    const added = addedValues(
-      previous.map((role) => role.toString()),
-      next.map((role) => role.toString()),
-    );
+    const added = addedValues(previous, next);
     if (added.length === 0) return;
     await this.assertCanGrant(actorId, await this.grantsOfRoles(added));
+    await this.assertRolesInSubtree(actorId, added);
+  }
+
+  /**
+   * Roles activos del actor: las raíces de su subárbol. Se expone aquí y no se
+   * inyecta `PermissionsService` en `RolesService` porque `AuthzModule` ya
+   * importa `RolesModule`, y al revés sería un ciclo entre módulos.
+   */
+  async rolesDelActor(actorId: string): Promise<string[]> {
+    return this.permissions.effectiveRoleIds(actorId);
+  }
+
+  /**
+   * Custodia: los roles tienen que colgar de los del actor (o ser los suyos).
+   *
+   * Va JUNTO a `assertCanGrant`, no en su lugar: aquella impide la escalada de
+   * privilegios comparando permisos, esta delimita de quién es cada rol. Un rol
+   * de un par de otra área puede tener permisos que yo contengo y aun así no
+   * ser mío para tocarlo.
+   */
+  async assertRolesInSubtree(
+    actorId: string,
+    roleIds: readonly string[],
+  ): Promise<void> {
+    if (roleIds.length === 0) return;
+
+    const propios = await this.permissions.effectiveRoleIds(actorId);
+    const roles = await this.roles.find({
+      where: { id: In([...roleIds]) },
+      select: { id: true, nombre: true, ancestros: true },
+    });
+
+    const fuera = roles.find((role) => !enSubarbolDe(role, propios));
+    if (fuera) {
+      throw new AppForbiddenException(K.AUTHZ.ROLE_OUT_OF_SUBTREE, {
+        nombre: fuera.nombre,
+      });
+    }
   }
 }

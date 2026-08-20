@@ -2,7 +2,7 @@ import { ramaDeCargo } from '../../catalogo-cargos/catalogo-cargos';
 import { D, type Branch } from '../../domain';
 
 export interface LeaderCandidate {
-  _id: string;
+  id: string;
   name: string;
   cargoSiscout?: string;
   cargos?: { nombreCargo: string; nivel: string }[];

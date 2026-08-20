@@ -9,7 +9,7 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
-import { ParseObjectIdPipe, ZodValidationPipe } from '../common';
+import { ParseUuidPipe, ZodValidationPipe } from '../common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import type { AuthUser } from '../auth/strategies/jwt.strategy';
 import { PermissionsGuard } from '../authz/permissions.guard';
@@ -24,7 +24,7 @@ import {
   type AprobarSolicitudDto,
   type RechazarSolicitudDto,
 } from './dto/resolver-solicitud.dto';
-import { SolicitudAccesoDocument } from './schemas/solicitud-acceso.schema';
+import { SolicitudAcceso } from './solicitud-acceso.entity';
 import { SolicitudesAccesoService } from './solicitudes-acceso.service';
 
 @UseGuards(JwtAuthGuard, PermissionsGuard)
@@ -36,7 +36,7 @@ export class SolicitudesAccesoController {
   async crear(
     @Req() req: { user: AuthUser },
     @Body(new ZodValidationPipe(crearSolicitudSchema)) dto: CrearSolicitudDto,
-  ): Promise<SolicitudAccesoDocument> {
+  ): Promise<SolicitudAcceso> {
     return this.service.crear(req.user.userId, dto);
   }
 
@@ -47,15 +47,15 @@ export class SolicitudesAccesoController {
 
   @Get()
   @RequirePermissions('solicitud:read')
-  async pendientes(): Promise<SolicitudAccesoDocument[]> {
-    return this.service.listarPendientes();
+  async pendientes(): Promise<{ solicitudes: SolicitudAcceso[] }> {
+    return { solicitudes: await this.service.listarPendientes() };
   }
 
   @Get(':id')
   @RequirePermissions('solicitud:read')
   async detalle(
-    @Param('id', ParseObjectIdPipe) id: string,
-  ): Promise<SolicitudAccesoDocument> {
+    @Param('id', ParseUuidPipe) id: string,
+  ): Promise<SolicitudAcceso> {
     return this.service.findOne(id);
   }
 
@@ -64,10 +64,10 @@ export class SolicitudesAccesoController {
   @RequirePermissions('solicitud:approve')
   async aprobar(
     @Req() req: { user: AuthUser },
-    @Param('id', ParseObjectIdPipe) id: string,
+    @Param('id', ParseUuidPipe) id: string,
     @Body(new ZodValidationPipe(aprobarSolicitudSchema))
     dto: AprobarSolicitudDto,
-  ): Promise<SolicitudAccesoDocument> {
+  ): Promise<SolicitudAcceso> {
     return this.service.aprobar(req.user.userId, id, dto);
   }
 
@@ -75,10 +75,10 @@ export class SolicitudesAccesoController {
   @HttpCode(HttpStatus.OK)
   @RequirePermissions('solicitud:reject')
   async rechazar(
-    @Param('id', ParseObjectIdPipe) id: string,
+    @Param('id', ParseUuidPipe) id: string,
     @Body(new ZodValidationPipe(rechazarSolicitudSchema))
     dto: RechazarSolicitudDto,
-  ): Promise<SolicitudAccesoDocument> {
+  ): Promise<SolicitudAcceso> {
     return this.service.rechazar(id, dto);
   }
 }

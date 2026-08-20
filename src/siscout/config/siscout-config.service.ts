@@ -1,130 +1,61 @@
-import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
-import type { UpdateSiscoutConfigDto } from './dto/update-siscout-config.dto';
+import { Injectable, OnModuleInit } from '@nestjs/common';
+import {
+  RuntimeConfigService,
+  type RuntimeConfigValues,
+} from '../../runtime-config/runtime-config.service';
 import {
   SISCOUT_CONFIG_DEFAULTS,
+  SISCOUT_CONFIG_GROUP_KEY,
   type SiscoutConfigValues,
-} from './siscout-config.defaults';
-import {
-  SiscoutConfig,
-  SiscoutConfigDocument,
-} from './schemas/siscout-config.schema';
-
-const SINGLETON_KEY = 'default';
+} from './siscout-config.catalog';
 
 type ChangeListener = (config: SiscoutConfigValues) => void;
 
 /**
- * Configuración operativa de SiScout, cargada al arranque y cacheada en memoria.
+ * Vista TIPADA del grupo `siscout` de la configuración.
  *
- * `get()` es SÍNCRONO y no toca la base: devuelve la copia en memoria, así que
- * cualquier parte de la aplicación puede leer la configuración vigente sin coste.
- * Cada actualización reescribe la caché y notifica a los suscriptores, de modo
- * que los cambios surten efecto en tiempo de ejecución sin reiniciar.
+ * Es una fachada delgada sobre `RuntimeConfigService`, y existe por una razón
+ * concreta: el almacén dejó de tener columnas y pasó a tener registros, pero el
+ * sincronizador y el planificador siguen leyendo `config.get().writeChunkSize`.
+ * Esta clase absorbe el cambio de esquema para que esos consumidores no se
+ * enteren. Por eso `get()` sigue siendo síncrono y `onChange()` conserva su
+ * firma.
  */
 @Injectable()
 export class SiscoutConfigService implements OnModuleInit {
-  private readonly logger = new Logger(SiscoutConfigService.name);
-  private cached: SiscoutConfigValues = { ...SISCOUT_CONFIG_DEFAULTS };
-  private loaded = false;
-  private readonly listeners: ChangeListener[] = [];
-
-  constructor(
-    @InjectModel(SiscoutConfig.name)
-    private readonly configModel: Model<SiscoutConfigDocument>,
-  ) {}
+  constructor(private readonly appConfig: RuntimeConfigService) {}
 
   async onModuleInit(): Promise<void> {
     await this.ensureLoaded();
   }
 
-  /**
-   * Garantiza que la configuración esté cargada antes de usarla, sin depender
-   * del orden en que NestJS inicializa los módulos.
-   */
+  /** Garantiza la carga sin depender del orden de arranque de los módulos. */
   async ensureLoaded(): Promise<void> {
-    if (this.loaded) return;
-
-    // Inserta los valores por defecto la primera vez; en adelante solo lee.
-    const document = await this.configModel
-      .findOneAndUpdate(
-        { key: SINGLETON_KEY },
-        { $setOnInsert: { key: SINGLETON_KEY, ...SISCOUT_CONFIG_DEFAULTS } },
-        { returnDocument: 'after', upsert: true },
-      )
-      .lean()
-      .exec();
-
-    this.cached = this.toValues(document);
-    this.loaded = true;
-    this.logger.log('Configuración de SiScout cargada');
+    await this.appConfig.ensureLoaded();
   }
 
-  /** Configuración vigente. Copia defensiva: nadie muta la caché por fuera. */
-  get(): SiscoutConfigValues {
-    return { ...this.cached, zoneIds: [...this.cached.zoneIds] };
-  }
-
-  async update(patch: UpdateSiscoutConfigDto): Promise<SiscoutConfigValues> {
-    const document = await this.configModel
-      .findOneAndUpdate(
-        { key: SINGLETON_KEY },
-        { $set: patch },
-        { returnDocument: 'after', upsert: true },
-      )
-      .lean()
-      .exec();
-
-    this.cached = this.toValues(document);
-    this.notify();
-    this.logger.log(
-      `Configuración actualizada: ${Object.keys(patch).join(', ')}`,
-    );
-
-    return this.get();
-  }
-
-  /** Restablece la configuración a los valores por defecto. */
-  async reset(): Promise<SiscoutConfigValues> {
-    const document = await this.configModel
-      .findOneAndUpdate(
-        { key: SINGLETON_KEY },
-        { $set: { ...SISCOUT_CONFIG_DEFAULTS } },
-        { returnDocument: 'after', upsert: true },
-      )
-      .lean()
-      .exec();
-
-    this.cached = this.toValues(document);
-    this.notify();
-    this.logger.log('Configuración restablecida a los valores por defecto');
-
-    return this.get();
+  /**
+   * Configuración vigente del grupo.
+   *
+   * El tipo es híbrido a propósito: las claves del catálogo conservan su tipo
+   * fuerte —el sincronizador depende de eso— y las que se añadan en caliente
+   * quedan accesibles como `unknown`, sin obligar a nadie a tocar el tipo para
+   * que existan.
+   *
+   * Los valores por defecto van debajo como respaldo, para que una clave que
+   * todavía no esté sembrada nunca se lea como `undefined`.
+   */
+  get(): SiscoutConfigValues & RuntimeConfigValues {
+    return {
+      ...SISCOUT_CONFIG_DEFAULTS,
+      ...this.appConfig.getGroup(SISCOUT_CONFIG_GROUP_KEY),
+    };
   }
 
   /** Registra un suscriptor que se ejecuta cuando la configuración cambia. */
   onChange(listener: ChangeListener): void {
-    this.listeners.push(listener);
-  }
-
-  private notify(): void {
-    const snapshot = this.get();
-    for (const listener of this.listeners) {
-      listener(snapshot);
-    }
-  }
-
-  private toValues(document: SiscoutConfig | null): SiscoutConfigValues {
-    const source = document ?? SISCOUT_CONFIG_DEFAULTS;
-    return {
-      zoneIds: source.zoneIds ?? SISCOUT_CONFIG_DEFAULTS.zoneIds,
-      pageLength: source.pageLength,
-      maxPages: source.maxPages,
-      minMainZoneRecords: source.minMainZoneRecords,
-      writeChunkSize: source.writeChunkSize,
-      syncCron: source.syncCron,
-      syncEnabled: source.syncEnabled,
-    };
+    this.appConfig.onChange(SISCOUT_CONFIG_GROUP_KEY, () =>
+      listener(this.get()),
+    );
   }
 }

@@ -1,12 +1,7 @@
 import { NestFactory } from '@nestjs/core';
-import { getConnectionToken, getModelToken } from '@nestjs/mongoose';
-import { Connection, Model } from 'mongoose';
+import { DataSource } from 'typeorm';
 import { AppModule } from '../app.module';
-import {
-  UnitMembership,
-  UnitMembershipDocument,
-} from '../units/schemas/unit-membership.schema';
-import { Unit, UnitDocument } from '../units/schemas/unit.schema';
+import { Unit } from '../units/unit.entity';
 import { rebuildUnitMembership } from './rebuild-memberships/rebuild-membership';
 
 async function rebuildUnitMemberships(): Promise<void> {
@@ -15,32 +10,24 @@ async function rebuildUnitMemberships(): Promise<void> {
   });
 
   try {
-    const unitModel = app.get<Model<UnitDocument>>(getModelToken(Unit.name), {
-      strict: false,
-    });
-    const membershipModel = app.get<Model<UnitMembershipDocument>>(
-      getModelToken(UnitMembership.name),
-      { strict: false },
-    );
-    const connection = app.get<Connection>(getConnectionToken(), {
-      strict: false,
-    });
+    const dataSource = app.get(DataSource);
 
-    const units = await unitModel.find().lean().exec();
+    const units = await dataSource.getRepository(Unit).find({
+      relations: { leaders: true, members: true },
+    });
 
     let totalRows = 0;
 
     for (const unit of units) {
       totalRows += await rebuildUnitMembership(
         {
-          _id: unit._id.toString(),
+          id: unit.id,
           groupId: unit.groupId,
-          unitLeaderId: unit.unitLeaderId.toString(),
-          leaders: unit.leaders.map((id) => id.toString()),
-          members: unit.members.map((id) => id.toString()),
+          leaderId: unit.leaderId,
+          leaders: unit.leaders.map((leader) => leader.id),
+          members: unit.members.map((member) => member.id),
         },
-        membershipModel,
-        connection,
+        dataSource,
       );
     }
 

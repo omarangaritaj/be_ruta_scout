@@ -1,21 +1,22 @@
 import { Module } from '@nestjs/common';
-import { MongooseModule } from '@nestjs/mongoose';
+import { TypeOrmModule } from '@nestjs/typeorm';
 import { GrowthItemsModule } from '../growth-items/growth-items.module';
 import { QuestionsModule } from '../questions/questions.module';
 import { UnitsModule } from '../units/units.module';
-import { Cycle, CycleSchema } from './schemas/cycle.schema';
+import { LearningOpportunity } from '../opportunities/learning-opportunity.entity';
+import { Cycle } from './cycle.entity';
 import { CyclesController } from './cycles.controller';
 import { CyclesService } from './cycles.service';
 
 @Module({
   imports: [
-    MongooseModule.forFeature([{ name: Cycle.name, schema: CycleSchema }]),
+    TypeOrmModule.forFeature([Cycle, LearningOpportunity]),
     UnitsModule,
     QuestionsModule,
     GrowthItemsModule,
   ],
   controllers: [CyclesController],
   providers: [CyclesService],
-  exports: [CyclesService],
+  exports: [CyclesService, TypeOrmModule],
 })
 export class CyclesModule {}

@@ -16,7 +16,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import type { AuthUser } from '../auth/strategies/jwt.strategy';
 import { PermissionsGuard } from '../authz/permissions.guard';
 import { RequirePermissions } from '../authz/require-permissions.decorator';
-import { ParseObjectIdPipe, ZodValidationPipe } from '../common';
+import { ParseUuidPipe, ZodValidationPipe } from '../common';
 import { createUserSchema, type CreateUserDto } from './dto/create-user.dto';
 import {
   listUsersSchema,
@@ -24,7 +24,7 @@ import {
   type PaginatedUsers,
 } from './dto/list-users.dto';
 import { updateUserSchema, type UpdateUserDto } from './dto/update-user.dto';
-import { UserDocument } from './schemas/user.schema';
+import { User } from './user.entity';
 import { UsersService } from './users.service';
 
 @UseGuards(JwtAuthGuard, PermissionsGuard)
@@ -37,7 +37,7 @@ export class UsersController {
   async create(
     @Req() req: { user: AuthUser },
     @Body(new ZodValidationPipe(createUserSchema)) dto: CreateUserDto,
-  ): Promise<UserDocument> {
+  ): Promise<User> {
     return this.usersService.create(req.user.userId, dto);
   }
 
@@ -45,22 +45,22 @@ export class UsersController {
   @RequirePermissions('user:read')
   async findAll(
     @Query(new ZodValidationPipe(listUsersSchema)) filtros: ListUsersDto,
-  ): Promise<PaginatedUsers<UserDocument>> {
+  ): Promise<PaginatedUsers<User>> {
     return this.usersService.findAll(filtros);
   }
 
   // Debe declararse ANTES de `:id`, o Nest capturaría "regiones" como un id.
   @Get('regiones')
   @RequirePermissions('user:read')
-  async regiones(): Promise<{ districtId: number; districtName: string }[]> {
-    return this.usersService.distinctRegions();
+  async regiones(): Promise<{
+    regiones: { districtId: number; districtName: string }[];
+  }> {
+    return { regiones: await this.usersService.distinctRegions() };
   }
 
   @Get(':id')
   @RequirePermissions('user:read')
-  async findOne(
-    @Param('id', ParseObjectIdPipe) id: string,
-  ): Promise<UserDocument> {
+  async findOne(@Param('id', ParseUuidPipe) id: string): Promise<User> {
     return this.usersService.findOne(id);
   }
 
@@ -68,16 +68,16 @@ export class UsersController {
   @RequirePermissions('user:approve')
   async update(
     @Req() req: { user: AuthUser },
-    @Param('id', ParseObjectIdPipe) id: string,
+    @Param('id', ParseUuidPipe) id: string,
     @Body(new ZodValidationPipe(updateUserSchema)) dto: UpdateUserDto,
-  ): Promise<UserDocument> {
+  ): Promise<User> {
     return this.usersService.update(req.user.userId, id, dto);
   }
 
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   @RequirePermissions('user:approve')
-  async remove(@Param('id', ParseObjectIdPipe) id: string): Promise<void> {
+  async remove(@Param('id', ParseUuidPipe) id: string): Promise<void> {
     return this.usersService.remove(id);
   }
 }

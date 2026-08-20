@@ -1,51 +1,52 @@
 import { Injectable } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository, type FindOptionsWhere } from 'typeorm';
 import { AppNotFoundException } from '../common';
 import { type Branch } from '../domain';
 import { K } from '../i18n';
 import { CreateQuestionDto } from './dto/create-question.dto';
 import { UpdateQuestionDto } from './dto/update-question.dto';
-import { Question, QuestionDocument } from './schemas/question.schema';
+import { Question } from './question.entity';
 
 @Injectable()
 export class QuestionsService {
   constructor(
-    @InjectModel(Question.name)
-    private readonly questionModel: Model<QuestionDocument>,
+    @InjectRepository(Question)
+    private readonly questions: Repository<Question>,
   ) {}
 
-  async findAll(
-    branch?: Branch,
-    includeInactive = false,
-  ): Promise<QuestionDocument[]> {
-    const filter: Record<string, unknown> = includeInactive
+  async findAll(branch?: Branch, includeInactive = false): Promise<Question[]> {
+    const where: FindOptionsWhere<Question> = includeInactive
       ? {}
       : { isActive: true };
-    if (branch) filter.branch = branch;
-    return this.questionModel.find(filter).sort({ order: 1, _id: 1 }).exec();
+    if (branch) where.branch = branch;
+    return this.questions.find({ where, order: { order: 'ASC', id: 'ASC' } });
   }
 
-  async findActiveByBranch(branch: Branch): Promise<QuestionDocument[]> {
+  async findActiveByBranch(branch: Branch): Promise<Question[]> {
     return this.findAll(branch);
   }
 
-  async create(dto: CreateQuestionDto): Promise<QuestionDocument> {
-    return this.questionModel.create(dto);
+  async create(dto: CreateQuestionDto): Promise<Question> {
+    return this.questions.save(this.questions.create(dto));
   }
 
-  async update(id: string, dto: UpdateQuestionDto): Promise<QuestionDocument> {
-    const updated = await this.questionModel
-      .findByIdAndUpdate(id, dto, { new: true })
-      .exec();
-    if (!updated) throw new AppNotFoundException(K.QUESTIONS.NOT_FOUND, { id });
-    return updated;
+  async update(id: string, dto: UpdateQuestionDto): Promise<Question> {
+    const question = await this.questions.findOne({ where: { id } });
+    if (!question) {
+      throw new AppNotFoundException(K.QUESTIONS.NOT_FOUND, { id });
+    }
+    Object.assign(question, dto);
+    return this.questions.save(question);
   }
 
   async remove(id: string): Promise<void> {
-    const updated = await this.questionModel
-      .findByIdAndUpdate(id, { isActive: false })
-      .exec();
-    if (!updated) throw new AppNotFoundException(K.QUESTIONS.NOT_FOUND, { id });
+    const { affected } = await this.questions.update(
+      { id },
+      { isActive: false },
+    );
+    if (!affected) {
+      throw new AppNotFoundException(K.QUESTIONS.NOT_FOUND, { id });
+    }
   }
 }

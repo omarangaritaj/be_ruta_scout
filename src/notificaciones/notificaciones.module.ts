@@ -1,18 +1,11 @@
 import { Module } from '@nestjs/common';
-import { MongooseModule } from '@nestjs/mongoose';
+import { TypeOrmModule } from '@nestjs/typeorm';
 import { NotificadorOutbox } from './adapters/notificador-outbox';
 import { Notificador } from './notificador.port';
-import {
-  Notificacion,
-  NotificacionSchema,
-} from './schemas/notificacion.schema';
+import { Notificacion } from './notificacion.entity';
 
 @Module({
-  imports: [
-    MongooseModule.forFeature([
-      { name: Notificacion.name, schema: NotificacionSchema },
-    ]),
-  ],
+  imports: [TypeOrmModule.forFeature([Notificacion])],
   providers: [{ provide: Notificador, useClass: NotificadorOutbox }],
   exports: [Notificador],
 })

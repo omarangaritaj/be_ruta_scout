@@ -1,17 +1,13 @@
 import { Module } from '@nestjs/common';
-import { MongooseModule } from '@nestjs/mongoose';
-import { GrowthItem, GrowthItemSchema } from './schemas/growth-item.schema';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { GrowthItem } from './growth-item.entity';
 import { GrowthItemsController } from './growth-items.controller';
 import { GrowthItemsService } from './growth-items.service';
 
 @Module({
-  imports: [
-    MongooseModule.forFeature([
-      { name: GrowthItem.name, schema: GrowthItemSchema },
-    ]),
-  ],
+  imports: [TypeOrmModule.forFeature([GrowthItem])],
   controllers: [GrowthItemsController],
   providers: [GrowthItemsService],
-  exports: [GrowthItemsService, MongooseModule],
+  exports: [GrowthItemsService, TypeOrmModule],
 })
 export class GrowthItemsModule {}

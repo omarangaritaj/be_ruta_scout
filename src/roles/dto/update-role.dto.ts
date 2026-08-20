@@ -1,8 +1,9 @@
 import { z } from 'zod';
+import { uuidSchema } from '../../common';
 import { K, t } from '../../i18n';
 import { isValidPermission } from '../../authz/permissions.catalog';
 import { isValidRouteResource } from '../../authz/route-resources.catalog';
-import { ESTADOS_ROLE } from '../schemas/role.schema';
+import { ESTADOS_ROLE } from '../role.entity';
 
 export const updateRoleSchema = z.object({
   nombre: z
@@ -27,6 +28,11 @@ export const updateRoleSchema = z.object({
     )
     .optional(),
   status: z.enum(ESTADOS_ROLE).optional(),
+  /**
+   * Recolgar el rol bajo otro padre. Cambiarlo reescribe el linaje de toda su
+   * descendencia, así que no es un campo más: ver `RolesService.recolgar`.
+   */
+  parentId: uuidSchema.optional(),
 });
 
 export type UpdateRoleDto = z.infer<typeof updateRoleSchema>;

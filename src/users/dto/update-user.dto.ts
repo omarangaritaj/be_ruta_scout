@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { D, ROLE_LEVELS } from '../../domain';
 import { K, t } from '../../i18n';
-import { objectIdSchema } from '../../common';
+import { uuidSchema } from '../../common';
 import { cargoSchema } from './cargo.schema';
 import { protagonistaFieldsSchema } from './protagonista.schema';
 
@@ -41,7 +41,7 @@ export const updateUserSchema = z
       .trim()
       .min(1, { error: t(K.VALIDATION.NOT_EMPTY_MASCULINE) }),
     estado: z.boolean(),
-    roles: z.array(objectIdSchema),
+    roles: z.array(uuidSchema),
     cargos: z.array(cargoSchema),
     nivelAcceso: z.enum(NIVELES_OTORGABLES),
     estadoAcceso: z.enum(ESTADOS_ACCESO_GESTIONABLES),

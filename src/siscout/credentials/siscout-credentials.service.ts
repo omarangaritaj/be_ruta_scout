@@ -1,6 +1,7 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import type { QueryDeepPartialEntity } from 'typeorm/query-builder/QueryPartialEntity';
 import {
   AppConflictException,
   AppNotFoundException,
@@ -9,12 +10,36 @@ import {
 import { CREDENTIALS_CIPHER, FieldCipher, isEncrypted } from '../../crypto';
 import { K } from '../../i18n';
 import type { CreateSiscoutCredentialDto } from './dto/create-siscout-credential.dto';
+import type { AlcanceDto } from './dto/siscout-credential-base.schema';
 import type { UpdateSiscoutCredentialDto } from './dto/update-siscout-credential.dto';
 import {
   SiscoutCredential,
-  SiscoutCredentialDocument,
   type AlcanceCredencial,
-} from './schemas/siscout-credential.schema';
+} from './siscout-credential.entity';
+
+/** Código que devuelve Postgres al violar un índice único. */
+const UNIQUE_VIOLATION = '23505';
+
+function isDuplicateKey(error: unknown): boolean {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'driverError' in error &&
+    (error as { driverError?: { code?: string } }).driverError?.code ===
+      UNIQUE_VIOLATION
+  );
+}
+
+/**
+ * El DTO nacional no trae `zoneIds`; se materializa el `[]` que declara la
+ * entity para que el jsonb guardado tenga siempre la misma forma.
+ */
+function toAlcance(alcance: AlcanceDto): AlcanceCredencial {
+  return {
+    tipo: alcance.tipo,
+    zoneIds: alcance.tipo === 'zonas' ? alcance.zoneIds : [],
+  };
+}
 
 /**
  * Credencial lista para autenticarse, con la contraseña ya en claro.
@@ -32,15 +57,15 @@ export interface SiscoutCredentialAuth {
 /** Vista pública de una credencial: todo menos la contraseña. */
 export interface SiscoutCredentialView {
   nombre: string;
-  descripcion?: string;
+  descripcion?: string | null;
   usuario: string;
   changeRolPath: string;
   alcance: AlcanceCredencial;
   prioridad: number;
   activa: boolean;
-  ultimoUsoEn?: Date;
-  ultimoErrorEn?: Date;
-  ultimoError?: string;
+  ultimoUsoEn?: Date | null;
+  ultimoErrorEn?: Date | null;
+  ultimoError?: string | null;
 }
 
 /**
@@ -51,8 +76,8 @@ export class SiscoutCredentialsService {
   private readonly logger = new Logger(SiscoutCredentialsService.name);
 
   constructor(
-    @InjectModel(SiscoutCredential.name)
-    private readonly credentialModel: Model<SiscoutCredentialDocument>,
+    @InjectRepository(SiscoutCredential)
+    private readonly credentials: Repository<SiscoutCredential>,
     @Inject(CREDENTIALS_CIPHER)
     private readonly cipher: FieldCipher,
   ) {}
@@ -83,17 +108,18 @@ export class SiscoutCredentialsService {
       );
     }
 
-    const candidates = await this.credentialModel
-      .find({
-        activa: true,
-        $or: [
-          { 'alcance.tipo': 'nacional' },
-          { 'alcance.tipo': 'zonas', 'alcance.zoneIds': zoneId },
-        ],
-      })
-      .select('+password')
-      .lean()
-      .exec();
+    const candidates = await this.credentials
+      .createQueryBuilder('credential')
+      // El password lleva `select: false`: este es el ÚNICO punto que lo lee.
+      .addSelect('credential.password')
+      .where('credential.activa = true')
+      .andWhere(
+        "(credential.alcance ->> 'tipo' = 'nacional' OR " +
+          "(credential.alcance ->> 'tipo' = 'zonas' AND " +
+          "credential.alcance -> 'zoneIds' @> :zona::jsonb))",
+        { zona: JSON.stringify([zoneId]) },
+      )
+      .getMany();
 
     return candidates
       .sort((a, b) => {
@@ -133,21 +159,17 @@ export class SiscoutCredentialsService {
   // --- Rastro de uso: sin esto, un failover silencioso esconde una caída ---
 
   async registrarUso(nombre: string): Promise<void> {
-    await this.credentialModel
-      .updateOne(
-        { nombre },
-        { $set: { ultimoUsoEn: new Date() }, $unset: { ultimoError: '' } },
-      )
-      .exec();
+    await this.credentials.update(
+      { nombre },
+      { ultimoUsoEn: new Date(), ultimoError: null },
+    );
   }
 
   async registrarError(nombre: string, mensaje: string): Promise<void> {
-    await this.credentialModel
-      .updateOne(
-        { nombre },
-        { $set: { ultimoErrorEn: new Date(), ultimoError: mensaje } },
-      )
-      .exec();
+    await this.credentials.update(
+      { nombre },
+      { ultimoErrorEn: new Date(), ultimoError: mensaje },
+    );
   }
 
   // --- Gestión ---
@@ -157,37 +179,35 @@ export class SiscoutCredentialsService {
   ): Promise<SiscoutCredentialView> {
     this.requireCipher();
 
-    const { password, ...rest } = dto;
+    const { password, alcance, ...rest } = dto;
 
     try {
-      const created = await this.credentialModel.create({
-        ...rest,
-        password: this.cipher.encrypt(password),
-      });
+      const created = await this.credentials.save(
+        this.credentials.create({
+          ...rest,
+          alcance: toAlcance(alcance),
+          password: this.cipher.encrypt(password),
+        }),
+      );
 
       this.logger.log(`Credencial '${dto.nombre}' creada`);
 
-      return this.toView(created.toObject());
+      return this.toView(created);
     } catch (error) {
       throw this.translateDuplicate(error, dto.nombre);
     }
   }
 
   async findAll(): Promise<SiscoutCredentialView[]> {
-    const credentials = await this.credentialModel
-      .find()
-      .sort({ prioridad: 1, nombre: 1 })
-      .lean()
-      .exec();
+    const credentials = await this.credentials.find({
+      order: { prioridad: 'ASC', nombre: 'ASC' },
+    });
 
     return credentials.map((credential) => this.toView(credential));
   }
 
   async findOne(nombre: string): Promise<SiscoutCredentialView> {
-    const credential = await this.credentialModel
-      .findOne({ nombre })
-      .lean()
-      .exec();
+    const credential = await this.credentials.findOne({ where: { nombre } });
 
     if (!credential) {
       throw new AppNotFoundException(K.SISCOUT.CREDENTIAL_NOT_FOUND, {
@@ -202,27 +222,24 @@ export class SiscoutCredentialsService {
     nombre: string,
     dto: UpdateSiscoutCredentialDto,
   ): Promise<SiscoutCredentialView> {
-    const { password, ...rest } = dto;
-    const patch: Record<string, unknown> = { ...rest };
+    const { password, alcance, ...rest } = dto;
+    const patch: QueryDeepPartialEntity<SiscoutCredential> = { ...rest };
+
+    if (alcance !== undefined) {
+      patch.alcance = toAlcance(alcance);
+    }
 
     // La contraseña llega en claro y se cifra aquí: es el único punto por el
-    // que un valor en claro entra a la colección.
+    // que un valor en claro entra a la tabla.
     if (password !== undefined) {
       this.requireCipher();
       patch.password = this.cipher.encrypt(password);
     }
 
     try {
-      const updated = await this.credentialModel
-        .findOneAndUpdate(
-          { nombre },
-          { $set: patch },
-          { returnDocument: 'after' },
-        )
-        .lean()
-        .exec();
+      const result = await this.credentials.update({ nombre }, patch);
 
-      if (!updated) {
+      if (result.affected === 0) {
         throw new AppNotFoundException(K.SISCOUT.CREDENTIAL_NOT_FOUND, {
           nombre,
         });
@@ -232,7 +249,7 @@ export class SiscoutCredentialsService {
         `Credencial '${nombre}' actualizada: ${Object.keys(patch).join(', ')}`,
       );
 
-      return this.toView(updated);
+      return this.findOne(dto.nombre ?? nombre);
     } catch (error) {
       if (error instanceof AppNotFoundException) throw error;
       throw this.translateDuplicate(error, dto.nombre ?? nombre);
@@ -240,11 +257,9 @@ export class SiscoutCredentialsService {
   }
 
   async remove(nombre: string): Promise<void> {
-    const { deletedCount } = await this.credentialModel
-      .deleteOne({ nombre })
-      .exec();
+    const { affected } = await this.credentials.delete({ nombre });
 
-    if (deletedCount === 0) {
+    if (!affected) {
       throw new AppNotFoundException(K.SISCOUT.CREDENTIAL_NOT_FOUND, {
         nombre,
       });
@@ -266,7 +281,7 @@ export class SiscoutCredentialsService {
   /**
    * La vista pública se construye campo a campo, NO quitando la contraseña de
    * una copia. Con una lista de bloqueados, cualquier campo sensible que se
-   * añada mañana al esquema quedaría expuesto por omisión y el fallo sería
+   * añada mañana a la entity quedaría expuesto por omisión y el fallo sería
    * silencioso.
    */
   private toView(credential: SiscoutCredential): SiscoutCredentialView {
@@ -289,7 +304,7 @@ export class SiscoutCredentialsService {
 
   /** El índice único de `nombre` se traduce a un 409, no a un 500. */
   private translateDuplicate(error: unknown, nombre: string): unknown {
-    if ((error as { code?: number }).code === 11000) {
+    if (isDuplicateKey(error)) {
       return new AppConflictException(K.SISCOUT.CREDENTIAL_ALREADY_EXISTS, {
         nombre,
       });

@@ -9,15 +9,13 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { ZodValidationPipe } from '../common';
-import { UserDocument } from '../users/schemas/user.schema';
+import { User } from '../users/user.entity';
 import {
   AuthService,
   type AuthenticatedUser,
   type AuthResult,
   type CheckResult,
-  type PowerSyncTokenResult,
 } from './auth.service';
-import type { PowerSyncJwks } from './powersync-keys';
 import { checkSchema, type CheckDto } from './dto/check.dto';
 import { refreshSchema, type RefreshDto } from './dto/refresh.dto';
 import { registerSchema, type RegisterDto } from './dto/register.dto';
@@ -25,6 +23,8 @@ import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { LocalAuthGuard } from './guards/local-auth.guard';
 import type { AuthUser } from './strategies/jwt.strategy';
 
+// Las rutas /auth/powersync-token y /auth/jwks del sistema anterior no existen
+// en v2: PowerSync se eliminó de la arquitectura.
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
@@ -47,7 +47,7 @@ export class AuthController {
   @UseGuards(LocalAuthGuard)
   @Post('login')
   @HttpCode(HttpStatus.OK)
-  async login(@Req() req: { user: UserDocument }): Promise<AuthResult> {
+  async login(@Req() req: { user: User }): Promise<AuthResult> {
     return this.authService.login(req.user);
   }
 
@@ -55,21 +55,6 @@ export class AuthController {
   @Get('me')
   async me(@Req() req: { user: AuthUser }): Promise<AuthenticatedUser> {
     return this.authService.me(req.user.userId);
-  }
-
-  /** Token de corta vida para conectar el cliente offline a PowerSync. */
-  @UseGuards(JwtAuthGuard)
-  @Get('powersync-token')
-  async powersyncToken(
-    @Req() req: { user: AuthUser },
-  ): Promise<PowerSyncTokenResult> {
-    return this.authService.powersyncToken(req.user.userId);
-  }
-
-  /** JWKS público: PowerSync lo consulta para validar el token (RS256). */
-  @Get('jwks')
-  powerSyncJwks(): PowerSyncJwks {
-    return this.authService.powerSyncJwks();
   }
 
   @Post('refresh')
